@@ -929,7 +929,15 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
     portEl.innerHTML = `
         <div class="port-header">
             <span class="port-label">${escapeHtml(portLabel)}</span>
-            <button type="button" class="btn btn-danger btn-sm port-remove-btn" onclick="removePort('${portId}')">Remove</button>
+            <button type="button" class="btn btn-danger btn-sm btn-icon port-remove-btn" onclick="removePort('${portId}')" aria-label="Remove port" title="Remove port">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M6 6l1 14h10l1-14"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                </svg>
+            </button>
         </div>
         <div class="port-body">
             <label for="${portId}-search">Connected to:</label>

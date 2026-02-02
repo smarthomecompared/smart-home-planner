@@ -190,11 +190,26 @@ function showMessage(message, type) {
 function renderVersionInfo() {
     const badgeEl = document.getElementById('settings-version-badge');
     const dateEl = document.getElementById('settings-version-date');
+    const notesWrap = document.getElementById('settings-version-notes');
+    const notesEl = document.getElementById('settings-version-note');
     if (!badgeEl || !dateEl) return;
     const version = typeof managerVersion === 'string' && managerVersion.trim() ? managerVersion.trim() : '0.1.0';
     const releaseDate = typeof managerReleaseDate === 'string' && managerReleaseDate.trim() ? managerReleaseDate.trim() : 'Unknown';
+    const releaseNotes = Array.isArray(managerReleaseNotes)
+        ? managerReleaseNotes.map(note => String(note).trim()).filter(Boolean)
+        : (typeof managerReleaseNotes === 'string' && managerReleaseNotes.trim() ? [managerReleaseNotes.trim()] : []);
     badgeEl.textContent = `v${version}`;
     dateEl.textContent = releaseDate;
+    if (notesWrap && notesEl) {
+        if (releaseNotes.length) {
+            notesEl.innerHTML = releaseNotes
+                .map(note => `<li>${escapeHtml(note)}</li>`)
+                .join('');
+            notesWrap.classList.remove('is-hidden');
+        } else {
+            notesWrap.classList.add('is-hidden');
+        }
+    }
 }
 
 function renderHomesManagement() {
@@ -213,9 +228,22 @@ function renderHomesManagement() {
                     <span>${escapeHtml(home.name)}</span>
                 </div>
                 <div class="homes-item-actions">
-                    <button class="btn btn-secondary btn-sm" data-home-rename="${home.id}">Rename</button>
+                    <button class="btn btn-secondary btn-sm btn-icon" data-home-rename="${home.id}" aria-label="Rename home" title="Rename home">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                            <path d="M13.5 6.5l4 4"></path>
+                        </svg>
+                    </button>
+                    ${isCurrent ? '' : `<button class="btn btn-danger btn-sm btn-icon" data-home-delete="${home.id}" aria-label="Delete home" title="Delete home">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M6 6l1 14h10l1-14"></path>
+                            <path d="M10 11v6"></path>
+                            <path d="M14 11v6"></path>
+                        </svg>
+                    </button>`}
                     ${isCurrent ? '<span class="current-home-badge">Current</span>' : `<button class="btn btn-secondary btn-sm" data-home-switch="${home.id}">Mark as current</button>`}
-                    ${isCurrent ? '' : `<button class="btn btn-secondary btn-sm" data-home-delete="${home.id}">Delete</button>`}
                 </div>
             </div>
         `;

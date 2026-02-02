@@ -64,6 +64,9 @@ function initializeEventListeners() {
         fullscreenBtn.addEventListener('click', toggleMapFullscreen);
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('fullscreenerror', () => {
+        setMapFullscreen(false);
+    });
     document.addEventListener('keydown', handleFullscreenEscape);
     document.addEventListener('keydown', handlePowerDialogEscape);
 }
@@ -81,19 +84,20 @@ function setMapFullscreen(isFullscreen) {
 }
 
 function toggleMapFullscreen() {
-    const isFullscreen = document.body.classList.contains('map-fullscreen');
+    const isFullscreen = Boolean(document.fullscreenElement);
     if (isFullscreen) {
-        setMapFullscreen(false);
-        if (document.fullscreenElement) {
-            document.exitFullscreen();
-        }
+        document.exitFullscreen();
         return;
     }
 
-    setMapFullscreen(true);
     const mapSection = document.getElementById('map-section');
     if (mapSection && mapSection.requestFullscreen) {
-        mapSection.requestFullscreen().catch(() => {});
+        mapSection.requestFullscreen().catch(() => {
+            setMapFullscreen(false);
+        });
+    } else {
+        // Fallback: avoid hiding the header if fullscreen API is unavailable
+        setMapFullscreen(false);
     }
 }
 

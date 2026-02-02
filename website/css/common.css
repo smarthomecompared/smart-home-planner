@@ -809,8 +809,10 @@ nav a.active::before {
 }
 
 .port-remove-btn {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
+    padding: 0.25rem;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
 }
 
 .port-body {
@@ -891,6 +893,19 @@ nav a.active::before {
 
 .port-connection-row .port-select {
     flex: 0 0 200px;
+}
+
+@media (max-width: 768px) {
+    .port-connection-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .port-connection-row .port-search-wrapper,
+    .port-connection-row .port-select {
+        width: 100%;
+        flex: 1 1 auto;
+    }
 }
 
 .port-select:hover {
@@ -1086,6 +1101,19 @@ nav a.active::before {
         flex-wrap: nowrap;
         align-items: center;
         gap: 0.75rem;
+    }
+
+    .section-header h2 {
+        text-align: left;
+        margin-left: 0.25rem;
+    }
+
+    .section-title-group {
+        padding-left: 0.25rem;
+    }
+
+    .section-subtitle {
+        margin-left: 0.25rem;
     }
 
     .section-title-group {

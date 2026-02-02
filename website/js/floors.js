@@ -214,11 +214,11 @@ function renderFloors() {
         const levelText = floor.level !== null ? `Level ${floor.level}` : '—';
         return `
             <tr>
-                <td><strong>${escapeHtml(floor.name)}</strong></td>
-                <td>${levelText}</td>
-                <td>${areaCount} area${areaCount !== 1 ? 's' : ''}</td>
-                <td>${deviceCount} device${deviceCount !== 1 ? 's' : ''}</td>
-                <td class="actions-cell">
+                <td data-label="Floor"><strong>${escapeHtml(floor.name)}</strong></td>
+                <td data-label="Level">${levelText}</td>
+                <td data-label="Areas">${areaCount} area${areaCount !== 1 ? 's' : ''}</td>
+                <td data-label="Devices">${deviceCount} device${deviceCount !== 1 ? 's' : ''}</td>
+                <td class="actions-cell" data-label="Actions">
                     <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit floor" title="Edit floor">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>

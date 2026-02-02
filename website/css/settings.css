@@ -16,12 +16,13 @@
 
 .settings-version-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 1.25rem;
     padding: 1rem 1.25rem;
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(16, 185, 129, 0.12));
     border: 1px solid rgba(59, 130, 246, 0.25);
+    flex-wrap: wrap;
 }
 
 .settings-version-badge {
@@ -35,11 +36,13 @@
     font-weight: 700;
     font-size: 0.85rem;
     letter-spacing: 0.04em;
+    order: 1;
 }
 
 .settings-version-meta {
     display: grid;
     gap: 0.25rem;
+    order: 2;
 }
 
 .settings-version-label {
@@ -51,6 +54,27 @@
 
 .settings-version-date {
     font-size: 0.95rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.settings-version-notes {
+    min-width: 220px;
+    flex-basis: 100%;
+    order: 3;
+}
+
+.settings-version-notes.is-hidden {
+    display: none;
+}
+
+.settings-version-list {
+    list-style: disc;
+    padding-left: 1.1rem;
+    margin: 0;
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.9rem;
     color: var(--text-color);
     font-weight: 600;
 }
@@ -143,11 +167,17 @@
     font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
 }
 
 .homes-item-actions {
     display: flex;
     gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .settings-action-group {

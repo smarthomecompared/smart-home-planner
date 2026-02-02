@@ -110,3 +110,64 @@
         padding: 0.5rem;
     }
 }
+
+@media (max-width: 640px) {
+    .areas-table thead {
+        display: none;
+    }
+
+    .areas-table,
+    .areas-table tbody,
+    .areas-table tr,
+    .areas-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .areas-table tbody tr {
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        background: var(--bg-secondary);
+        position: relative;
+        padding-top: 2.75rem;
+    }
+
+    .areas-table td {
+        padding: 0.35rem 0;
+        white-space: normal;
+    }
+
+    .areas-table td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+        margin-bottom: 0.25rem;
+    }
+
+    .areas-table .empty-state-cell::before {
+        content: none;
+    }
+
+    .areas-table .actions-cell {
+        display: flex;
+        justify-content: flex-end;
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        padding: 0;
+    }
+
+    .areas-table .actions-cell::before {
+        content: none;
+    }
+
+    .empty-state-cell {
+        display: block;
+        padding: 2rem 1rem !important;
+    }
+}
