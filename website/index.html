@@ -1427,7 +1427,7 @@
             const yesCount = devices.filter(device => Boolean(device.localOnly)).length;
             const noCount = Math.max(total - yesCount, 0);
             return [
-                { label: 'Si', value: 'true', count: yesCount },
+                { label: 'Yes', value: 'true', count: yesCount },
                 { label: 'No', value: 'false', count: noCount }
             ];
         }
@@ -1455,7 +1455,7 @@
             const yesCount = wiredDevices.filter(device => Boolean(device.upsProtected)).length;
             const noCount = Math.max(total - yesCount, 0);
             return [
-                { label: 'Si', value: 'true', count: yesCount },
+                { label: 'Yes', value: 'true', count: yesCount },
                 { label: 'No', value: 'false', count: noCount }
             ];
         }
