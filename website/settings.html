@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Settings - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="map.html">Map</a>
+                <a href="areas.html">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html" class="active">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="section-header">
+                <h2>Settings</h2>
+            </div>
+
+            <div class="settings-container">
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Version</h3>
+                    <p class="settings-description">Current release information.</p>
+                    <div class="settings-version-card" id="settings-version-card">
+                        <div class="settings-version-badge" id="settings-version-badge"></div>
+                        <div class="settings-version-meta">
+                            <div class="settings-version-label">Release date</div>
+                            <div class="settings-version-date" id="settings-version-date"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Data Management</h3>
+                    <p class="settings-description">Export your data to a JSON file for backup, or import data from a previously exported file.</p>
+                    
+                    <div class="settings-actions">
+                        <div class="settings-action-group">
+                            <h4>Export Data</h4>
+                            <p>Download all your devices, areas, floors, and settings as a JSON file.</p>
+                            <button class="btn btn-primary" id="export-btn">Export Data</button>
+                        </div>
+
+                        <div class="settings-action-group">
+                            <h4>Import Data</h4>
+                            <p>Import data from a JSON file. This will replace all existing data.</p>
+                            <div class="import-wrapper">
+                                <input type="file" id="import-file" accept=".json" style="display: none;">
+                                <button class="btn btn-secondary" id="import-btn">Choose File</button>
+                                <span id="import-file-name" class="import-file-name"></span>
+                            </div>
+                            <button class="btn btn-danger" id="import-confirm-btn" style="display: none; margin-top: 0.5rem;">Import Data</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Homes</h3>
+                    <p class="settings-description">Create homes, switch between them, and keep devices organized by home.</p>
+
+                    <div class="homes-grid">
+                        <div class="form-group homes-actions">
+                            <button class="btn btn-primary" id="home-add-btn">Add Home</button>
+                        </div>
+                    </div>
+
+                    <div class="homes-list" id="homes-list"></div>
+                </div>
+
+                <div class="settings-section">
+                    <h3 class="settings-section-title">Device Options</h3>
+                    <p class="settings-description">Manage the available options for brands, types, connectivity, and battery types used in device forms.</p>
+                    
+                    <div id="options-management">
+                        <!-- Options will be rendered here -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="home-modal" aria-hidden="true">
+        <div class="modal-overlay" id="home-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="home-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="home-modal-title">Add Home</div>
+            </div>
+            <div class="form-group">
+                <label for="home-modal-input">Home Name</label>
+                <input type="text" id="home-modal-input" placeholder="e.g., Default">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="home-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="home-modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/manager-metadata.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .dashboard-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            text-align: left;
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-card .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .dashboard-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--success-color), #0ea5e9);
+            opacity: 0;
+            transition: opacity var(--transition-base);
+        }
+
+
+        .dashboard-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .dashboard-card .count {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .dashboard-card .description {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .pending-list {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .pending-item {
+            display: grid;
+            grid-template-columns: 8px 1fr;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .pending-item:hover {
+            color: var(--text-color);
+        }
+
+        .pending-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning-color);
+        }
+
+        .wishlist-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #38bdf8;
+        }
+
+        .battery-alert-list {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .battery-alert-item {
+            display: grid;
+            gap: 0.2rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .battery-alert-item strong {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .battery-summary {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .local-summary {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .local-list {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .local-item {
+            display: grid;
+            grid-template-columns: 8px 1fr;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .local-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success-color);
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .chart-card > .chart-title {
+            margin-bottom: 1rem;
+        }
+
+        .chart-expand {
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .chart-expand svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 1.6;
+            fill: none;
+        }
+
+        .pie-wrap {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 1.25rem;
+            align-items: center;
+        }
+
+        .chart-card .pie-wrap {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+
+        .chart-card .pie-wrap .legend {
+            width: 100%;
+        }
+
+        .pie-wrap.pie-wrap-stacked {
+            grid-template-columns: 1fr;
+            justify-items: center;
+        }
+
+        .pie-wrap.pie-wrap-stacked .legend {
+            width: 100%;
+        }
+
+        .pie-chart {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            position: relative;
+            box-shadow: inset 0 0 0 1px var(--border-color);
+        }
+
+        .pie-chart::after {
+            content: '';
+            position: absolute;
+            inset: 28px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            box-shadow: inset 0 0 0 1px var(--border-color);
+        }
+
+        .legend {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .legend-item {
+            display: grid;
+            grid-template-columns: 12px 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.35rem 0.5rem;
+            border-radius: 8px;
+            transition: background var(--transition-base), color var(--transition-base);
+        }
+
+        .legend-item:hover {
+            color: var(--text-color);
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .legend-item.is-active {
+            color: var(--text-color);
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .legend-more {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .power-totals-chart {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .power-total-item {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .power-total-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .power-total-header strong {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .power-total-bar {
+            height: 8px;
+            border-radius: 999px;
+            background: var(--bg-secondary);
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px var(--border-color);
+        }
+
+        .power-total-bar span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--primary-color);
+        }
+
+        .power-total-bar.idle span {
+            background: #64748b;
+        }
+
+        .power-total-bar.mean span {
+            background: #3b82f6;
+        }
+
+        .power-total-bar.max span {
+            background: #f59e0b;
+        }
+
+        .power-usage-list .legend-item {
+            grid-template-columns: 12px 1fr auto;
+        }
+
+        .power-usage-more {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.is-hidden {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            position: relative;
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-xl);
+            width: min(920px, 94vw);
+            max-height: 92vh;
+            padding: 1.5rem;
+            display: grid;
+            gap: 1rem;
+            overflow: auto;
+            z-index: 1;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .modal-body .pie-wrap {
+            grid-template-columns: 240px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        .modal-body .pie-chart {
+            width: 240px;
+            height: 240px;
+        }
+
+        .modal-body .legend {
+            max-height: none;
+            overflow: visible;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, minmax(260px, 1fr));
+            }
+            .stats-cards {
+                grid-template-columns: repeat(2, minmax(260px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            .pie-wrap {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+            .legend {
+                width: 100%;
+            }
+            .modal-body .pie-wrap {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-card {
+                padding: 1.25rem;
+            }
+            .pie-chart {
+                width: 130px;
+                height: 130px;
+            }
+            .pie-chart::after {
+                inset: 22px;
+            }
+            .modal-body .pie-chart {
+                width: 200px;
+                height: 200px;
+            }
+            .modal-body .pie-chart::after {
+                inset: 32px;
+            }
+        }
+
+        body {
+            padding-bottom: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html" class="active">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="map.html">Map</a>
+                <a href="areas.html">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="dashboard" id="dashboard">
+                <!-- Dashboard cards will be rendered here -->
+            </div>
+        </section>
+
+        <section>
+            <div class="stats-cards">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Pending Devices</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="pending-devices" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="pending-devices"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Wishlist Devices</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="wishlist-devices" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="wishlist-devices"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Battery Changes Soon</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="battery-alerts" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="battery-alerts"></div>
+                    <div class="battery-summary" id="battery-alert-summary"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Total Batteries by Type</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="chart-batteries" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="chart-batteries"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">Total Power Consumption</div>
+                    <div class="legend" id="power-totals"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Power Usage</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="chart-power-usage" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="chart-power-usage"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Integrations</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="integration-stats" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap pie-wrap-stacked" id="integration-stats"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices 100% Local</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="local-chart" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="local-chart"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">UPS Protected Devices</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="ups-chart" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="ups-chart"></div>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Type</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="chart-types" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="chart-types"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Connectivity</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="chart-connectivity" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="chart-connectivity"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Brand</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="chart-brands" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pie-wrap" id="chart-brands"></div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="chart-modal" aria-hidden="true">
+        <div class="modal-overlay" id="chart-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="chart-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="chart-modal-title"></div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="chart-modal-close" aria-label="Close" title="Close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="pie-wrap" id="chart-modal-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script>
+        const chartRegistry = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = loadData();
+            const dashboard = document.getElementById('dashboard');
+            const selectedHomeId = data.selectedHomeId;
+            const devices = (data.devices || []).filter(device => device.homeId === selectedHomeId);
+            const floors = (data.floors || []).filter(floor => floor.homeId === selectedHomeId);
+            const areas = (data.areas || []).filter(area => area.homeId === selectedHomeId);
+            
+            const floorsCount = floors.length;
+            const areasCount = areas.length;
+            const devicesCount = devices.filter(d => d.status !== 'wishlist').length;
+            const workingDevices = devices.filter(d => d.status === 'working').length;
+            const pendingDevices = devices.filter(d => d.status === 'pending').length;
+            const wishlistDevices = devices.filter(d => d.status === 'wishlist').length;
+            
+            dashboard.innerHTML = `
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3>Devices</h3>
+                        <a href="device-add.html" class="btn btn-secondary btn-sm btn-icon card-add" aria-label="Add device" title="Add device">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14"></path>
+                                <path d="M5 12h14"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="count">${devicesCount}</div>
+                    <div class="description">${workingDevices} working, ${pendingDevices} pending</div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3>Areas</h3>
+                        <a href="areas.html?add=1" class="btn btn-secondary btn-sm btn-icon card-add" aria-label="Add area" title="Add area">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14"></path>
+                                <path d="M5 12h14"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="count">${areasCount}</div>
+                    <div class="description">Areas across all floors</div>
+                </div>
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3>Floors</h3>
+                        <a href="floors.html?add=1" class="btn btn-secondary btn-sm btn-icon card-add" aria-label="Add floor" title="Add floor">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 5v14"></path>
+                                <path d="M5 12h14"></path>
+                            </svg>
+                        </a>
+                    </div>
+                    <div class="count">${floorsCount}</div>
+                    <div class="description">Total floors in your home</div>
+                </div>
+            `;
+            renderPieChart('chart-types', buildStats(devices, 'type', formatDeviceType), 'type');
+            renderPieChart('chart-connectivity', buildStats(devices, 'connectivity', formatConnectivity), 'connectivity');
+            renderPieChart('chart-brands', buildStats(devices, 'brand', value => value), 'brand');
+            renderPieChart('chart-batteries', buildBatteryTotalsStats(devices), 'batteryType', {
+                countFormatter: row => row.count
+            });
+            renderPendingDevices('pending-devices', devices);
+            renderWishlistDevices('wishlist-devices', devices);
+            renderPowerTotals('power-totals', buildPowerTotals(devices));
+            renderPieChart('chart-power-usage', buildPowerUsageStats(devices), null, {
+                maxItems: 6,
+                includeOthers: true,
+                countFormatter: row => `${formatWatts(row.count)} W`,
+                linkBuilder: row => row.value ? `device-edit.html?id=${encodeURIComponent(row.value)}` : ''
+            });
+            renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices));
+            renderPieChart('integration-stats', buildIntegrationStats(devices), 'integration');
+            renderPieChart('local-chart', buildLocalStats(devices), 'localOnly');
+            renderPieChart('ups-chart', buildUpsStats(devices), 'upsProtected');
+
+            document.querySelectorAll('.chart-expand').forEach(button => {
+                button.addEventListener('click', () => {
+                    const chartId = button.getAttribute('data-chart');
+                    const card = button.closest('.chart-card');
+                    const title = card ? card.querySelector('.chart-title')?.textContent : '';
+                    openChartModal(chartId, title);
+                });
+            });
+
+            document.getElementById('chart-modal-close').addEventListener('click', closeChartModal);
+            document.getElementById('chart-modal-overlay').addEventListener('click', closeChartModal);
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeChartModal();
+                }
+            });
+        });
+
+        function buildStats(devices, key, formatter) {
+            const totals = new Map();
+            devices.forEach(device => {
+                const raw = (device[key] || '').trim();
+                const label = raw || 'Unknown';
+                totals.set(label, (totals.get(label) || 0) + 1);
+            });
+
+            return Array.from(totals.entries())
+                .map(([label, count]) => ({
+                    label: formatter(label),
+                    value: label,
+                    count
+                }))
+                .sort((a, b) => b.count - a.count);
+        }
+
+        function renderPieChart(targetId, rows, filterKey, options = {}) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.classList.add('pie-wrap');
+            target.classList.remove('legend', 'power-usage-list');
+            if (rows.length === 0) {
+                updateExpandButton(targetId, false);
+                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                return;
+            }
+
+            const countFormatter = options.countFormatter;
+            const linkBuilder = options.linkBuilder;
+            updateExpandButton(targetId, true);
+            const shouldStore = options.store !== false;
+            const maxLegendItems = options.maxItems === undefined ? 6 : options.maxItems;
+            const includeOthers = options.includeOthers !== false;
+            const otherLabel = 'Others';
+            let chartRows = rows.slice();
+            if (includeOthers && maxLegendItems && chartRows.length > maxLegendItems) {
+                const topRows = chartRows.slice(0, maxLegendItems - 1);
+                const otherRows = chartRows.slice(maxLegendItems - 1);
+                const otherCount = otherRows.reduce((sum, row) => sum + row.count, 0);
+                chartRows = [...topRows, { label: otherLabel, value: '', count: otherCount }];
+            }
+
+            const totalCount = chartRows.reduce((sum, row) => sum + row.count, 0) || 1;
+            const rowsWithPercent = chartRows.map(row => ({
+                ...row,
+                percent: Math.round((row.count / totalCount) * 100)
+            }));
+
+            const colors = [
+                '#2563eb',
+                '#16a34a',
+                '#f97316',
+                '#0ea5e9',
+                '#eab308',
+                '#14b8a6',
+                '#f59e0b',
+                '#84cc16',
+                '#64748b',
+                '#38bdf8'
+            ];
+
+            let start = 0;
+            const slices = rowsWithPercent.map((row, index) => {
+                const end = start + row.percent;
+                const color = colors[index % colors.length];
+                const slice = { ...row, color, start, end };
+                start = end;
+                return slice;
+            });
+
+            const buildGradient = (highlightIndex = null) => {
+                const segments = slices.map((slice, index) => {
+                    const color = highlightIndex === index ? lightenHex(slice.color, 40) : slice.color;
+                    return `${color} ${slice.start}% ${slice.end}%`;
+                });
+                return `conic-gradient(${segments.join(', ')})`;
+            };
+
+            const gradient = buildGradient();
+
+            const legend = slices.map((row, index) => {
+                const isOther = row.label === otherLabel;
+                const hasValue = row.value && row.value !== 'Unknown';
+                const isLinkable = Boolean(filterKey) && !isOther && hasValue;
+                const customHref = linkBuilder ? linkBuilder(row) : '';
+                const useCustomLink = Boolean(customHref);
+                const tag = useCustomLink || isLinkable ? 'a' : 'div';
+                const href = useCustomLink
+                    ? ` href="${customHref}"`
+                    : (isLinkable
+                        ? ` href="devices.html?${encodeURIComponent(filterKey)}=${encodeURIComponent(row.value)}"`
+                        : '');
+                const countLabel = countFormatter ? countFormatter(row) : row.count;
+                return `
+                    <${tag} class="legend-item" data-index="${index}"${href}>
+                        <span class="legend-dot" style="background: ${row.color};"></span>
+                        <span>${escapeHtml(row.label)}</span>
+                        <span>${row.percent}% (${countLabel})</span>
+                    </${tag}>
+                `;
+            }).join('');
+
+            target.innerHTML = `
+                <div class="pie-chart" style="background: ${gradient};"></div>
+                <div class="legend">${legend}</div>
+            `;
+
+            const pie = target.querySelector('.pie-chart');
+            if (pie) {
+                const legendItems = Array.from(target.querySelectorAll('.legend-item'));
+                let activeIndex = null;
+
+                const setActiveIndex = (index) => {
+                    if (index === activeIndex) return;
+                    activeIndex = index;
+                    legendItems.forEach((item, itemIndex) => {
+                        item.classList.toggle('is-active', itemIndex === index);
+                    });
+                    pie.style.background = index === null ? gradient : buildGradient(index);
+                };
+
+                legendItems.forEach(item => {
+                    const index = Number(item.dataset.index);
+                    if (Number.isNaN(index)) return;
+                    item.addEventListener('mouseenter', () => {
+                        setActiveIndex(index);
+                    });
+                    item.addEventListener('mouseleave', () => {
+                        setActiveIndex(null);
+                    });
+                });
+
+                pie.addEventListener('mousemove', (event) => {
+                    const rect = pie.getBoundingClientRect();
+                    const x = event.clientX - rect.left - rect.width / 2;
+                    const y = event.clientY - rect.top - rect.height / 2;
+                    const distance = Math.sqrt((x * x) + (y * y));
+                    const radius = rect.width / 2;
+                    if (distance > radius) {
+                        setActiveIndex(null);
+                        return;
+                    }
+                    const angle = Math.atan2(y, x) * (180 / Math.PI);
+                    const normalized = (angle + 90 + 360) % 360;
+                    const percent = normalized / 3.6;
+                    const sliceIndex = slices.findIndex(slice => percent >= slice.start && percent < slice.end);
+                    setActiveIndex(sliceIndex === -1 ? null : sliceIndex);
+                });
+
+                pie.addEventListener('mouseleave', () => {
+                    setActiveIndex(null);
+                });
+            }
+
+            if (shouldStore) {
+                chartRegistry[targetId] = {
+                    type: 'pie',
+                    rows,
+                    filterKey,
+                    countFormatter,
+                    linkBuilder
+                };
+            }
+        }
+
+        function updateExpandButton(targetId, hasData) {
+            if (targetId === 'chart-modal-body') return;
+            const button = document.querySelector(`.chart-expand[data-chart="${targetId}"]`);
+            if (!button) return;
+            button.style.display = hasData ? 'inline-flex' : 'none';
+        }
+
+        function openChartModal(chartId, title) {
+            const modal = document.getElementById('chart-modal');
+            const modalTitle = document.getElementById('chart-modal-title');
+            const data = chartRegistry[chartId];
+            if (!modal || !modalTitle || !data) return;
+
+            modalTitle.textContent = title || 'Chart';
+            if (data.type === 'list') {
+                renderPieChart('chart-modal-body', data.rows, null, {
+                    maxItems: null,
+                    includeOthers: false,
+                    store: false,
+                    countFormatter: row => `${formatWatts(row.count)} W`,
+                    linkBuilder: row => `device-edit.html?id=${encodeURIComponent(row.value)}`
+                });
+            } else if (data.type === 'legend-list') {
+                renderLegendList('chart-modal-body', data.rows, {
+                    maxItems: null,
+                    showMore: false,
+                    emptyMessage: data.emptyMessage
+                });
+            } else {
+                renderPieChart('chart-modal-body', data.rows, data.filterKey, {
+                    maxItems: null,
+                    includeOthers: false,
+                    store: false,
+                    countFormatter: data.countFormatter,
+                    linkBuilder: data.linkBuilder
+                });
+            }
+            modal.classList.remove('is-hidden');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeChartModal() {
+            const modal = document.getElementById('chart-modal');
+            if (!modal) return;
+            modal.classList.add('is-hidden');
+            modal.setAttribute('aria-hidden', 'true');
+            document.getElementById('chart-modal-body').innerHTML = '';
+        }
+
+        function formatConnectivity(value) {
+            if (!value) return 'Unknown';
+            return value.charAt(0).toUpperCase() + value.slice(1).replace('-', ' ');
+        }
+
+        function buildBatteryTotals(devices) {
+            const totals = new Map();
+            devices.forEach(device => {
+                const count = Number(device.batteryCount);
+                const type = (device.batteryType || '').trim();
+                if (!type || !Number.isFinite(count) || count <= 0) return;
+                totals.set(type, (totals.get(type) || 0) + count);
+            });
+
+            return Array.from(totals.entries())
+                .map(([type, count]) => ({ type, count }))
+                .sort((a, b) => b.count - a.count);
+        }
+
+        function buildBatteryTotalsStats(devices) {
+            return buildBatteryTotals(devices).map(row => ({
+                label: row.type,
+                value: row.type,
+                count: row.count
+            }));
+        }
+
+        function renderBatteryTotals(targetId, rows) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            if (rows.length === 0) {
+                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                return;
+            }
+
+            target.innerHTML = rows.map(row => `
+                <a class="legend-item" href="devices.html?batteryType=${encodeURIComponent(row.type)}">
+                    <span class="legend-dot" style="background: var(--primary-color);"></span>
+                    <span>${escapeHtml(row.type)}</span>
+                    <span>${row.count}</span>
+                </a>
+            `).join('');
+        }
+
+        function renderLegendList(targetId, rows, options = {}) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.classList.remove('pie-wrap');
+            target.classList.add('legend');
+            if (!rows.length) {
+                updateExpandButton(targetId, false);
+                target.innerHTML = `<div class="battery-alert-item">${options.emptyMessage || 'No data yet'}</div>`;
+                return;
+            }
+
+            const maxItems = options.maxItems === undefined ? 5 : options.maxItems;
+            const showMore = options.showMore !== false;
+            const visibleRows = maxItems ? rows.slice(0, maxItems) : rows.slice();
+            const remaining = maxItems ? Math.max(rows.length - maxItems, 0) : 0;
+
+            target.innerHTML = visibleRows.map(row => {
+                const tag = row.href ? 'a' : 'div';
+                const href = row.href ? ` href="${row.href}"` : '';
+                return `
+                <${tag} class="legend-item"${href}>
+                    <span class="legend-dot" style="background: ${row.dotColor || 'var(--primary-color)'};"></span>
+                    <span>${escapeHtml(row.label)}</span>
+                    <span>${escapeHtml(row.meta || '')}</span>
+                </${tag}>
+            `;
+            }).join('') + (remaining && showMore
+                ? `<div class="legend-more">+${remaining} more</div>`
+                : '');
+
+            chartRegistry[targetId] = {
+                type: 'legend-list',
+                rows,
+                emptyMessage: options.emptyMessage
+            };
+            updateExpandButton(targetId, rows.length > 0);
+        }
+
+        function renderPendingDevices(targetId, devices) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const pending = (devices || []).filter(device => device.status === 'pending');
+            const rows = pending.map(device => ({
+                label: device.name || 'Unnamed',
+                href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
+                dotColor: 'var(--warning-color)'
+            }));
+            renderLegendList(targetId, rows, {
+                maxItems: 5,
+                emptyMessage: 'No pending devices'
+            });
+        }
+
+        function renderWishlistDevices(targetId, devices) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const wishlist = (devices || []).filter(device => device.status === 'wishlist');
+            const rows = wishlist.map(device => ({
+                label: device.name || 'Unnamed',
+                href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
+                dotColor: '#38bdf8'
+            }));
+            renderLegendList(targetId, rows, {
+                maxItems: 5,
+                emptyMessage: 'No wishlist devices'
+            });
+        }
+
+        function buildPowerTotals(devices) {
+            const totals = {
+                idle: 0,
+                mean: 0,
+                max: 0
+            };
+            let hasData = false;
+
+            devices.forEach(device => {
+                const idle = Number(device.idleConsumption);
+                const mean = Number(device.meanConsumption);
+                const max = Number(device.maxConsumption);
+
+                if (Number.isFinite(idle)) {
+                    totals.idle += idle;
+                    hasData = true;
+                }
+                if (Number.isFinite(mean)) {
+                    totals.mean += mean;
+                    hasData = true;
+                }
+                if (Number.isFinite(max)) {
+                    totals.max += max;
+                    hasData = true;
+                }
+            });
+
+            if (!hasData) {
+                return [];
+            }
+
+            return [
+                { label: 'Idle', value: totals.idle },
+                { label: 'Mean', value: totals.mean },
+                { label: 'Max', value: totals.max }
+            ];
+        }
+
+        function renderPowerTotals(targetId, rows) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            if (!rows.length) {
+                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                return;
+            }
+
+            const maxValue = Math.max(...rows.map(row => row.value)) || 1;
+            target.innerHTML = `
+                <div class="power-totals-chart">
+                    ${rows.map(row => {
+                        const percent = Math.round((row.value / maxValue) * 100);
+                        const key = row.label.toLowerCase();
+                        return `
+                            <div class="power-total-item">
+                                <div class="power-total-header">
+                                    <span>${escapeHtml(row.label)}</span>
+                                    <strong>${row.value.toFixed(2)} W</strong>
+                                </div>
+                                <div class="power-total-bar ${key}">
+                                    <span style="width: ${percent}%;"></span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function buildBatteryAlerts(devices) {
+            const alerts = [];
+            const summary = new Map();
+            const now = new Date();
+
+            devices.forEach(device => {
+                if (!device.lastBatteryChange) return;
+                const lastChange = new Date(device.lastBatteryChange);
+                if (Number.isNaN(lastChange.getTime())) return;
+
+                const durationDaysRaw = Number(device.batteryDuration);
+                const durationDays = Number.isFinite(durationDaysRaw) && durationDaysRaw > 0
+                    ? durationDaysRaw
+                    : 730;
+                const daysSince = Math.floor((now - lastChange) / (1000 * 60 * 60 * 24));
+                if (daysSince < 0) return;
+                const percent = daysSince / durationDays;
+                if (percent < 0.8) return;
+
+                alerts.push({
+                    id: device.id,
+                    name: device.name || 'Unnamed',
+                    percent,
+                    daysSince,
+                    durationDays,
+                    batteryType: (device.batteryType || '').trim(),
+                    batteryCount: Number(device.batteryCount)
+                });
+
+                if (device.batteryType && Number.isFinite(device.batteryCount) && device.batteryCount > 0) {
+                    summary.set(
+                        device.batteryType,
+                        (summary.get(device.batteryType) || 0) + device.batteryCount
+                    );
+                }
+            });
+
+            alerts.sort((a, b) => b.percent - a.percent);
+
+            return {
+                alerts,
+                summary: Array.from(summary.entries())
+                    .map(([type, count]) => ({ type, count }))
+                    .sort((a, b) => b.count - a.count)
+            };
+        }
+
+        function renderBatteryAlerts(listId, summaryId, data) {
+            const listTarget = document.getElementById(listId);
+            const summaryTarget = document.getElementById(summaryId);
+            if (!listTarget || !summaryTarget) return;
+
+            if (!data.alerts.length) {
+                renderLegendList(listId, [], {
+                    maxItems: 5,
+                    emptyMessage: 'No upcoming battery changes'
+                });
+            } else {
+                const rows = data.alerts.map(alert => ({
+                    label: alert.name || 'Unnamed',
+                    meta: `${Math.round(alert.percent * 100)}% (${alert.daysSince}/${alert.durationDays} days)`,
+                    href: `device-edit.html?id=${encodeURIComponent(alert.id)}`,
+                    dotColor: 'var(--warning-color)'
+                }));
+                renderLegendList(listId, rows, {
+                    maxItems: 5,
+                    emptyMessage: 'No upcoming battery changes'
+                });
+            }
+
+            if (!data.summary.length) {
+                summaryTarget.innerHTML = '';
+                summaryTarget.style.display = 'none';
+                return;
+            }
+
+            summaryTarget.style.display = 'grid';
+            summaryTarget.innerHTML = `
+                <div class="battery-alert-item"><strong>To buy</strong></div>
+            ` + data.summary.map(item => `
+                <div class="legend-item">
+                    <span class="legend-dot" style="background: var(--warning-color);"></span>
+                    <span>${escapeHtml(item.type)}</span>
+                    <span>${item.count}</span>
+                </div>
+            `).join('');
+        }
+
+        function buildIntegrationStats(devices) {
+            const total = devices.length;
+            if (!total) return [];
+            const integrations = [
+                { key: 'homeAssistant', label: 'Home Assistant' },
+                { key: 'googleHome', label: 'Google Home' },
+                { key: 'alexa', label: 'Alexa' },
+                { key: 'appleHomeKit', label: 'Apple Home Kit' },
+                { key: 'samsungSmartThings', label: 'Samsung SmartThings' }
+            ];
+
+            return integrations
+                .map(item => {
+                    const count = devices.filter(device => Boolean(device[item.key])).length;
+                    return {
+                        label: item.label,
+                        value: item.key,
+                        count,
+                        percent: Math.round((count / total) * 100)
+                    };
+                });
+        }
+
+        function renderIntegrationCoverage(targetId, rows) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            if (!rows.length) {
+                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                return;
+            }
+
+            target.innerHTML = rows.map(row => `
+                <a class="legend-item" href="devices.html?integration=${encodeURIComponent(row.value)}">
+                    <span class="legend-dot" style="background: var(--primary-color);"></span>
+                    <span>${escapeHtml(row.label)}</span>
+                    <span>${row.percent}% (${row.count})</span>
+                </a>
+            `).join('');
+        }
+
+        function lightenHex(color, amount) {
+            if (!color || color[0] !== '#') return color;
+            const hex = color.slice(1);
+            const num = parseInt(hex, 16);
+            if (Number.isNaN(num)) return color;
+            const r = Math.min(255, ((num >> 16) & 255) + amount);
+            const g = Math.min(255, ((num >> 8) & 255) + amount);
+            const b = Math.min(255, (num & 255) + amount);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
+
+        function formatWatts(value) {
+            if (!Number.isFinite(value)) return '0';
+            return value.toFixed(2).replace(/\.00$/, '');
+        }
+
+        function renderPowerUsageList(targetId, rows, options = {}) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.classList.remove('pie-wrap');
+            target.classList.add('legend', 'power-usage-list');
+            if (!rows.length) {
+                updateExpandButton(targetId, false);
+                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                return;
+            }
+
+            const maxRows = options.maxRows === undefined ? 6 : options.maxRows;
+            const showMore = options.showMore !== false;
+            const sortedRows = rows.slice().sort((a, b) => b.count - a.count);
+            const visibleRows = maxRows ? sortedRows.slice(0, maxRows) : sortedRows;
+            const remaining = maxRows ? Math.max(sortedRows.length - maxRows, 0) : 0;
+            const totalPower = sortedRows.reduce((sum, row) => sum + row.count, 0) || 1;
+
+            target.innerHTML = visibleRows.map(row => {
+                const wattsLabel = formatWatts(row.count);
+                return `
+                <a class="legend-item" href="device-edit.html?id=${encodeURIComponent(row.value)}">
+                    <span class="legend-dot" style="background: var(--primary-color);"></span>
+                    <span>${escapeHtml(row.label)}</span>
+                    <span>${Math.round((row.count / totalPower) * 100)}% (${wattsLabel} W)</span>
+                </a>
+            `;
+            }).join('') + (remaining && showMore
+                ? `<div class="power-usage-more">+${remaining} more devices</div>`
+                : '');
+
+            chartRegistry[targetId] = {
+                type: 'list',
+                rows
+            };
+            updateExpandButton(targetId, rows.length > 0);
+        }
+
+        function buildLocalStats(devices) {
+            const total = devices.length;
+            if (!total) return [];
+            const yesCount = devices.filter(device => Boolean(device.localOnly)).length;
+            const noCount = Math.max(total - yesCount, 0);
+            return [
+                { label: 'Si', value: 'true', count: yesCount },
+                { label: 'No', value: 'false', count: noCount }
+            ];
+        }
+
+        function buildPowerUsageStats(devices) {
+            return (devices || [])
+                .map(device => ({
+                    id: device.id,
+                    name: device.name || 'Unnamed',
+                    mean: Number(device.meanConsumption)
+                }))
+                .filter(device => Number.isFinite(device.mean) && device.mean > 0)
+                .sort((a, b) => b.mean - a.mean)
+                .map(device => ({
+                    label: device.name,
+                    value: device.id,
+                    count: device.mean
+                }));
+        }
+
+        function buildUpsStats(devices) {
+            const wiredDevices = (devices || []).filter(device => device.power === 'wired');
+            const total = wiredDevices.length;
+            if (!total) return [];
+            const yesCount = wiredDevices.filter(device => Boolean(device.upsProtected)).length;
+            const noCount = Math.max(total - yesCount, 0);
+            return [
+                { label: 'Si', value: 'true', count: yesCount },
+                { label: 'No', value: 'false', count: noCount }
+            ];
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+/* Devices Page Styles */
+.devices-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    table-layout: auto;
+}
+
+.devices-table th,
+.devices-table td {
+    padding: 0.875rem 1rem;
+    white-space: nowrap;
+}
+
+.devices-table th:first-child,
+.devices-table td:first-child {
+    white-space: normal;
+    min-width: 240px;
+    width: 30%;
+}
+
+.devices-table .actions-cell {
+    white-space: nowrap;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.devices-table thead {
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.devices-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.devices-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+.devices-table th.sortable:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+.sort-icon {
+    display: inline-block;
+    margin-left: 0.5rem;
+    width: 0;
+    height: 0;
+    opacity: 0.3;
+}
+
+.sort-icon::before {
+    content: '↕';
+}
+
+.devices-table th.sort-asc .sort-icon::before {
+    content: '↑';
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+.devices-table th.sort-desc .sort-icon::before {
+    content: '↓';
+    opacity: 1;
+    color: var(--primary-color);
+}
+
+.devices-table tbody tr {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color var(--transition-fast);
+}
+
+.devices-table tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+.devices-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.devices-table .actions-cell .btn {
+    margin-right: 0;
+}
+
+.pagination-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-controls .btn {
+    min-width: 80px;
+}
+
+#page-numbers {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.page-number {
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition-base);
+    min-width: 40px;
+    text-align: center;
+}
+
+.page-number:hover {
+    background-color: var(--card-hover);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.page-number.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.pagination-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-size label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.pagination-size .filter-select {
+    min-width: 80px;
+}
+
+@media (max-width: 768px) {
+    .filters {
+        flex-direction: column;
+    }
+
+    .filter-select {
+        width: 100%;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .devices-table {
+        font-size: 0.75rem;
+    }
+
+    .devices-table th,
+    .devices-table td {
+        padding: 0.5rem;
+    }
+
+    .pagination-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+    }
+
+    .pagination-size {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 0.75rem;
+    }
+
+    .pagination-size label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+    }
+
+    .pagination-size .filter-select {
+        width: 100%;
+    }
+}

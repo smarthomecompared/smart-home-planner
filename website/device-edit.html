@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Edit Device - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="map.html">Map</a>
+                <a href="areas.html">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section class="form-page">
+            <div class="section-header">
+                <h2>Edit Device</h2>
+            </div>
+
+            <div class="form-card">
+                <form id="device-form">
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Basic Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="device-name">Name *</label>
+                                <input type="text" id="device-name" required placeholder="Unique device name">
+                            </div>
+                            <div class="form-group">
+                                <label for="device-brand">Brand *</label>
+                                <select id="device-brand" required>
+                                    <option value="">Select a brand</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="device-model">Model</label>
+                                <input type="text" id="device-model">
+                            </div>
+                            <div class="form-group">
+                                <label for="device-type">Type *</label>
+                                <select id="device-type" required>
+                                    <option value="">Select a type</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Installation -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Installation</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="device-status">Status *</label>
+                                <select id="device-status" required>
+                                    <option value="working">Working</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="wishlist">Wishlist</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="device-area-group">
+                                <label for="device-area">Area *</label>
+                                <select id="device-area" required>
+                                    <option value="">Select an area</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="device-installation-group">
+                                <label for="device-installation-date">Installation Date</label>
+                                <input type="date" id="device-installation-date">
+                            </div>
+                            <div class="form-group is-hidden" id="device-home-section">
+                                <label for="device-home-select">Home</label>
+                                <select id="device-home-select"></select>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Power -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Power</h3>
+                        <div class="form-row power-row">
+                            <div class="form-group">
+                                <label for="device-power">Power *</label>
+                                <select id="device-power" required>
+                                    <option value="battery">Battery</option>
+                                    <option value="wired">Wired</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row power-details-row">
+                            <div class="form-group checkbox-group is-hidden" id="ups-protected-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-ups-protected">
+                                    <span>UPS Protected</span>
+                                </label>
+                            </div>
+                            <div class="form-group" id="battery-type-group">
+                                <label for="device-battery-type">Battery Type</label>
+                                <select id="device-battery-type">
+                                    <option value="">Select battery type</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="battery-count-group">
+                                <label for="device-battery-count">Number of Batteries</label>
+                                <input type="number" id="device-battery-count" min="1" placeholder="e.g., 2">
+                            </div>
+                            <div class="form-group" id="battery-change-group">
+                                <label for="device-last-battery-change">Last Battery Change/Charge</label>
+                                <input type="date" id="device-last-battery-change">
+                            </div>
+                            <div class="form-group is-hidden" id="battery-duration-group">
+                                <label for="device-battery-duration">Battery Duration (days)</label>
+                                <input type="number" id="device-battery-duration" min="0" step="1" placeholder="e.g., 180">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group" id="idle-consumption-group">
+                                <label for="device-idle-consumption">Idle Consumption (W)</label>
+                                <input type="number" id="device-idle-consumption" step="0.01" min="0" placeholder="e.g., 0.5">
+                            </div>
+                            <div class="form-group" id="mean-consumption-group">
+                                <label for="device-mean-consumption">Mean Consumption (W)</label>
+                                <input type="number" id="device-mean-consumption" step="0.01" min="0" placeholder="e.g., 2.5">
+                            </div>
+                            <div class="form-group" id="max-consumption-group">
+                                <label for="device-max-consumption">Max Consumption (W)</label>
+                                <input type="number" id="device-max-consumption" step="0.01" min="0" placeholder="e.g., 5.0">
+                            </div>
+                        </div>
+                        
+                        <!-- Power Ports (only for wired devices) -->
+                        <div id="power-ports-section" class="is-hidden">
+                            <h4 class="form-subsection-title">Power Connections</h4>
+                            <div class="ports-container" id="power-ports-container">
+                                <!-- Power ports will be added dynamically -->
+                            </div>
+                            <div class="form-row">
+                                <button type="button" class="btn btn-secondary btn-sm" id="add-power-input-btn">+ Power Input</button>
+                                <button type="button" class="btn btn-secondary btn-sm" id="add-power-output-btn">+ Power Output</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Storage -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Storage</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="device-storage-size">Disk Space</label>
+                                <input type="number" id="device-storage-size" min="0" step="1" placeholder="e.g., 128">
+                            </div>
+                            <div class="form-group">
+                                <label for="device-storage-unit">Unit</label>
+                                <select id="device-storage-unit">
+                                    <option value="">Select unit</option>
+                                    <option value="GB">GB</option>
+                                    <option value="TB">TB</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Connectivity -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Connectivity</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="device-connectivity">Connectivity *</label>
+                                <select id="device-connectivity" required>
+                                    <option value="">Select connectivity</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="ip-address-group">
+                                <label for="device-ip">IP Address</label>
+                                <input type="text" id="device-ip" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" placeholder="e.g., 192.168.1.100">
+                            </div>
+                            <div class="form-group" id="mac-address-group">
+                                <label for="device-mac">MAC Address</label>
+                                <input type="text" id="device-mac" pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$" placeholder="e.g., AA:BB:CC:DD:EE:FF">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-thread-border-router">
+                                    <span>Thread Border Router</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-matter-hub">
+                                    <span>Matter Hub</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-zigbee-controller">
+                                    <span>Zigbee Controller</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-zigbee-repeater">
+                                    <span>Zigbee Repeater</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ports -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Ports</h3>
+                        <div class="ports-container" id="ports-container">
+                            <!-- Ports will be added dynamically -->
+                        </div>
+                        <div class="form-row">
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-ethernet-input-btn">+ Ethernet Input</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-ethernet-output-btn">+ Ethernet Output</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-usb-input-btn">+ USB Input</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-usb-output-btn">+ USB Output</button>
+                        </div>
+                    </div>
+
+                    <!-- Integrations -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Integrations</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-home-assistant">
+                                    <span>Home Assistant</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-google-home">
+                                    <span>Google Home</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-alexa">
+                                    <span>Alexa</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-apple-home-kit">
+                                    <span>Apple Home Kit</span>
+                                </label>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-samsung-smartthings">
+                                    <span>Samsung SmartThings</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="device-local-only">
+                                    <span>100% local</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-section">
+                        <h3 class="form-section-title">Notes</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="device-notes">Notes</label>
+                                <textarea id="device-notes" rows="3" placeholder="Additional details..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-danger" id="delete-device-btn">Delete</button>
+                        <a href="devices.html" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="brand-modal" aria-hidden="true">
+        <div class="modal-overlay" id="brand-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="brand-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="brand-modal-title">Add Brand</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="brand-modal-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label for="brand-modal-input">Brand Name</label>
+                <input type="text" id="brand-modal-input" placeholder="e.g., Acme">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="brand-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="brand-modal-save">Save Brand</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="type-modal" aria-hidden="true">
+        <div class="modal-overlay" id="type-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="type-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="type-modal-title">Add Type</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="type-modal-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label for="type-modal-input">Type Name</label>
+                <input type="text" id="type-modal-input" placeholder="e.g., Air Purifier">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="type-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="type-modal-save">Save Type</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="battery-type-modal" aria-hidden="true">
+        <div class="modal-overlay" id="battery-type-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="battery-type-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="battery-type-modal-title">Add Battery Type</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="battery-type-modal-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label for="battery-type-modal-input">Battery Type</label>
+                <input type="text" id="battery-type-modal-input" placeholder="e.g., CR2032">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="battery-type-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="battery-type-modal-save">Save Battery Type</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="connectivity-modal" aria-hidden="true">
+        <div class="modal-overlay" id="connectivity-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="connectivity-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="connectivity-modal-title">Add Connectivity Option</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="connectivity-modal-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label for="connectivity-modal-input">Connectivity Name</label>
+                <input type="text" id="connectivity-modal-input" placeholder="e.g., Ethernet">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="connectivity-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="connectivity-modal-save">Save Connectivity</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/device-form.js"></script>
+</body>
+</html>

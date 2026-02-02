@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Areas - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/areas.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="map.html">Map</a>
+                <a href="areas.html" class="active">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="section-header section-header-inline">
+                <div class="section-title-group">
+                    <h2>Areas</h2>
+                    <div class="section-subtitle" id="areas-count">0 areas</div>
+                </div>
+                <a href="#" class="btn btn-primary" id="add-area-btn">Add Area</a>
+            </div>
+
+            <div class="table-container">
+                <table class="areas-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="name">
+                                Name <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="floor">
+                                Floor <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="devices">
+                                Devices <span class="sort-icon"></span>
+                            </th>
+                            <th class="actions-cell">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="areas-list">
+                        <!-- Areas will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="area-modal" aria-hidden="true">
+        <div class="modal-overlay" id="area-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="area-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="area-modal-title">Add Area</div>
+            </div>
+            <form id="area-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="area-name">Area Name *</label>
+                        <input type="text" id="area-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="area-floor">Floor *</label>
+                        <select id="area-floor" required>
+                            <option value="">Select a floor</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" type="button" id="area-modal-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/areas.js"></script>
+</body>
+</html>

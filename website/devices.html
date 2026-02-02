@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Devices - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/devices.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html" class="active">Devices</a>
+                <a href="map.html">Map</a>
+                <a href="areas.html">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="section-header section-header-inline">
+                <div class="section-title-group">
+                    <h2>Devices</h2>
+                    <div class="section-subtitle" id="devices-count">0 devices</div>
+                </div>
+                <a href="device-add.html" class="btn btn-primary">Add Device</a>
+            </div>
+            
+            <!-- Device Filters Component -->
+            <div class="filters-container">
+                <div class="filters-header">
+                    <h3>Filters</h3>
+                    <div class="filters-actions">
+                        <button class="btn btn-secondary btn-sm btn-icon filters-toggle" type="button" id="toggle-advanced-filters" aria-expanded="false" aria-controls="advanced-filters" aria-label="Toggle advanced filters">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 9l6 6 6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="filters-body">
+                    <div class="filters filters-primary">
+                        <input type="text" id="filter-name" class="filter-input filter-input-wide" placeholder="Search by device name">
+                        <button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Clear Filters</button>
+                    </div>
+                    <div class="filters filters-secondary">
+                    <select id="filter-floor" class="filter-select">
+                        <option value="">All Floors</option>
+                    </select>
+                    <select id="filter-area" class="filter-select">
+                        <option value="">All Areas</option>
+                    </select>
+                    <select id="filter-brand" class="filter-select">
+                        <option value="">All Brands</option>
+                    </select>
+                    <select id="filter-status" class="filter-select">
+                        <option value="">All Status</option>
+                        <option value="working">Working</option>
+                        <option value="pending">Pending</option>
+                        <option value="wishlist">Wishlist</option>
+                    </select>
+                    <select id="filter-type" class="filter-select">
+                        <option value="">All Types</option>
+                    </select>
+                    </div>
+                    <div class="filters filters-advanced is-collapsed" id="advanced-filters">
+                    <div class="filters-section-label">Connectivity</div>
+                    <select id="filter-connectivity" class="filter-select">
+                        <option value="">All Connectivity</option>
+                    </select>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-thread-border-router">
+                        <span>Thread Border Router</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-matter-hub">
+                        <span>Matter Hub</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-zigbee-controller">
+                        <span>Zigbee Controller</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-zigbee-repeater">
+                        <span>Zigbee Repeater</span>
+                    </label>
+                    <div class="filters-section-label">Power</div>
+                    <select id="filter-power" class="filter-select">
+                        <option value="">All Power</option>
+                        <option value="wired">Wired</option>
+                        <option value="battery">Battery</option>
+                    </select>
+                    <select id="filter-ups-protected" class="filter-select">
+                        <option value="">UPS Protected: All</option>
+                        <option value="true">UPS Protected: Yes</option>
+                        <option value="false">UPS Protected: No</option>
+                    </select>
+                    <select id="filter-battery-type" class="filter-select">
+                        <option value="">All Battery Types</option>
+                    </select>
+                    <div class="filters-section-label">Integrations</div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-home-assistant">
+                        <span>Home Assistant</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-google-home">
+                        <span>Google Home</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-alexa">
+                        <span>Alexa</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-apple-home-kit">
+                        <span>Apple Home Kit</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="filter-samsung-smartthings">
+                        <span>Samsung SmartThings</span>
+                    </label>
+                    <div class="filters-section-label">Connectivity Options</div>
+                    <select id="filter-local-only" class="filter-select">
+                        <option value="">Local Only: All</option>
+                        <option value="true">Local Only: Yes</option>
+                        <option value="false">Local Only: No</option>
+                    </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="devices-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="name">
+                                Name <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="area">
+                                Area <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="brand">
+                                Brand <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="type">
+                                Type <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="status">
+                                Status <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable" data-sort="connectivity">
+                                Connectivity <span class="sort-icon"></span>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devices-table-body">
+                        <!-- Devices will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    <span id="pagination-info">Showing 0-0 of 0</span>
+                </div>
+                <div class="pagination-controls">
+                    <button class="btn btn-sm btn-secondary" id="prev-page-btn" disabled>Previous</button>
+                    <span id="page-numbers"></span>
+                    <button class="btn btn-sm btn-secondary" id="next-page-btn" disabled>Next</button>
+                </div>
+                <div class="pagination-size">
+                    <label for="page-size">Per page:</label>
+                    <select id="page-size" class="filter-select">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/device-filters.js"></script>
+    <script src="js/devices.js"></script>
+</body>
+</html>

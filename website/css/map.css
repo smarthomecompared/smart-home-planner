@@ -1,0 +1,539 @@
+/* Map Page Styles */
+
+.map-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Map Display Settings */
+.map-display-settings {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
+    border-radius: 14px;
+    margin-bottom: 1.25rem;
+    border: 1px solid rgba(71, 85, 105, 0.7);
+    box-shadow: var(--shadow-lg);
+    display: grid;
+    gap: 1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.map-display-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.map-display-toggle {
+    flex: 0 0 auto;
+}
+
+.map-display-toggle svg {
+    transition: transform var(--transition-base);
+}
+
+.map-display-settings.is-collapsed .map-display-toggle svg {
+    transform: rotate(-90deg);
+}
+
+.map-display-body {
+    display: grid;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.map-display-settings.is-collapsed .map-display-body {
+    display: none;
+}
+
+.map-display-settings::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 55%, rgba(16, 185, 129, 0.08));
+    pointer-events: none;
+}
+
+.map-display-settings h3 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 1;
+}
+
+.map-display-settings h3::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(71, 85, 105, 0.7), transparent);
+}
+
+.settings-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.settings-group + .settings-group {
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(71, 85, 105, 0.5);
+}
+
+.connection-toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.75rem;
+}
+
+.connection-toggle {
+    gap: 0.625rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(71, 85, 105, 0.6);
+    background: rgba(15, 23, 42, 0.7);
+    transition: all var(--transition-base);
+}
+
+.connection-toggle:hover {
+    border-color: var(--border-hover);
+}
+
+.legend-line {
+    width: 32px;
+    height: 4px;
+    border-radius: 2px;
+}
+
+.legend-line.ethernet {
+    background: #3b82f6;
+}
+
+.legend-line.usb {
+    background: #14b8a6;
+}
+
+.legend-line.power {
+    background: #f59e0b;
+}
+
+.connection-toggle span:last-child {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.map-display-settings .form-group {
+    min-width: 220px;
+    margin-bottom: 0;
+}
+
+.map-display-settings .form-group select {
+    width: auto;
+    min-width: 200px;
+}
+
+.map-display-settings .form-group label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.map-display-settings .form-group select {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(71, 85, 105, 0.7);
+}
+
+#network-map {
+    width: 100%;
+    height: 700px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-stage {
+    position: relative;
+}
+
+.map-controls-overlay {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 20;
+}
+
+.map-controls-overlay .map-controls {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.5rem;
+    box-shadow: var(--shadow-lg);
+    flex-wrap: nowrap;
+}
+
+.map-controls-overlay .map-controls .btn {
+    white-space: nowrap;
+}
+
+.map-controls-overlay .btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0.35rem;
+}
+
+.map-controls-overlay .btn-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.section-header.section-header-map {
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.section-header.section-header-map h2 {
+    text-align: left;
+}
+
+.section-header.section-header-map .btn {
+    margin-left: auto;
+}
+
+body.map-fullscreen {
+    overflow: hidden;
+}
+
+body.map-fullscreen .container {
+    max-width: none;
+    padding: 0;
+}
+
+body.map-fullscreen header,
+body.map-fullscreen .filters-container,
+body.map-fullscreen .map-display-settings,
+body.map-fullscreen .map-info {
+    display: none;
+}
+
+body.map-fullscreen #network-map {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    z-index: 1000;
+}
+
+body.map-fullscreen .map-controls-overlay {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1002;
+}
+
+/* Empty Map Message */
+.empty-map-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.map-info {
+    margin-top: 1rem;
+    padding: 0.875rem;
+    background: var(--primary-light);
+    border-left: 3px solid var(--primary-color);
+    border-radius: 4px;
+}
+
+.map-info p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.map-info strong {
+    color: var(--primary-color);
+}
+
+/* Device Tooltip */
+.device-tooltip {
+    position: fixed;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0;
+    z-index: 10000;
+    box-shadow: var(--shadow-xl);
+    min-width: 280px;
+    max-width: 350px;
+    animation: tooltipFadeIn 0.2s ease;
+}
+
+.connection-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10001;
+}
+
+.connection-dialog {
+    width: min(420px, 92vw);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--shadow-xl);
+    padding: 1rem 1.25rem 1.25rem;
+}
+
+.connection-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.connection-dialog-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.connection-dialog-close {
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.connection-dialog-body {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.connection-dialog-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.connection-dialog-row strong {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tooltip-header {
+    padding: 0.875rem 1rem;
+    background: linear-gradient(135deg, var(--primary-color), #2563eb);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tooltip-close-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background var(--transition-base);
+}
+
+.tooltip-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.tooltip-body {
+    padding: 0.875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tooltip-label {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    min-width: 90px;
+}
+
+.tooltip-value {
+    font-size: 0.875rem;
+    color: var(--text-color);
+    text-align: right;
+}
+
+.tooltip-value.status-working {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.tooltip-value.status-pending {
+    color: var(--warning-color);
+    font-weight: 600;
+}
+
+.tooltip-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.tooltip-edit-btn {
+    padding: 0.5rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-base);
+}
+
+.tooltip-edit-btn:hover {
+    background: var(--primary-hover);
+}
+
+.tooltip-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .map-controls-overlay {
+        top: 0.75rem;
+        right: 0.75rem;
+    }
+
+    .map-controls-overlay .map-controls {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 0.4rem;
+        gap: 0.4rem;
+        max-width: min(92vw, 520px);
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .map-controls-overlay .map-controls .btn:not(.btn-icon) {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.7rem;
+    }
+    
+    .settings-group {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .connection-toggles {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    #network-map {
+        height: 500px;
+    }
+    
+    .device-tooltip {
+        min-width: 250px;
+        max-width: 90vw;
+    }
+    
+    .tooltip-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .tooltip-edit-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    #network-map {
+        height: 420px;
+    }
+
+    .map-controls-overlay .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0.35rem;
+        min-width: 32px;
+    }
+
+    .map-controls-overlay .btn-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+}
