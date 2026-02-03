@@ -8,6 +8,9 @@ let editingAreaId = null;
 let sortColumn = 'floor';
 let sortDirection = 'asc';
 let selectedHomeId = '';
+let viewMode = 'table';
+
+const VIEW_STORAGE_KEY = 'smartHomeAreasView';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
     
     initializeEventListeners();
+    initializeViewToggle();
     updateFloorOptions();
     renderAreas();
 
@@ -62,6 +66,60 @@ function initializeEventListeners() {
             renderAreas();
         });
     });
+}
+
+function initializeViewToggle() {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === 'table' || saved === 'grid') {
+        viewMode = saved;
+    } else {
+        viewMode = window.innerWidth <= 640 ? 'grid' : 'table';
+    }
+
+    const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const next = button.getAttribute('data-view');
+            if (!next || next === viewMode) return;
+            viewMode = next;
+            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            updateViewToggle();
+            updateViewVisibility();
+            renderAreas();
+        });
+    });
+
+    updateViewToggle();
+    updateViewVisibility();
+
+    window.addEventListener('resize', () => {
+        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
+        const next = window.innerWidth <= 640 ? 'grid' : 'table';
+        if (next === viewMode) return;
+        viewMode = next;
+        updateViewToggle();
+        updateViewVisibility();
+        renderAreas();
+    });
+}
+
+function updateViewToggle() {
+    document.querySelectorAll('.view-toggle-btn').forEach(button => {
+        const isActive = button.getAttribute('data-view') === viewMode;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function updateViewVisibility() {
+    const tableContainer = document.getElementById('areas-table-container');
+    const grid = document.getElementById('areas-grid');
+    if (tableContainer) {
+        tableContainer.style.display = viewMode === 'table' ? '' : 'none';
+    }
+    if (grid) {
+        grid.style.display = viewMode === 'grid' ? 'grid' : 'none';
+    }
 }
 
 // CRUD Operations
@@ -150,6 +208,7 @@ function renderAreas() {
                 </td>
             </tr>
         `;
+        renderAreasGrid([]);
         return;
     }
     
@@ -240,6 +299,60 @@ function renderAreas() {
             </tr>
         `;
     }).join('');
+
+    renderAreasGrid(sortedAreas);
+}
+
+function renderAreasGrid(areaRows) {
+    const grid = document.getElementById('areas-grid');
+    if (!grid) return;
+    if (!areaRows.length) {
+        grid.innerHTML = `
+            <div class="area-card">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🏠</div>
+                    <div class="empty-state-text">No areas defined</div>
+                    <div class="empty-state-subtext">Add your first area to organize your devices</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = areaRows.map(({ area, floorName, deviceCount }) => `
+        <div class="area-card">
+            <div class="area-card-header">
+                <div class="area-card-title">${escapeHtml(area.name)}</div>
+            </div>
+            <div class="area-card-meta">
+                <div class="area-card-meta-row">
+                    <span class="area-card-meta-label">Floor</span>
+                    <span class="area-card-meta-value">${escapeHtml(floorName)}</span>
+                </div>
+                <div class="area-card-meta-row">
+                    <span class="area-card-meta-label">Devices</span>
+                    <span class="area-card-meta-value">${deviceCount}</span>
+                </div>
+            </div>
+            <div class="area-card-actions">
+                <button class="btn btn-sm btn-secondary btn-icon" onclick="editArea('${area.id}')" aria-label="Edit area" title="Edit area">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                        <path d="M13.5 6.5l4 4"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-sm btn-danger btn-icon" onclick="deleteAreaHandler('${area.id}')" aria-label="Delete area" title="Delete area">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M6 6l1 14h10l1-14"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
 }
 
 function updateFloorOptions() {

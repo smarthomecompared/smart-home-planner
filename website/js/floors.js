@@ -6,6 +6,9 @@ let editingFloorId = null;
 let sortColumn = 'level';
 let sortDirection = 'asc';
 let selectedHomeId = '';
+let viewMode = 'table';
+
+const VIEW_STORAGE_KEY = 'smartHomeFloorsView';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
     
     initializeEventListeners();
+    initializeViewToggle();
     renderFloors();
 
     const params = new URLSearchParams(window.location.search);
@@ -57,6 +61,60 @@ function initializeEventListeners() {
             renderFloors();
         });
     });
+}
+
+function initializeViewToggle() {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === 'table' || saved === 'grid') {
+        viewMode = saved;
+    } else {
+        viewMode = window.innerWidth <= 640 ? 'grid' : 'table';
+    }
+
+    const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const next = button.getAttribute('data-view');
+            if (!next || next === viewMode) return;
+            viewMode = next;
+            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            updateViewToggle();
+            updateViewVisibility();
+            renderFloors();
+        });
+    });
+
+    updateViewToggle();
+    updateViewVisibility();
+
+    window.addEventListener('resize', () => {
+        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
+        const next = window.innerWidth <= 640 ? 'grid' : 'table';
+        if (next === viewMode) return;
+        viewMode = next;
+        updateViewToggle();
+        updateViewVisibility();
+        renderFloors();
+    });
+}
+
+function updateViewToggle() {
+    document.querySelectorAll('.view-toggle-btn').forEach(button => {
+        const isActive = button.getAttribute('data-view') === viewMode;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function updateViewVisibility() {
+    const tableContainer = document.getElementById('floors-table-container');
+    const grid = document.getElementById('floors-grid');
+    if (tableContainer) {
+        tableContainer.style.display = viewMode === 'table' ? '' : 'none';
+    }
+    if (grid) {
+        grid.style.display = viewMode === 'grid' ? 'grid' : 'none';
+    }
 }
 
 // CRUD Operations
@@ -133,6 +191,7 @@ function renderFloors() {
                 </td>
             </tr>
         `;
+        renderFloorsGrid([]);
         return;
     }
     
@@ -236,6 +295,67 @@ function renderFloors() {
                     </button>
                 </td>
             </tr>
+        `;
+    }).join('');
+
+    renderFloorsGrid(sortedFloors);
+}
+
+function renderFloorsGrid(floorRows) {
+    const grid = document.getElementById('floors-grid');
+    if (!grid) return;
+    if (!floorRows.length) {
+        grid.innerHTML = `
+            <div class="floor-card">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🏢</div>
+                    <div class="empty-state-text">No floors defined</div>
+                    <div class="empty-state-subtext">Add your first floor to organize your areas</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = floorRows.map(({ floor, areaCount, deviceCount }) => {
+        const levelText = floor.level !== null ? `Level ${floor.level}` : '—';
+        return `
+            <div class="floor-card">
+                <div class="floor-card-header">
+                    <div class="floor-card-title">${escapeHtml(floor.name)}</div>
+                </div>
+                <div class="floor-card-meta">
+                    <div class="floor-card-meta-row">
+                        <span class="floor-card-meta-label">Level</span>
+                        <span class="floor-card-meta-value">${levelText}</span>
+                    </div>
+                    <div class="floor-card-meta-row">
+                        <span class="floor-card-meta-label">Areas</span>
+                        <span class="floor-card-meta-value">${areaCount}</span>
+                    </div>
+                    <div class="floor-card-meta-row">
+                        <span class="floor-card-meta-label">Devices</span>
+                        <span class="floor-card-meta-value">${deviceCount}</span>
+                    </div>
+                </div>
+                <div class="floor-card-actions">
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit floor" title="Edit floor">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                            <path d="M13.5 6.5l4 4"></path>
+                        </svg>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteFloorHandler('${floor.id}')" aria-label="Delete floor" title="Delete floor">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M6 6l1 14h10l1-14"></path>
+                            <path d="M10 11v6"></path>
+                            <path d="M14 11v6"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         `;
     }).join('');
 }

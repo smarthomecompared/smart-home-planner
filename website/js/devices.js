@@ -386,7 +386,7 @@ function renderDevicesGrid(devicesToRender) {
                     </div>
                 </div>
                 <div class="device-card-actions">
-                    <span class="device-card-status status-${device.status}" aria-label="${escapeHtml(device.status || '')}" title="${escapeHtml(device.status || '')}"></span>
+                    <span class="device-card-status status-${device.status}" data-status="${escapeHtml(device.status || '')}" aria-label="${escapeHtml(device.status || '')}" title="${escapeHtml(device.status || '')}"></span>
                     <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit device" title="Edit device">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>

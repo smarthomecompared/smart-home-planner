@@ -114,39 +114,6 @@
     grid-column: 3;
 }
 
-.view-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-}
-
-.view-toggle-btn {
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    padding: 0.35rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all var(--transition-base);
-}
-
-.view-toggle-btn:hover {
-    color: var(--text-color);
-}
-
-.view-toggle-btn.is-active {
-    background: var(--primary-color);
-    color: #f8fafc;
-    box-shadow: var(--shadow);
-}
 
 .devices-grid {
     display: none;
@@ -186,6 +153,7 @@
     border-radius: 50%;
     background: var(--text-muted);
     box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.85);
+    cursor: default;
 }
 
 .device-card-status.status-working {
@@ -198,6 +166,31 @@
 
 .device-card-status.status-wishlist {
     background: #38bdf8;
+}
+
+.device-card-status::after {
+    content: attr(data-status);
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    transform: translateX(-25%);
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text-color);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    z-index: 2;
+}
+
+.device-card-status:hover::after {
+    opacity: 1;
 }
 
 .device-card-meta {

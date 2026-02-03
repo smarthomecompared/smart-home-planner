@@ -43,15 +43,19 @@
         </header>
 
         <section>
-            <div class="section-header section-header-inline">
+            <div class="section-header section-header-inline floors-header">
                 <div class="section-title-group">
                     <h2>Floors</h2>
                     <div class="section-subtitle" id="floors-count">0 floors</div>
                 </div>
-                <a href="#" class="btn btn-primary" id="add-floor-btn">Add Floor</a>
+                <div class="view-toggle" role="group" aria-label="View mode">
+                    <button class="view-toggle-btn" type="button" data-view="table" aria-pressed="false">Table</button>
+                    <button class="view-toggle-btn" type="button" data-view="grid" aria-pressed="false">Grid</button>
+                </div>
+                <a href="#" class="btn btn-primary floors-add-btn" id="add-floor-btn">Add Floor</a>
             </div>
 
-            <div class="table-container">
+            <div class="table-container" id="floors-table-container">
                 <table class="floors-table">
                     <thead>
                         <tr>
@@ -75,6 +79,7 @@
                     </tbody>
                 </table>
             </div>
+            <div class="floors-grid" id="floors-grid"></div>
         </section>
     </div>
 

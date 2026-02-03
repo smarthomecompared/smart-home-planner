@@ -43,15 +43,19 @@
         </header>
 
         <section>
-            <div class="section-header section-header-inline">
+            <div class="section-header section-header-inline areas-header">
                 <div class="section-title-group">
                     <h2>Areas</h2>
                     <div class="section-subtitle" id="areas-count">0 areas</div>
                 </div>
-                <a href="#" class="btn btn-primary" id="add-area-btn">Add Area</a>
+                <div class="view-toggle" role="group" aria-label="View mode">
+                    <button class="view-toggle-btn" type="button" data-view="table" aria-pressed="false">Table</button>
+                    <button class="view-toggle-btn" type="button" data-view="grid" aria-pressed="false">Grid</button>
+                </div>
+                <a href="#" class="btn btn-primary areas-add-btn" id="add-area-btn">Add Area</a>
             </div>
 
-            <div class="table-container">
+            <div class="table-container" id="areas-table-container">
                 <table class="areas-table">
                     <thead>
                         <tr>
@@ -72,6 +76,7 @@
                     </tbody>
                 </table>
             </div>
+            <div class="areas-grid" id="areas-grid"></div>
         </section>
     </div>
 
