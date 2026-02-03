@@ -6,6 +6,11 @@ let floors = [];
 let settings = {};
 let cy = null;
 let deviceFilters = null;
+let isLayoutEditable = false;
+let hasUnsavedLayoutChanges = false;
+let isPanningFromNode = false;
+let lastPanPosition = null;
+let cachedPositions = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,20 +60,87 @@ function initializeEventListeners() {
             configToggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
         });
     }
-    document.getElementById('reset-zoom-btn').addEventListener('click', resetZoom);
     document.getElementById('fit-network-btn').addEventListener('click', fitNetwork);
+    const editLayoutBtn = document.getElementById('toggle-edit-layout-btn');
+    if (editLayoutBtn) {
+        editLayoutBtn.addEventListener('click', toggleLayoutEdit);
+    }
     document.getElementById('reset-layout-btn').addEventListener('click', resetLayout);
+    const cancelLayoutBtn = document.getElementById('cancel-layout-btn');
+    if (cancelLayoutBtn) {
+        cancelLayoutBtn.addEventListener('click', cancelLayoutChanges);
+    }
     document.getElementById('save-positions-btn').addEventListener('click', savePositions);
     const fullscreenBtn = document.getElementById('fullscreen-map-btn');
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleMapFullscreen);
     }
+    updateLayoutButtons();
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('fullscreenerror', () => {
         setMapFullscreen(false);
     });
     document.addEventListener('keydown', handleFullscreenEscape);
     document.addEventListener('keydown', handlePowerDialogEscape);
+}
+
+function toggleLayoutEdit() {
+    setLayoutEditable(!isLayoutEditable);
+}
+
+function markLayoutDirty() {
+    if (!isLayoutEditable) return;
+    if (hasUnsavedLayoutChanges) return;
+    hasUnsavedLayoutChanges = true;
+    updateLayoutButtons();
+}
+
+function updateLayoutButtons() {
+    const saveBtn = document.getElementById('save-positions-btn');
+    if (saveBtn) {
+        saveBtn.disabled = !(isLayoutEditable && hasUnsavedLayoutChanges);
+        saveBtn.style.display = isLayoutEditable ? '' : 'none';
+    }
+    const resetBtn = document.getElementById('reset-layout-btn');
+    if (resetBtn) {
+        resetBtn.disabled = !isLayoutEditable;
+        resetBtn.style.display = isLayoutEditable ? '' : 'none';
+    }
+    const cancelBtn = document.getElementById('cancel-layout-btn');
+    if (cancelBtn) {
+        cancelBtn.disabled = !isLayoutEditable;
+        cancelBtn.style.display = isLayoutEditable ? '' : 'none';
+    }
+    const secondaryRow = document.querySelector('.map-controls-secondary');
+    if (secondaryRow) {
+        secondaryRow.style.display = isLayoutEditable ? 'flex' : 'none';
+    }
+}
+
+function setLayoutEditable(editable) {
+    isLayoutEditable = Boolean(editable);
+
+    if (cy) {
+        const nodes = cy.nodes('[type="device"]');
+        if (isLayoutEditable) {
+            if (!cachedPositions) {
+                cachedPositions = loadPositions();
+            }
+            nodes.unlock();
+            nodes.grabify();
+        } else {
+            nodes.lock();
+            nodes.ungrabify();
+        }
+    }
+
+    const editBtn = document.getElementById('toggle-edit-layout-btn');
+    if (editBtn) {
+        editBtn.textContent = isLayoutEditable ? 'Stop Editing' : 'Edit Layout';
+        editBtn.classList.toggle('btn-success', isLayoutEditable);
+        editBtn.classList.toggle('btn-secondary', !isLayoutEditable);
+    }
+    updateLayoutButtons();
 }
 
 function setMapFullscreen(isFullscreen) {
@@ -230,7 +302,13 @@ function initializeCytoscape() {
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#94a3b8'
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
                 }
             },
             {
@@ -243,7 +321,13 @@ function initializeCytoscape() {
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#94a3b8'
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
                 }
             },
             {
@@ -256,7 +340,13 @@ function initializeCytoscape() {
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#94a3b8'
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
                 }
             }
         ],
@@ -292,6 +382,31 @@ function initializeCytoscape() {
         if (consumer) {
             showPowerConnectionDialog(consumer);
         }
+    });
+
+    cy.on('dragfree', 'node[type="device"]', () => {
+        markLayoutDirty();
+    });
+
+    // Allow panning by dragging on nodes when not in edit mode
+    cy.on('tapstart', 'node[type="device"]', (event) => {
+        if (isLayoutEditable) return;
+        isPanningFromNode = true;
+        lastPanPosition = event.renderedPosition;
+    });
+
+    cy.on('tapdrag', (event) => {
+        if (!isPanningFromNode || !lastPanPosition) return;
+        const current = event.renderedPosition;
+        const dx = current.x - lastPanPosition.x;
+        const dy = current.y - lastPanPosition.y;
+        cy.panBy({ x: dx, y: dy });
+        lastPanPosition = current;
+    });
+
+    cy.on('tapend', () => {
+        isPanningFromNode = false;
+        lastPanPosition = null;
     });
     
     // Hide tooltip on tap elsewhere
@@ -610,6 +725,8 @@ function renderNetwork() {
         fit: true,
         padding: 80
     }).run();
+
+    setLayoutEditable(isLayoutEditable);
 }
 
 function getEthernetConnectionMeta(device, port, devicesList) {
@@ -816,14 +933,6 @@ function handlePowerDialogEscape(event) {
     hidePowerConnectionDialog();
 }
 
-// Reset zoom
-function resetZoom() {
-    if (cy) {
-        cy.zoom(1);
-        cy.center();
-    }
-}
-
 // Fit network to screen
 function fitNetwork() {
     if (cy) {
@@ -833,6 +942,10 @@ function fitNetwork() {
 
 // Reset layout
 async function resetLayout() {
+    if (!isLayoutEditable) {
+        showAlert('Enable edit mode to reset the layout.');
+        return;
+    }
     const confirmed = await showConfirm('This will reset all device positions. Continue?', {
         title: 'Reset layout',
         confirmText: 'Reset'
@@ -841,6 +954,7 @@ async function resetLayout() {
         return;
     }
     localStorage.removeItem('smart-home-network-positions');
+    hasUnsavedLayoutChanges = true;
     renderNetwork();
     
     // Show feedback
@@ -857,6 +971,10 @@ async function resetLayout() {
 
 // Save positions
 function savePositions() {
+    if (!isLayoutEditable) {
+        showAlert('Enable edit mode to save positions.');
+        return;
+    }
     if (!cy) return;
     
     const positions = {};
@@ -865,17 +983,37 @@ function savePositions() {
     });
     
     localStorage.setItem('smart-home-network-positions', JSON.stringify(positions));
+    hasUnsavedLayoutChanges = false;
+    cachedPositions = null;
+    updateLayoutButtons();
     
     // Show feedback
     const btn = document.getElementById('save-positions-btn');
-    const originalText = btn.textContent;
-    btn.textContent = 'Saved!';
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = 'Saved!';
     btn.classList.add('btn-success');
     
     setTimeout(() => {
-        btn.textContent = originalText;
+        btn.innerHTML = originalHtml;
         btn.classList.remove('btn-success');
     }, 2000);
+
+    setLayoutEditable(false);
+}
+
+function cancelLayoutChanges() {
+    if (!isLayoutEditable) {
+        return;
+    }
+    if (cachedPositions) {
+        localStorage.setItem('smart-home-network-positions', JSON.stringify(cachedPositions));
+    } else {
+        localStorage.removeItem('smart-home-network-positions');
+    }
+    hasUnsavedLayoutChanges = false;
+    cachedPositions = null;
+    renderNetwork();
+    setLayoutEditable(false);
 }
 
 // Load positions

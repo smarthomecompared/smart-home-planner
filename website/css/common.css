@@ -250,6 +250,14 @@ nav a.active::before {
     box-shadow: var(--shadow);
 }
 
+.btn:disabled,
+.btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
 .btn::before {
     content: '';
     position: absolute;

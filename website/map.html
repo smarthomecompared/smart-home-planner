@@ -199,16 +199,8 @@
                 <div id="network-map"></div>
                 <div class="map-controls-overlay">
                     <div class="map-controls">
-                        <button class="btn btn-secondary btn-sm" id="reset-zoom-btn">Reset Zoom</button>
+                        <button class="btn btn-secondary btn-sm" id="toggle-edit-layout-btn">Edit Layout</button>
                         <button class="btn btn-secondary btn-sm" id="fit-network-btn">Fit to Screen</button>
-                        <button class="btn btn-secondary btn-sm" id="reset-layout-btn">Reset Layout</button>
-                        <button class="btn btn-primary btn-sm btn-icon" id="save-positions-btn" aria-label="Save positions" title="Save positions">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"></path>
-                                <path d="M8 4v6h8"></path>
-                                <path d="M8 14h8v6H8z"></path>
-                            </svg>
-                        </button>
                         <button class="btn btn-secondary btn-sm btn-icon" id="fullscreen-map-btn" aria-pressed="false" aria-label="Full screen" title="Full screen">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 9V4h5"></path>
@@ -219,6 +211,17 @@
                                 <path d="M20 4l-6 6"></path>
                                 <path d="M4 20l6-6"></path>
                                 <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="map-controls map-controls-secondary">
+                        <button class="btn btn-secondary btn-sm" id="reset-layout-btn" style="display: none;" disabled>Reset Layout</button>
+                        <button class="btn btn-secondary btn-sm" id="cancel-layout-btn" style="display: none;" disabled>Cancel</button>
+                        <button class="btn btn-primary btn-sm btn-icon" id="save-positions-btn" aria-label="Save positions" title="Save positions" style="display: none;" disabled>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 4h12l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"></path>
+                                <path d="M8 4v6h8"></path>
+                                <path d="M8 14h8v6H8z"></path>
                             </svg>
                         </button>
                     </div>

@@ -181,6 +181,9 @@
     top: 1rem;
     right: 1rem;
     z-index: 20;
+    display: grid;
+    gap: 0.5rem;
+    justify-items: end;
 }
 
 .map-controls-overlay .map-controls {
@@ -190,6 +193,13 @@
     padding: 0.5rem;
     box-shadow: var(--shadow-lg);
     flex-wrap: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.map-controls-secondary {
+    justify-content: flex-end;
 }
 
 .map-controls-overlay .map-controls .btn {
@@ -483,6 +493,7 @@ body.map-fullscreen .map-controls-overlay {
     .map-controls-overlay {
         top: 0.75rem;
         right: 0.75rem;
+        gap: 0.4rem;
     }
 
     .map-controls-overlay .map-controls {
