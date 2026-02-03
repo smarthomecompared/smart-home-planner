@@ -37,7 +37,7 @@
       "localOnly": true,
       "ports": [
         {
-          "type": "ethernet-output",
+          "type": "ethernet-input",
           "connectedTo": "dev-4",
           "cableType": "cat6a",
           "speed": "1Gbps"
@@ -47,7 +47,8 @@
           "connectedTo": "dev-10"
         }
       ],
-      "createdAt": "2025-06-01T11:00:00.000Z"
+      "createdAt": "2025-06-01T11:00:00.000Z",
+      "updatedAt": "2026-02-03T15:11:08.495Z"
     },
     {
       "id": "dev-2",
@@ -84,12 +85,7 @@
       "appleHomeKit": false,
       "samsungSmartThings": false,
       "localOnly": true,
-      "ports": [
-        {
-          "type": "usb-input",
-          "connectedTo": "dev-1"
-        }
-      ],
+      "ports": [],
       "createdAt": "2025-06-01T11:05:00.000Z"
     },
     {
@@ -202,6 +198,12 @@
         {
           "type": "power-input",
           "connectedTo": "dev-10"
+        },
+        {
+          "type": "ethernet-output",
+          "connectedTo": "dev-1",
+          "cableType": "cat6a",
+          "speed": "1Gbps"
         }
       ],
       "createdAt": "2025-06-01T11:12:00.000Z"
@@ -449,15 +451,15 @@
       "ports": [
         {
           "type": "power-output",
-          "connectedTo": "dev-1"
-        },
-        {
-          "type": "power-output",
           "connectedTo": "dev-3"
         },
         {
           "type": "power-output",
           "connectedTo": "dev-4"
+        },
+        {
+          "type": "power-output",
+          "connectedTo": "dev-1"
         }
       ],
       "createdAt": "2025-06-01T11:30:00.000Z"
@@ -1053,20 +1055,20 @@
       "y": 708.0571330374389
     },
     "dev-11": {
-      "x": 550,
-      "y": 800
+      "x": 583.1980946655217,
+      "y": 793.8845615089829
     },
     "dev-17": {
-      "x": 730,
-      "y": 800
+      "x": 763.1980946655217,
+      "y": 793.8845615089829
     },
     "dev-8": {
-      "x": 791.2374075244148,
-      "y": 623.8338081041906
+      "x": 808.710088927321,
+      "y": 622.0865399638999
     },
     "dev-19": {
-      "x": 542.8043723110335,
-      "y": 623.128835889786
+      "x": 574.2551988362646,
+      "y": 621.3815677494955
     },
     "dev-7": {
       "x": -179.74672264764126,
@@ -1081,8 +1083,8 @@
       "y": 601.6809097923878
     },
     "dev-4": {
-      "x": 247.56243687441338,
-      "y": 1153.2055822885486
+      "x": 250.1833390848493,
+      "y": 1140.9747053065144
     },
     "dev-3": {
       "x": -142.6426889221672,
