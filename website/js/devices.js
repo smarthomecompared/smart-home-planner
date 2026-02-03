@@ -360,9 +360,9 @@ function renderDevicesGrid(devicesToRender) {
 
     grid.innerHTML = devicesToRender.map(device => {
         const areaName = device.area ? getAreaName(areas, device.area) : '-';
-        const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '—';
-        const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '—';
-        const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '—';
+        const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
+        const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
+        const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
         const statusLabel = formatStatusLabel(device.status);
         return `
             <div class="device-card">

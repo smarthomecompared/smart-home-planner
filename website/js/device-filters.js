@@ -176,7 +176,8 @@ class DeviceFilters {
             const deviceConnectivity = [...new Set(this.devices.map(d => d.connectivity).filter(Boolean))];
             const connectivityOptions = this.buildFriendlyOptions(configuredConnectivity, deviceConnectivity, this.formatConnectivity);
             connectivityFilter.innerHTML = '<option value="">All Connectivity</option>' +
-                connectivityOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+                connectivityOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
+                '<option value="__none__">-</option>';
             connectivityFilter.value = currentConnectivityValue ? normalizeOptionValue(currentConnectivityValue) : currentConnectivityValue;
         }
 
@@ -299,7 +300,11 @@ class DeviceFilters {
         }
         
         if (connectivityFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.connectivity) === connectivityFilter);
+            if (connectivityFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.connectivity);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.connectivity) === connectivityFilter);
+            }
         }
 
         if (powerFilter) {

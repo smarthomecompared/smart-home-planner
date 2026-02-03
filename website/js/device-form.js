@@ -285,7 +285,7 @@ function loadDeviceData(device) {
     document.getElementById('device-storage-size').value = device.storageSize || '';
     document.getElementById('device-storage-unit').value = device.storageUnit || '';
     document.getElementById('device-notes').value = device.notes || '';
-    document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : normalizeOptionValue('wifi');
+    document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : '';
     document.getElementById('device-area').value = device.area || '';
     populateHomeSelector(editingDeviceHomeId);
     

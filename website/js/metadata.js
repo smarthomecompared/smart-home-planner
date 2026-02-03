@@ -41,7 +41,7 @@ const DEFAULT_TYPES = [
 ];
 
 const DEFAULT_CONNECTIVITY = [
-    'Bluetooth', 'Matter', 'Wi-Fi', 'Z-Wave', 'Zigbee'
+    'Bluetooth', 'Matter', 'Offline','Wi-Fi', 'Z-Wave', 'Zigbee'
 ];
 
 const DEFAULT_BATTERY_TYPES = [
