@@ -278,13 +278,13 @@ function renderFloors() {
                 <td data-label="Areas">${areaCount} area${areaCount !== 1 ? 's' : ''}</td>
                 <td data-label="Devices">${deviceCount} device${deviceCount !== 1 ? 's' : ''}</td>
                 <td class="actions-cell" data-label="Actions">
-                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit floor" title="Edit floor">
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit" title="Edit">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
                             <path d="M13.5 6.5l4 4"></path>
                         </svg>
                     </button>
-                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteFloorHandler('${floor.id}')" aria-label="Delete floor" title="Delete floor">
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteFloorHandler('${floor.id}')" aria-label="Delete" title="Delete">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M3 6h18"></path>
                             <path d="M8 6V4h8v2"></path>
@@ -339,13 +339,13 @@ function renderFloorsGrid(floorRows) {
                     </div>
                 </div>
                 <div class="floor-card-actions">
-                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit floor" title="Edit floor">
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editFloor('${floor.id}')" aria-label="Edit" title="Edit">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
                             <path d="M13.5 6.5l4 4"></path>
                         </svg>
                     </button>
-                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteFloorHandler('${floor.id}')" aria-label="Delete floor" title="Delete floor">
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteFloorHandler('${floor.id}')" aria-label="Delete" title="Delete">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M3 6h18"></path>
                             <path d="M8 6V4h8v2"></path>

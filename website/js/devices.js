@@ -296,28 +296,29 @@ function renderDevices() {
         tbody.innerHTML = paginatedDevices.map(device => {
             const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
             const typeDisplay = formatDeviceType(device.type);
+            const statusLabel = formatStatusLabel(device.status);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
                     <td>${escapeHtml(areaName)}</td>
                     <td>${escapeHtml(device.brand)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
-                    <td><span class="status-badge status-${device.status}">${device.status}</span></td>
+                    <td><span class="status-badge status-${device.status}">${escapeHtml(statusLabel)}</span></td>
                     <td>${escapeHtml(device.connectivity)}</td>
                     <td class="actions-cell">
-                        <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit device" title="Edit device">
+                        <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
                                 <path d="M13.5 6.5l4 4"></path>
                             </svg>
                         </button>
-                        <button class="btn btn-sm btn-secondary btn-icon" onclick="duplicateDevice('${device.id}')" aria-label="Duplicate device" title="Duplicate device">
+                        <button class="btn btn-sm btn-secondary btn-icon" onclick="duplicateDevice('${device.id}')" aria-label="Duplicate" title="Duplicate">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <rect x="9" y="9" width="10" height="10"></rect>
                                 <rect x="5" y="5" width="10" height="10"></rect>
                             </svg>
                         </button>
-                        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteDeviceHandler('${device.id}')" aria-label="Delete device" title="Delete device">
+                        <button class="btn btn-sm btn-danger btn-icon" onclick="deleteDeviceHandler('${device.id}')" aria-label="Delete" title="Delete">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M3 6h18"></path>
                                 <path d="M8 6V4h8v2"></path>
@@ -362,6 +363,7 @@ function renderDevicesGrid(devicesToRender) {
             ? device.connectivity.charAt(0).toUpperCase() + device.connectivity.slice(1).replace('-', ' ')
             : '—';
         const brand = device.brand || '—';
+        const statusLabel = formatStatusLabel(device.status);
         return `
             <div class="device-card">
                 <div class="device-card-header">
@@ -386,20 +388,20 @@ function renderDevicesGrid(devicesToRender) {
                     </div>
                 </div>
                 <div class="device-card-actions">
-                    <span class="device-card-status status-${device.status}" data-status="${escapeHtml(device.status || '')}" aria-label="${escapeHtml(device.status || '')}" title="${escapeHtml(device.status || '')}"></span>
-                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit device" title="Edit device">
+                    <span class="device-card-status status-${device.status}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}" title="${escapeHtml(statusLabel)}"></span>
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
                             <path d="M13.5 6.5l4 4"></path>
                         </svg>
                     </button>
-                    <button class="btn btn-sm btn-secondary btn-icon" onclick="duplicateDevice('${device.id}')" aria-label="Duplicate device" title="Duplicate device">
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="duplicateDevice('${device.id}')" aria-label="Duplicate" title="Duplicate">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <rect x="9" y="9" width="10" height="10"></rect>
                             <rect x="5" y="5" width="10" height="10"></rect>
                         </svg>
                     </button>
-                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteDeviceHandler('${device.id}')" aria-label="Delete device" title="Delete device">
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteDeviceHandler('${device.id}')" aria-label="Delete" title="Delete">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M3 6h18"></path>
                             <path d="M8 6V4h8v2"></path>
@@ -412,6 +414,14 @@ function renderDevicesGrid(devicesToRender) {
             </div>
         `;
     }).join('');
+}
+
+function formatStatusLabel(status) {
+    if (!status) return '';
+    return status
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 }
 
 function updatePaginationControls(totalPages, startIndex, endIndex, totalItems) {

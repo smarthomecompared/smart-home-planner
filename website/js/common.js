@@ -354,4 +354,36 @@ function initMobileNav() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', initMobileNav);
+function applyIconTooltip(el) {
+    if (!el || !el.classList || !el.classList.contains('btn-icon')) return;
+    if (el.dataset.tooltip) return;
+    const label = el.getAttribute('title') || el.getAttribute('aria-label') || '';
+    if (!label) return;
+    el.dataset.tooltip = label;
+    if (el.hasAttribute('title')) {
+        el.removeAttribute('title');
+    }
+}
+
+function initIconTooltips() {
+    document.querySelectorAll('.btn-icon').forEach(applyIconTooltip);
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                if (node.classList.contains('btn-icon')) {
+                    applyIconTooltip(node);
+                }
+                node.querySelectorAll?.('.btn-icon').forEach(applyIconTooltip);
+            });
+        });
+    });
+    if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initMobileNav();
+    initIconTooltips();
+});

@@ -291,6 +291,20 @@ function initializeCytoscape() {
                     'border-color': '#f59e0b'
                 }
             },
+            // Device not working status
+            {
+                selector: 'node[type="device"][status="not-working"]',
+                style: {
+                    'border-color': '#ef4444'
+                }
+            },
+            // Device working status
+            {
+                selector: 'node[type="device"][status="working"]',
+                style: {
+                    'border-color': '#10b981'
+                }
+            },
             // Edge styles
             {
                 selector: 'edge[connectionType="ethernet"]',

@@ -541,6 +541,24 @@
                 </div>
                 <div class="chart-card">
                     <div class="chart-header">
+                        <div class="chart-title">Not Working Devices</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="not-working-devices" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="not-working-devices"></div>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-header">
                         <div class="chart-title">Wishlist Devices</div>
                         <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="wishlist-devices" aria-label="Expand chart" title="Expand chart">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -557,7 +575,7 @@
                     </div>
                     <div class="legend" id="wishlist-devices"></div>
                 </div>
-                <div class="chart-card">
+                <div class="chart-card" id="battery-alert-card">
                     <div class="chart-header">
                         <div class="chart-title">Battery Changes Soon</div>
                         <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="battery-alerts" aria-label="Expand chart" title="Expand chart">
@@ -765,6 +783,7 @@
             const devicesCount = devices.filter(d => d.status !== 'wishlist').length;
             const workingDevices = devices.filter(d => d.status === 'working').length;
             const pendingDevices = devices.filter(d => d.status === 'pending').length;
+            const notWorkingDevices = devices.filter(d => d.status === 'not-working').length;
             const wishlistDevices = devices.filter(d => d.status === 'wishlist').length;
             
             dashboard.innerHTML = `
@@ -779,7 +798,7 @@
                         </a>
                     </div>
                     <div class="count">${devicesCount}</div>
-                    <div class="description">${workingDevices} working, ${pendingDevices} pending</div>
+                    <div class="description">${workingDevices} working, ${pendingDevices} pending, ${notWorkingDevices} not working</div>
                 </div>
                 <div class="dashboard-card">
                     <div class="card-header">
@@ -815,6 +834,7 @@
                 countFormatter: row => row.count
             });
             renderPendingDevices('pending-devices', devices);
+            renderNotWorkingDevices('not-working-devices', devices);
             renderWishlistDevices('wishlist-devices', devices);
             renderPowerTotals('power-totals', buildPowerTotals(devices));
             renderPieChart('chart-power-usage', buildPowerUsageStats(devices), null, {
@@ -1173,6 +1193,21 @@
             });
         }
 
+        function renderNotWorkingDevices(targetId, devices) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const notWorking = (devices || []).filter(device => device.status === 'not-working');
+            const rows = notWorking.map(device => ({
+                label: device.name || 'Unnamed',
+                href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
+                dotColor: '#ef4444'
+            }));
+            renderLegendList(targetId, rows, {
+                maxItems: 5,
+                emptyMessage: 'No devices not working'
+            });
+        }
+
         function buildPowerTotals(devices) {
             const totals = {
                 idle: 0,
@@ -1291,6 +1326,7 @@
         function renderBatteryAlerts(listId, summaryId, data) {
             const listTarget = document.getElementById(listId);
             const summaryTarget = document.getElementById(summaryId);
+            const card = document.getElementById('battery-alert-card');
             if (!listTarget || !summaryTarget) return;
 
             if (!data.alerts.length) {
@@ -1309,6 +1345,10 @@
                     maxItems: 5,
                     emptyMessage: 'No upcoming battery changes'
                 });
+            }
+
+            if (card) {
+                card.style.display = data.alerts.length ? '' : 'none';
             }
 
             if (!data.summary.length) {

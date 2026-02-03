@@ -292,23 +292,6 @@ nav a.active::before {
     transform: none;
 }
 
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-}
-
-.btn:hover::before {
-    width: 300px;
-    height: 300px;
-}
 
 .btn-primary {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
@@ -356,6 +339,8 @@ nav a.active::before {
     width: 32px;
     height: 32px;
     justify-content: center;
+    position: relative;
+    overflow: visible;
 }
 
 .btn-icon svg {
@@ -364,6 +349,32 @@ nav a.active::before {
     stroke: currentColor;
     stroke-width: 2;
     fill: none;
+}
+
+.btn-icon[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text-color);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    z-index: 2;
+}
+
+.btn-icon[data-tooltip]:hover::after,
+.btn-icon[data-tooltip]:focus-visible::after {
+    opacity: 1;
 }
 
 .empty-state {
@@ -767,6 +778,12 @@ nav a.active::before {
     background-color: rgba(56, 189, 248, 0.2);
     color: #38bdf8;
     border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.status-not-working {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* Form Subsection Title */

@@ -147,7 +147,7 @@
 }
 
 .device-card-status {
-    position: static;
+    position: relative;
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -168,12 +168,16 @@
     background: #38bdf8;
 }
 
+.device-card-status.status-not-working {
+    background: #ef4444;
+}
+
 .device-card-status::after {
     content: attr(data-status);
     position: absolute;
-    left: 0;
+    left: 50%;
     bottom: calc(100% + 8px);
-    transform: translateX(-25%);
+    transform: translateX(-50%);
     background: rgba(15, 23, 42, 0.9);
     color: var(--text-color);
     border: 1px solid rgba(148, 163, 184, 0.35);
