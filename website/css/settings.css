@@ -83,6 +83,10 @@
     margin-bottom: 2rem;
 }
 
+.settings-section.is-hidden {
+    display: none;
+}
+
 .settings-section:last-child {
     margin-bottom: 0;
 }
@@ -117,6 +121,32 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 2rem;
+}
+
+.github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.github-link:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.github-icon {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
 }
 
 .homes-grid {

@@ -120,10 +120,10 @@ function getDefaultSettings() {
         return value === normalized ? formatConnectivity(value) : value;
     };
     return {
-        brands: [...(DEFAULT_SETTINGS.brands || [])],
-        types: (DEFAULT_SETTINGS.types || []).map(mapType),
-        connectivity: (DEFAULT_SETTINGS.connectivity || []).map(mapConnectivity),
-        batteryTypes: [...(DEFAULT_SETTINGS.batteryTypes || [])]
+        brands: [...(DEFAULT_BRANDS || [])],
+        types: (DEFAULT_TYPES || []).map(mapType),
+        connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
+        batteryTypes: [...(DEFAULT_BATTERY_TYPES || [])]
     };
 }
 

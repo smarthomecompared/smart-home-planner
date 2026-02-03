@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     settings = loadSettings();
     initializeEventListeners();
     renderVersionInfo();
+    renderRepoLink();
     renderHomesManagement();
     renderOptionsManagement();
 });
@@ -240,6 +241,20 @@ function renderVersionInfo() {
             notesWrap.classList.add('is-hidden');
         }
     }
+}
+
+function renderRepoLink() {
+    const linkEl = document.getElementById('github-repo-link');
+    const textEl = document.getElementById('github-repo-text');
+    if (!linkEl || !textEl) return;
+    if (typeof appRepoUrl !== 'string' || !appRepoUrl.trim()) {
+        linkEl.closest('.settings-section')?.classList.add('is-hidden');
+        return;
+    }
+    const url = appRepoUrl.trim();
+    linkEl.href = url;
+    const label = url.replace(/^https?:\/\//, '');
+    textEl.textContent = label;
 }
 
 function renderHomesManagement() {
