@@ -40,6 +40,14 @@ function exportData() {
     try {
         const data = loadData();
         const settings = loadSettings();
+
+        const normalizedDevices = (data.devices || []).map(device => ({
+            ...device,
+            brand: normalizeOptionValue(device.brand),
+            type: normalizeOptionValue(device.type),
+            connectivity: normalizeOptionValue(device.connectivity),
+            batteryType: normalizeOptionValue(device.batteryType)
+        }));
         
         // Include map positions
         const mapPositionsStr = localStorage.getItem('smart-home-network-positions');
@@ -47,6 +55,7 @@ function exportData() {
         
         const exportData = {
             ...data,
+            devices: normalizedDevices,
             settings: settings,
             mapPositions: mapPositions
         };
@@ -120,6 +129,16 @@ function importData() {
             });
             if (!confirmed) {
                 return;
+            }
+
+            if (Array.isArray(importedData.devices)) {
+                importedData.devices = importedData.devices.map(device => ({
+                    ...device,
+                    brand: normalizeOptionValue(device.brand),
+                    type: normalizeOptionValue(device.type),
+                    connectivity: normalizeOptionValue(device.connectivity),
+                    batteryType: normalizeOptionValue(device.batteryType)
+                }));
             }
 
             // Save imported data using the same method as saveData
@@ -435,7 +454,9 @@ function renderOptionsManagement() {
     ];
     
     container.innerHTML = optionsConfig.map(config => {
-        const values = settings[config.key] || [];
+        const values = (settings[config.key] || [])
+            .map(value => String(value))
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         return `
             <div class="option-group">
                 <h4>${config.label}</h4>
@@ -482,29 +503,7 @@ async function resetOptions() {
         confirmText: 'Reset'
     });
     if (confirmed) {
-        const defaultSettings = {
-            brands: [
-                'Aqara', 'Apple', 'Broadlink', 'Echo', 'Ecobee', 'Eufy', 'Google',
-                'Home Assistant', 'Hue', 'Insteon', 'Lutron', 'Meross', 'Nest',
-                'Philips', 'Ring', 'Shelly', 'Sonoff', 'SwitchBot', 'TP-Link',
-                'Tuya', 'Wyze', 'Xiaomi', 'Yale', 'Zigbee', 'Z-Wave'
-            ],
-            types: [
-                'air-quality-monitors', 'cameras', 'displays', 'dongles', 'door-locks',
-                'door-window-sensors', 'doorbells', 'hubs', 'ir-remote-controls',
-                'led-bulbs', 'mini-pcs', 'motion-sensors', 'plugs', 'presence-sensors',
-                'radiator-valves', 'relays', 'robot-vacuums', 'routers', 'sirens',
-                'smoke-alarms', 'speakers', 'temperature-humidity-sensors', 'thermostats',
-                'vibration-sensors', 'voice-assistants', 'wall-outlets', 'wall-switches',
-                'water-leak-sensors', 'water-valves'
-            ],
-            connectivity: [
-                'wifi', 'zigbee', 'z-wave', 'bluetooth', 'matter'
-            ],
-            batteryTypes: [
-                'USB', 'CR2477', 'AA', 'AAA'
-            ]
-        };
+        const defaultSettings = getDefaultSettings();
         
         saveSettings(defaultSettings);
         settings = defaultSettings;

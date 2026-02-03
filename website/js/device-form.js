@@ -104,34 +104,33 @@ function initializeEventListeners() {
     });
 }
 
+function buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter) {
+    const options = new Map();
+    (configuredValues || []).forEach(value => {
+        const normalized = normalizeOptionValue(value);
+        if (!normalized || options.has(normalized)) return;
+        options.set(normalized, value);
+    });
+    (deviceValues || []).forEach(value => {
+        const normalized = normalizeOptionValue(value);
+        if (!normalized || options.has(normalized)) return;
+        options.set(normalized, getFriendlyOption(configuredValues, value, fallbackFormatter));
+    });
+    return Array.from(options.entries())
+        .map(([value, label]) => ({ value, label: label || value }))
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+}
+
 // Populate dropdowns
 function populateBrands() {
     const brandSelect = document.getElementById('device-brand');
     const currentValue = brandSelect.value;
     
-    // Add configured brands
     const brands = settings.brands || [];
-    brandSelect.innerHTML = '<option value="">Select a brand</option>' + 
-        brands.map(brand => `<option value="${brand}">${escapeHtml(brand)}</option>`).join('');
-    
-    // Add existing brands from devices that aren't in the configured list
-    const existingBrands = [...new Set(devices.map(d => d.brand).filter(Boolean))];
-    existingBrands.forEach(brand => {
-        if (!brands.includes(brand)) {
-            const option = document.createElement('option');
-            option.value = brand;
-            option.textContent = brand;
-            brandSelect.appendChild(option);
-        }
-    });
-    
-    // Sort options (except the first "Select" option)
-    const options = Array.from(brandSelect.options);
-    const firstOption = options.shift();
-    options.sort((a, b) => a.textContent.localeCompare(b.textContent));
-    brandSelect.innerHTML = '';
-    brandSelect.appendChild(firstOption);
-    options.forEach(opt => brandSelect.appendChild(opt));
+    const deviceBrands = [...new Set(devices.map(d => d.brand).filter(Boolean))];
+    const brandOptions = buildFriendlyOptions(brands, deviceBrands, formatDeviceType);
+    brandSelect.innerHTML = '<option value="">Select a brand</option>' +
+        brandOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('');
 
     const newOption = document.createElement('option');
     newOption.value = '__new__';
@@ -139,7 +138,8 @@ function populateBrands() {
     brandSelect.appendChild(newOption);
     
     if (currentValue) {
-        brandSelect.value = currentValue;
+        const normalizedValue = currentValue === '__new__' ? currentValue : normalizeOptionValue(currentValue);
+        brandSelect.value = normalizedValue;
     }
 
     lastBrandValue = brandSelect.value || '';
@@ -150,18 +150,18 @@ function populateTypes() {
     const currentValue = typeSelect.value;
     
     const types = settings.types || [];
-    typeSelect.innerHTML = '<option value="">Select a type</option>' + 
-        types.map(type => {
-            const displayName = formatDeviceType(type);
-            return `<option value="${type}">${escapeHtml(displayName)}</option>`;
-        }).join('');
+    const deviceTypes = [...new Set(devices.map(d => d.type).filter(Boolean))];
+    const typeOptions = buildFriendlyOptions(types, deviceTypes, formatDeviceType);
+    typeSelect.innerHTML = '<option value="">Select a type</option>' +
+        typeOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('');
     const newOption = document.createElement('option');
     newOption.value = '__new__';
     newOption.textContent = '+ Add new type';
     typeSelect.appendChild(newOption);
     
     if (currentValue) {
-        typeSelect.value = currentValue;
+        const normalizedValue = currentValue === '__new__' ? currentValue : normalizeOptionValue(currentValue);
+        typeSelect.value = normalizedValue;
     }
 
     lastTypeValue = typeSelect.value || '';
@@ -172,18 +172,18 @@ function populateConnectivity() {
     const currentValue = connectivitySelect.value;
     
     const connectivity = settings.connectivity || [];
-    connectivitySelect.innerHTML = '<option value="">Select connectivity</option>' + 
-        connectivity.map(conn => {
-            const displayName = conn.charAt(0).toUpperCase() + conn.slice(1).replace('-', ' ');
-            return `<option value="${conn}">${escapeHtml(displayName)}</option>`;
-        }).join('');
+    const deviceConnectivity = [...new Set(devices.map(d => d.connectivity).filter(Boolean))];
+    const connectivityOptions = buildFriendlyOptions(connectivity, deviceConnectivity, formatConnectivity);
+    connectivitySelect.innerHTML = '<option value="">Select connectivity</option>' +
+        connectivityOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('');
     const newOption = document.createElement('option');
     newOption.value = '__new__';
     newOption.textContent = '+ Add new connectivity';
     connectivitySelect.appendChild(newOption);
     
     if (currentValue) {
-        connectivitySelect.value = currentValue;
+        const normalizedValue = currentValue === '__new__' ? currentValue : normalizeOptionValue(currentValue);
+        connectivitySelect.value = normalizedValue;
     }
 
     lastConnectivityValue = connectivitySelect.value || '';
@@ -194,15 +194,18 @@ function populateBatteryTypes() {
     const currentValue = batteryTypeSelect.value;
     
     const batteryTypes = settings.batteryTypes || [];
-    batteryTypeSelect.innerHTML = '<option value="">Select battery type</option>' + 
-        batteryTypes.map(type => `<option value="${type}">${escapeHtml(type)}</option>`).join('');
+    const deviceBatteryTypes = [...new Set(devices.map(d => d.batteryType).filter(Boolean))];
+    const batteryOptions = buildFriendlyOptions(batteryTypes, deviceBatteryTypes, formatDeviceType);
+    batteryTypeSelect.innerHTML = '<option value="">Select battery type</option>' +
+        batteryOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('');
     const newOption = document.createElement('option');
     newOption.value = '__new__';
     newOption.textContent = '+ Add new battery type';
     batteryTypeSelect.appendChild(newOption);
     
     if (currentValue) {
-        batteryTypeSelect.value = currentValue;
+        const normalizedValue = currentValue === '__new__' ? currentValue : normalizeOptionValue(currentValue);
+        batteryTypeSelect.value = normalizedValue;
     }
 
     lastBatteryTypeValue = batteryTypeSelect.value || '';
@@ -263,14 +266,14 @@ function loadDeviceData(device) {
     editingDeviceHomeId = device.homeId || selectedHomeId;
     setAreasForHome(editingDeviceHomeId);
     document.getElementById('device-name').value = device.name || '';
-    document.getElementById('device-brand').value = device.brand || '';
+    document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
-    document.getElementById('device-type').value = device.type || '';
+    document.getElementById('device-type').value = device.type ? normalizeOptionValue(device.type) : '';
     document.getElementById('device-ip').value = device.ip || '';
     document.getElementById('device-mac').value = device.mac || '';
     document.getElementById('device-status').value = device.status || 'working';
     document.getElementById('device-power').value = device.power || 'wired';
-    document.getElementById('device-battery-type').value = device.batteryType || '';
+    document.getElementById('device-battery-type').value = device.batteryType ? normalizeOptionValue(device.batteryType) : '';
     document.getElementById('device-battery-count').value = device.batteryCount || '';
     document.getElementById('device-last-battery-change').value = device.lastBatteryChange || '';
     document.getElementById('device-battery-duration').value = device.batteryDuration || '';
@@ -282,7 +285,7 @@ function loadDeviceData(device) {
     document.getElementById('device-storage-size').value = device.storageSize || '';
     document.getElementById('device-storage-unit').value = device.storageUnit || '';
     document.getElementById('device-notes').value = device.notes || '';
-    document.getElementById('device-connectivity').value = device.connectivity || 'wifi';
+    document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : normalizeOptionValue('wifi');
     document.getElementById('device-area').value = device.area || '';
     populateHomeSelector(editingDeviceHomeId);
     
@@ -318,29 +321,33 @@ function loadDeviceData(device) {
 function handleDeviceSubmit(e) {
     e.preventDefault();
 
-    const connectivity = document.getElementById('device-connectivity').value;
+    let connectivity = document.getElementById('device-connectivity').value;
     if (connectivity === '__new__') {
         showAlert('Please add a new connectivity option first.');
         return;
     }
-    const ipValue = connectivity === 'wifi' ? document.getElementById('device-ip').value : '';
-    const macValue = connectivity === 'wifi' ? document.getElementById('device-mac').value : '';
+    connectivity = normalizeOptionValue(connectivity);
+    const ipValue = isWifiConnectivity(connectivity) ? document.getElementById('device-ip').value : '';
+    const macValue = isWifiConnectivity(connectivity) ? document.getElementById('device-mac').value : '';
     const brandSelect = document.getElementById('device-brand');
     let brandValue = brandSelect.value;
     if (brandValue === '__new__') {
         showAlert('Please add a new brand first.');
         return;
     }
-    const typeValue = document.getElementById('device-type').value;
+    brandValue = normalizeOptionValue(brandValue);
+    let typeValue = document.getElementById('device-type').value;
     if (typeValue === '__new__') {
         showAlert('Please add a new type first.');
         return;
     }
-    const batteryTypeValue = document.getElementById('device-battery-type').value;
+    typeValue = normalizeOptionValue(typeValue);
+    let batteryTypeValue = document.getElementById('device-battery-type').value;
     if (batteryTypeValue === '__new__') {
         showAlert('Please add a new battery type first.');
         return;
     }
+    batteryTypeValue = normalizeOptionValue(batteryTypeValue);
     
     // Validate ports from both containers
     const containers = ['ports-container', 'power-ports-container'];
@@ -560,7 +567,7 @@ function handleBatteryTypeChange() {
         return;
     }
     const powerType = document.getElementById('device-power').value;
-    const batteryType = (document.getElementById('device-battery-type').value || '').toLowerCase();
+    const batteryType = normalizeOptionValue(document.getElementById('device-battery-type').value || '');
     const batteryCountGroup = document.getElementById('battery-count-group');
     const hideCount = powerType !== 'battery' || batteryType === 'internal';
     batteryCountGroup.classList.toggle('is-hidden', hideCount);
@@ -625,15 +632,18 @@ function saveBrandModal() {
     }
 
     const updatedSettings = loadSettings();
-    if (!updatedSettings.brands.includes(name)) {
-        updatedSettings.brands = [...updatedSettings.brands, name].sort((a, b) => a.localeCompare(b));
+    const normalized = normalizeOptionValue(name);
+    const hasMatch = (updatedSettings.brands || []).some(item => normalizeOptionValue(item) === normalized);
+    if (!hasMatch) {
+        updatedSettings.brands = [...updatedSettings.brands, name]
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
     populateBrands();
-    document.getElementById('device-brand').value = name;
-    lastBrandValue = name;
+    document.getElementById('device-brand').value = normalized;
+    lastBrandValue = normalized;
     closeBrandModal();
 }
 
@@ -657,27 +667,25 @@ function closeTypeModal() {
 
 function saveTypeModal() {
     const input = document.getElementById('type-modal-input');
-    const raw = input.value.trim();
-    if (!raw) {
+    const name = input.value.trim();
+    if (!name) {
         showAlert('Please enter a type name.');
-        return;
-    }
-    const slug = slugifyType(raw);
-    if (!slug) {
-        showAlert('Please enter a valid type name.');
         return;
     }
 
     const updatedSettings = loadSettings();
-    if (!updatedSettings.types.includes(slug)) {
-        updatedSettings.types = [...updatedSettings.types, slug].sort((a, b) => a.localeCompare(b));
+    const normalized = normalizeOptionValue(name);
+    const hasMatch = (updatedSettings.types || []).some(item => normalizeOptionValue(item) === normalized);
+    if (!hasMatch) {
+        updatedSettings.types = [...updatedSettings.types, name]
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
     populateTypes();
-    document.getElementById('device-type').value = slug;
-    lastTypeValue = slug;
+    document.getElementById('device-type').value = normalized;
+    lastTypeValue = normalized;
     closeTypeModal();
 }
 
@@ -709,15 +717,18 @@ function saveBatteryTypeModal() {
     }
 
     const updatedSettings = loadSettings();
-    if (!updatedSettings.batteryTypes.includes(name)) {
-        updatedSettings.batteryTypes = [...updatedSettings.batteryTypes, name].sort((a, b) => a.localeCompare(b));
+    const normalized = normalizeOptionValue(name);
+    const hasMatch = (updatedSettings.batteryTypes || []).some(item => normalizeOptionValue(item) === normalized);
+    if (!hasMatch) {
+        updatedSettings.batteryTypes = [...updatedSettings.batteryTypes, name]
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
     populateBatteryTypes();
-    document.getElementById('device-battery-type').value = name;
-    lastBatteryTypeValue = name;
+    document.getElementById('device-battery-type').value = normalized;
+    lastBatteryTypeValue = normalized;
     handleBatteryTypeChange();
     closeBatteryTypeModal();
 }
@@ -748,41 +759,29 @@ function saveConnectivityModal() {
         showAlert('Please enter a connectivity option.');
         return;
     }
-    const slug = slugifyType(name);
-    if (!slug) {
-        showAlert('Please enter a valid connectivity option.');
-        return;
-    }
 
     const updatedSettings = loadSettings();
-    if (!updatedSettings.connectivity.includes(slug)) {
-        updatedSettings.connectivity = [...updatedSettings.connectivity, slug].sort((a, b) => a.localeCompare(b));
+    const normalized = normalizeOptionValue(name);
+    const hasMatch = (updatedSettings.connectivity || []).some(item => normalizeOptionValue(item) === normalized);
+    if (!hasMatch) {
+        updatedSettings.connectivity = [...updatedSettings.connectivity, name]
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
         saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
     populateConnectivity();
-    document.getElementById('device-connectivity').value = slug;
-    lastConnectivityValue = slug;
+    document.getElementById('device-connectivity').value = normalized;
+    lastConnectivityValue = normalized;
     handleConnectivityChange();
     closeConnectivityModal();
-}
-
-function slugifyType(value) {
-    return value
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '-')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
 }
 
 function handleConnectivityChange() {
     const connectivity = document.getElementById('device-connectivity').value;
     const ipGroup = document.getElementById('ip-address-group');
     const macGroup = document.getElementById('mac-address-group');
-    const showNetworkFields = connectivity === 'wifi';
+    const showNetworkFields = isWifiConnectivity(connectivity);
 
     ipGroup.classList.toggle('is-hidden', !showNetworkFields);
     macGroup.classList.toggle('is-hidden', !showNetworkFields);
@@ -1125,8 +1124,8 @@ function setupPortSearch(portId) {
         resultsDiv.innerHTML = filteredDevices
             .map(d => {
                 const name = escapeHtml(d.name || d.model || 'Unnamed Device');
-                const brand = d.brand ? escapeHtml(d.brand) : '';
-                const type = d.type ? escapeHtml(formatDeviceType(d.type)) : '';
+                const brand = d.brand ? escapeHtml(getFriendlyOption(settings.brands, d.brand)) : '';
+                const type = d.type ? escapeHtml(getFriendlyOption(settings.types, d.type, formatDeviceType)) : '';
                 const meta = [brand, type].filter(Boolean).join(' • ');
                 
                 return `
@@ -1347,14 +1346,14 @@ function createDevice(deviceData) {
     const device = {
         id: Date.now().toString(),
         name: name,
-        brand: deviceData.brand.trim(),
+        brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
-        type: deviceData.type.trim(),
+        type: normalizeOptionValue(deviceData.type),
         ip: deviceData.ip.trim() || '',
         mac: deviceData.mac.trim() || '',
         status: deviceData.status,
         power: deviceData.power,
-        batteryType: deviceData.batteryType || '',
+        batteryType: normalizeOptionValue(deviceData.batteryType),
         batteryCount: deviceData.batteryCount ? parseInt(deviceData.batteryCount) : null,
         lastBatteryChange: deviceData.lastBatteryChange || '',
         batteryDuration: deviceData.batteryDuration ? parseFloat(deviceData.batteryDuration) : null,
@@ -1367,7 +1366,7 @@ function createDevice(deviceData) {
         storageUnit: deviceData.storageUnit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
         homeId: deviceData.homeId || getSelectedHomeId(),
-        connectivity: deviceData.connectivity,
+        connectivity: normalizeOptionValue(deviceData.connectivity),
         area: deviceData.area,
         threadBorderRouter: deviceData.threadBorderRouter || false,
         matterHub: deviceData.matterHub || false,
@@ -1412,14 +1411,14 @@ function updateDevice(id, deviceData) {
     const device = allDevices.find(d => d.id === id);
     if (device) {
         device.name = name;
-        device.brand = deviceData.brand.trim();
+        device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
-        device.type = deviceData.type.trim();
+        device.type = normalizeOptionValue(deviceData.type);
         device.ip = deviceData.ip.trim() || '';
         device.mac = deviceData.mac.trim() || '';
         device.status = deviceData.status;
         device.power = deviceData.power;
-        device.batteryType = deviceData.batteryType || '';
+        device.batteryType = normalizeOptionValue(deviceData.batteryType);
         device.batteryCount = deviceData.batteryCount ? parseInt(deviceData.batteryCount) : null;
         device.lastBatteryChange = deviceData.lastBatteryChange || '';
         device.batteryDuration = deviceData.batteryDuration ? parseFloat(deviceData.batteryDuration) : null;
@@ -1432,7 +1431,7 @@ function updateDevice(id, deviceData) {
         device.storageUnit = deviceData.storageUnit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
         device.homeId = deviceData.homeId || device.homeId || getSelectedHomeId();
-        device.connectivity = deviceData.connectivity;
+        device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.area = deviceData.area;
         device.threadBorderRouter = deviceData.threadBorderRouter || false;
         device.matterHub = deviceData.matterHub || false;

@@ -451,10 +451,10 @@ function showDeviceTooltip(node) {
     const name = device.name || device.model || 'Unnamed Device';
     const floorName = floor ? floor.name : 'No Floor';
     const areaName = area ? area.name : 'No Area';
-    const type = device.type ? formatDeviceType(device.type) : 'N/A';
-    const brand = device.brand || 'N/A';
+    const type = device.type ? getFriendlyOption(settings?.types, device.type, formatDeviceType) : 'N/A';
+    const brand = device.brand ? getFriendlyOption(settings?.brands, device.brand, formatDeviceType) : 'N/A';
     const status = device.status || 'N/A';
-    const connectivity = device.connectivity ? device.connectivity.charAt(0).toUpperCase() + device.connectivity.slice(1) : 'N/A';
+    const connectivity = device.connectivity ? getFriendlyOption(settings?.connectivity, device.connectivity, formatConnectivity) : 'N/A';
     
     tooltip.innerHTML = `
         <div class="tooltip-header">

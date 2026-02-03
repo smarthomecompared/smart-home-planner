@@ -15,24 +15,32 @@ const DEFAULT_HOME_NAME = 'Default';
 
 const DEFAULT_SETTINGS = {
     brands: [
-        'Aqara', 'Apple', 'Broadlink', 'Echo', 'Ecobee', 'Eufy', 'Google',
-        'Home Assistant', 'Hue', 'Insteon', 'Lutron', 'Meross', 'Nest',
-        'Philips', 'Ring', 'Shelly', 'Sonoff', 'SwitchBot', 'TP-Link',
-        'Tuya', 'Wyze', 'Xiaomi', 'Yale', 'Zigbee', 'Z-Wave'
+        'Aeotec', 'AirGradient', 'Airthings', 'Amazon', 'Apollo Automation',
+        'Apple', 'Aqara', 'Aranet', 'Arlo', 'Arre', 'Asus', 'August',
+        'Beelink', 'Belkin', 'Blink', 'Bosch', 'BroadLink', 'Centralite',
+        'Cync', 'Ecovacs', 'Ecobee', 'Eero', 'Eufy', 'Eve', 'Fibaro', 'GE',
+        'Geekom', 'Google', 'Govee Life', 'Heiman', 'Honeywell Home',
+        'Hubitat', 'IKEA', 'Insteon', 'IQAir', 'iRobot', 'Kasa', 'Kwikset',
+        'Leviton', 'LIFX', 'Lutron', 'Meross', 'Moes', 'Nanoleaf', 'Nabu Casa',
+        'Netatmo', 'Nest', 'Nuki', 'Philips', 'Philips Hue', 'Rachio',
+        'Reolink', 'Ring', 'Roborock', 'Schlage', 'Sensi', 'Shelly',
+        'SimpliSafe', 'Smlight', 'SmartThings', 'Sonoff', 'Sonos', 'SwitchBot',
+        'Tapo', 'Third Reality', 'TP-Link', 'Tuya', 'Ubiquiti', 'Wyze',
+        'X-Sense', 'Xiaomi', 'Yale', 'YoLink', 'Zooz'
     ],
     types: [
-        'air-quality-monitors', 'cameras', 'displays', 'dongles', 'door-locks',
-        'door-window-sensors', 'doorbells', 'hubs', 'ir-remote-controls',
-        'led-bulbs', 'mini-pcs', 'motion-sensors', 'plugs', 'presence-sensors',
-        'radiator-valves', 'relays', 'robot-vacuums', 'routers', 'sirens',
-        'smoke-alarms', 'speakers', 'temperature-humidity-sensors', 'thermostats',
-        'vibration-sensors', 'voice-assistants', 'wall-outlets', 'wall-switches',
-        'water-leak-sensors', 'water-valves'
+        'Air Purifiers', 'Air Quality Monitors', 'Cameras', 'Curtain Controllers', 'Displays', 'Dongles', 'Door Locks',
+        'Door/Window Sensors', 'Doorbells', 'Hubs', 'IR Remote Controls',
+        'LED Bulbs', 'Mini PCs', 'Motion Sensors', 'Plugs', 'Presence Sensors',
+        'Radiator Valves', 'Relays', 'Robot Vacuums', 'Routers', 'Sirens',
+        'Smoke Alarms', 'Speakers', 'Streaming Devices', 'Temperature/Humidity Sensors', 'Thermostats',
+        'Vibration Sensors', 'Voice Assistants', 'Wall Outlets', 'Wall Switches',
+        'Water Leak Sensors', 'Water Valves'
     ],
     connectivity: [
-        'wifi', 'zigbee', 'z-wave', 'bluetooth', 'matter'
+        'Bluetooth', 'Matter', 'Wi-Fi', 'Z-Wave', 'Zigbee'
     ],
     batteryTypes: [
-        'USB', 'CR2477', 'AA', 'AAA'
+        'AA', 'AAA', 'CR123A', 'CR17450', 'CR2032', 'CR2477', 'Internal', 'USB'
     ]
 };

@@ -149,10 +149,10 @@ class DeviceFilters {
         if (brandFilter) {
             const configuredBrands = this.settings.brands || [];
             const deviceBrands = [...new Set(this.devices.map(d => d.brand).filter(Boolean))];
-            const allBrands = [...new Set([...configuredBrands, ...deviceBrands])].sort();
-            brandFilter.innerHTML = '<option value="">All Brands</option>' + 
-                allBrands.map(brand => `<option value="${brand}">${this.escapeHtml(brand)}</option>`).join('');
-            brandFilter.value = currentBrandValue;
+            const brandOptions = this.buildFriendlyOptions(configuredBrands, deviceBrands, this.formatDeviceType);
+            brandFilter.innerHTML = '<option value="">All Brands</option>' +
+                brandOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+            brandFilter.value = currentBrandValue ? normalizeOptionValue(currentBrandValue) : currentBrandValue;
         }
         
         // Update type filter
@@ -161,10 +161,10 @@ class DeviceFilters {
         if (typeFilter) {
             const configuredTypes = this.settings.types || [];
             const deviceTypes = [...new Set(this.devices.map(d => d.type).filter(Boolean))];
-            const allTypes = [...new Set([...configuredTypes, ...deviceTypes])].sort();
-            typeFilter.innerHTML = '<option value="">All Types</option>' + 
-                allTypes.map(type => `<option value="${type}">${this.escapeHtml(this.formatDeviceType(type))}</option>`).join('');
-            typeFilter.value = currentTypeValue;
+            const typeOptions = this.buildFriendlyOptions(configuredTypes, deviceTypes, this.formatDeviceType);
+            typeFilter.innerHTML = '<option value="">All Types</option>' +
+                typeOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+            typeFilter.value = currentTypeValue ? normalizeOptionValue(currentTypeValue) : currentTypeValue;
         }
         
         // Update connectivity filter
@@ -173,23 +173,22 @@ class DeviceFilters {
         if (connectivityFilter) {
             const configuredConnectivity = this.settings.connectivity || [];
             const deviceConnectivity = [...new Set(this.devices.map(d => d.connectivity).filter(Boolean))];
-            const allConnectivity = [...new Set([...configuredConnectivity, ...deviceConnectivity])].sort();
-            connectivityFilter.innerHTML = '<option value="">All Connectivity</option>' + 
-                allConnectivity.map(conn => {
-                    const displayName = conn.charAt(0).toUpperCase() + conn.slice(1).replace('-', ' ');
-                    return `<option value="${conn}">${this.escapeHtml(displayName)}</option>`;
-                }).join('');
-            connectivityFilter.value = currentConnectivityValue;
+            const connectivityOptions = this.buildFriendlyOptions(configuredConnectivity, deviceConnectivity, this.formatConnectivity);
+            connectivityFilter.innerHTML = '<option value="">All Connectivity</option>' +
+                connectivityOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+            connectivityFilter.value = currentConnectivityValue ? normalizeOptionValue(currentConnectivityValue) : currentConnectivityValue;
         }
 
         // Update battery type filter
         const batteryTypeFilter = document.getElementById('filter-battery-type');
         const currentBatteryTypeValue = batteryTypeFilter ? batteryTypeFilter.value : '';
         if (batteryTypeFilter) {
-            const deviceBatteryTypes = [...new Set(this.devices.map(d => d.batteryType).filter(Boolean))].sort();
-            batteryTypeFilter.innerHTML = '<option value="">All Battery Types</option>' + 
-                deviceBatteryTypes.map(type => `<option value="${type}">${this.escapeHtml(type)}</option>`).join('');
-            batteryTypeFilter.value = currentBatteryTypeValue;
+            const configuredBatteryTypes = this.settings.batteryTypes || [];
+            const deviceBatteryTypes = [...new Set(this.devices.map(d => d.batteryType).filter(Boolean))];
+            const batteryOptions = this.buildFriendlyOptions(configuredBatteryTypes, deviceBatteryTypes, this.formatDeviceType);
+            batteryTypeFilter.innerHTML = '<option value="">All Battery Types</option>' +
+                batteryOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+            batteryTypeFilter.value = currentBatteryTypeValue ? normalizeOptionValue(currentBatteryTypeValue) : currentBatteryTypeValue;
         }
     }
 
@@ -282,7 +281,7 @@ class DeviceFilters {
         }
         
         if (brandFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => d.brand === brandFilter);
+            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.brand) === brandFilter);
         }
         
         if (statusFilter) {
@@ -290,11 +289,11 @@ class DeviceFilters {
         }
         
         if (typeFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => d.type === typeFilter);
+            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.type) === typeFilter);
         }
         
         if (connectivityFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => d.connectivity === connectivityFilter);
+            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.connectivity) === connectivityFilter);
         }
 
         if (powerFilter) {
@@ -323,7 +322,7 @@ class DeviceFilters {
         }
 
         if (batteryTypeFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => (d.batteryType || '') === batteryTypeFilter);
+            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.batteryType) === batteryTypeFilter);
         }
 
         if (homeAssistantFilter) {
@@ -416,6 +415,27 @@ class DeviceFilters {
         return type.split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ');
+    }
+
+    formatConnectivity(value) {
+        return formatConnectivity(value);
+    }
+
+    buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter) {
+        const options = new Map();
+        (configuredValues || []).forEach(value => {
+            const normalized = normalizeOptionValue(value);
+            if (!normalized || options.has(normalized)) return;
+            options.set(normalized, value);
+        });
+        (deviceValues || []).forEach(value => {
+            const normalized = normalizeOptionValue(value);
+            if (!normalized || options.has(normalized)) return;
+            options.set(normalized, getFriendlyOption(configuredValues, value, fallbackFormatter));
+        });
+        return Array.from(options.entries())
+            .map(([value, label]) => ({ value, label: label || value }))
+            .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
     }
 }
 

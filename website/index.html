@@ -773,6 +773,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const data = loadData();
+            const settings = loadSettings();
             const dashboard = document.getElementById('dashboard');
             const selectedHomeId = data.selectedHomeId;
             const devices = (data.devices || []).filter(device => device.homeId === selectedHomeId);
@@ -828,10 +829,10 @@
                     <div class="description">Total floors in your home</div>
                 </div>
             `;
-            renderPieChart('chart-types', buildStats(devices, 'type', formatDeviceType), 'type');
-            renderPieChart('chart-connectivity', buildStats(devices, 'connectivity', formatConnectivity), 'connectivity');
-            renderPieChart('chart-brands', buildStats(devices, 'brand', value => value), 'brand');
-            renderPieChart('chart-batteries', buildBatteryTotalsStats(devices), 'batteryType', {
+            renderPieChart('chart-types', buildStats(devices, 'type', value => getFriendlyOption(settings.types, value, formatDeviceType)), 'type');
+            renderPieChart('chart-connectivity', buildStats(devices, 'connectivity', value => getFriendlyOption(settings.connectivity, value, formatConnectivity)), 'connectivity');
+            renderPieChart('chart-brands', buildStats(devices, 'brand', value => getFriendlyOption(settings.brands, value, formatDeviceType)), 'brand');
+            renderPieChart('chart-batteries', buildBatteryTotalsStats(devices, settings), 'batteryType', {
                 countFormatter: row => row.count
             });
             renderPendingDevices('pending-devices', devices);
@@ -844,7 +845,7 @@
                 countFormatter: row => `${formatWatts(row.count)} W`,
                 linkBuilder: row => row.value ? `device-edit.html?id=${encodeURIComponent(row.value)}` : ''
             });
-            renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices));
+            renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices, settings));
             renderPieChart('integration-stats', buildIntegrationStats(devices), 'integration');
             renderPieChart('local-chart', buildLocalStats(devices), 'localOnly');
             renderPieChart('ups-chart', buildUpsStats(devices), 'upsProtected');
@@ -871,14 +872,15 @@
             const totals = new Map();
             devices.forEach(device => {
                 const raw = (device[key] || '').trim();
-                const label = raw || 'Unknown';
-                totals.set(label, (totals.get(label) || 0) + 1);
+                const normalized = normalizeOptionValue(raw);
+                const value = raw ? normalized : '';
+                totals.set(value, (totals.get(value) || 0) + 1);
             });
 
             return Array.from(totals.entries())
-                .map(([label, count]) => ({
-                    label: formatter(label),
-                    value: label,
+                .map(([value, count]) => ({
+                    label: value ? formatter(value) : 'Unknown',
+                    value,
                     count
                 }))
                 .sort((a, b) => b.count - a.count);
@@ -1087,24 +1089,29 @@
             return value.charAt(0).toUpperCase() + value.slice(1).replace('-', ' ');
         }
 
-        function buildBatteryTotals(devices) {
+        function buildBatteryTotals(devices, settings) {
             const totals = new Map();
             devices.forEach(device => {
                 const count = Number(device.batteryCount);
-                const type = (device.batteryType || '').trim();
-                if (!type || !Number.isFinite(count) || count <= 0) return;
-                totals.set(type, (totals.get(type) || 0) + count);
+                const raw = (device.batteryType || '').trim();
+                const value = normalizeOptionValue(raw);
+                if (!value || !Number.isFinite(count) || count <= 0) return;
+                totals.set(value, (totals.get(value) || 0) + count);
             });
 
             return Array.from(totals.entries())
-                .map(([type, count]) => ({ type, count }))
+                .map(([value, count]) => ({
+                    value,
+                    label: getFriendlyOption(settings?.batteryTypes, value, formatDeviceType),
+                    count
+                }))
                 .sort((a, b) => b.count - a.count);
         }
 
-        function buildBatteryTotalsStats(devices) {
-            return buildBatteryTotals(devices).map(row => ({
-                label: row.type,
-                value: row.type,
+        function buildBatteryTotalsStats(devices, settings) {
+            return buildBatteryTotals(devices, settings).map(row => ({
+                label: row.label,
+                value: row.value,
                 count: row.count
             }));
         }
@@ -1118,9 +1125,9 @@
             }
 
             target.innerHTML = rows.map(row => `
-                <a class="legend-item" href="devices.html?batteryType=${encodeURIComponent(row.type)}">
+                <a class="legend-item" href="devices.html?batteryType=${encodeURIComponent(row.value)}">
                     <span class="legend-dot" style="background: var(--primary-color);"></span>
-                    <span>${escapeHtml(row.type)}</span>
+                    <span>${escapeHtml(row.label)}</span>
                     <span>${row.count}</span>
                 </a>
             `).join('');
@@ -1277,7 +1284,7 @@
             `;
         }
 
-        function buildBatteryAlerts(devices) {
+        function buildBatteryAlerts(devices, settings) {
             const alerts = [];
             const summary = new Map();
             const now = new Date();
@@ -1302,15 +1309,13 @@
                     percent,
                     daysSince,
                     durationDays,
-                    batteryType: (device.batteryType || '').trim(),
+                    batteryType: normalizeOptionValue(device.batteryType || ''),
                     batteryCount: Number(device.batteryCount)
                 });
 
-                if (device.batteryType && Number.isFinite(device.batteryCount) && device.batteryCount > 0) {
-                    summary.set(
-                        device.batteryType,
-                        (summary.get(device.batteryType) || 0) + device.batteryCount
-                    );
+                const batteryValue = normalizeOptionValue(device.batteryType || '');
+                if (batteryValue && Number.isFinite(device.batteryCount) && device.batteryCount > 0) {
+                    summary.set(batteryValue, (summary.get(batteryValue) || 0) + device.batteryCount);
                 }
             });
 
@@ -1319,7 +1324,11 @@
             return {
                 alerts,
                 summary: Array.from(summary.entries())
-                    .map(([type, count]) => ({ type, count }))
+                    .map(([value, count]) => ({
+                        value,
+                        label: getFriendlyOption(settings?.batteryTypes, value, formatDeviceType),
+                        count
+                    }))
                     .sort((a, b) => b.count - a.count)
             };
         }
@@ -1364,7 +1373,7 @@
             ` + data.summary.map(item => `
                 <div class="legend-item">
                     <span class="legend-dot" style="background: var(--warning-color);"></span>
-                    <span>${escapeHtml(item.type)}</span>
+                    <span>${escapeHtml(item.label)}</span>
                     <span>${item.count}</span>
                 </div>
             `).join('');

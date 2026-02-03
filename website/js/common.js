@@ -110,19 +110,37 @@ function saveData(data) {
 }
 
 // Settings Management Functions
+function getDefaultSettings() {
+    const mapType = (value) => {
+        const normalized = normalizeOptionValue(value);
+        return value === normalized ? formatDeviceType(value) : value;
+    };
+    const mapConnectivity = (value) => {
+        const normalized = normalizeOptionValue(value);
+        return value === normalized ? formatConnectivity(value) : value;
+    };
+    return {
+        brands: [...(DEFAULT_SETTINGS.brands || [])],
+        types: (DEFAULT_SETTINGS.types || []).map(mapType),
+        connectivity: (DEFAULT_SETTINGS.connectivity || []).map(mapConnectivity),
+        batteryTypes: [...(DEFAULT_SETTINGS.batteryTypes || [])]
+    };
+}
+
 function loadSettings() {
     const settingsData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+    const defaults = getDefaultSettings();
     if (settingsData) {
         const saved = JSON.parse(settingsData);
         // Merge with defaults to ensure all keys exist
-        return {
-            brands: saved.brands || DEFAULT_SETTINGS.brands,
-            types: saved.types || DEFAULT_SETTINGS.types,
-            connectivity: saved.connectivity || DEFAULT_SETTINGS.connectivity,
-            batteryTypes: saved.batteryTypes || DEFAULT_SETTINGS.batteryTypes
-        };
+        return ensureFriendlySettings({
+            brands: saved.brands || defaults.brands,
+            types: saved.types || defaults.types,
+            connectivity: saved.connectivity || defaults.connectivity,
+            batteryTypes: saved.batteryTypes || defaults.batteryTypes
+        });
     }
-    return DEFAULT_SETTINGS;
+    return ensureFriendlySettings(defaults);
 }
 
 function saveSettings(settings) {
@@ -140,6 +158,80 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function normalizeOptionValue(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/\s*&\s*/g, '-')
+        .replace(/\//g, '-')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+function ensureFriendlyList(values, formatter) {
+    const result = [];
+    const seen = new Set();
+    (values || []).forEach((value) => {
+        const raw = String(value || '').trim();
+        if (!raw) return;
+        const normalized = normalizeOptionValue(raw);
+        let label = raw;
+        if (normalized && normalized === raw && typeof formatter === 'function') {
+            const formatted = formatter(normalized);
+            label = formatted || raw;
+        }
+        const key = normalizeOptionValue(label);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        result.push(label);
+    });
+    return result;
+}
+
+function ensureFriendlySettings(settings) {
+    return {
+        brands: ensureFriendlyList(settings.brands, formatDeviceType),
+        types: ensureFriendlyList(settings.types, formatDeviceType),
+        connectivity: ensureFriendlyList(settings.connectivity, formatConnectivity),
+        batteryTypes: ensureFriendlyList(settings.batteryTypes, formatDeviceType)
+    };
+}
+
+function getFriendlyOption(options, value, fallbackFormatter) {
+    if (!value) return '';
+    const normalized = normalizeOptionValue(value);
+    if (Array.isArray(options)) {
+        const match = options.find(option => normalizeOptionValue(option) === normalized);
+        if (match) return match;
+    }
+    if (typeof fallbackFormatter === 'function') {
+        const fallback = fallbackFormatter(value);
+        return fallback || value;
+    }
+    return value;
+}
+
+function formatConnectivity(value) {
+    if (!value) return '';
+    const normalized = normalizeOptionValue(value);
+    if (normalized === 'wifi' || normalized === 'wi-fi') return 'Wi-Fi';
+    if (normalized === 'z-wave') return 'Z-Wave';
+    if (normalized === 'zigbee') return 'Zigbee';
+    if (normalized === 'bluetooth') return 'Bluetooth';
+    if (normalized === 'matter') return 'Matter';
+    return normalized
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+function isWifiConnectivity(value) {
+    const normalized = normalizeOptionValue(value);
+    return normalized === 'wifi' || normalized === 'wi-fi';
 }
 
 function ensureDialogModal() {

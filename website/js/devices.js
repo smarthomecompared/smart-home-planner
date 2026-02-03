@@ -143,15 +143,15 @@ function createDevice(deviceData) {
     const device = {
         id: Date.now().toString(),
         name: name,
-        brand: deviceData.brand.trim(),
+        brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
-        type: deviceData.type.trim(),
+        type: normalizeOptionValue(deviceData.type),
         ip: deviceData.ip.trim() || '',
         mac: deviceData.mac.trim() || '',
         status: deviceData.status,
         power: deviceData.power,
-        batteryType: deviceData.batteryType.trim() || '',
-        connectivity: deviceData.connectivity,
+        batteryType: normalizeOptionValue(deviceData.batteryType),
+        connectivity: normalizeOptionValue(deviceData.connectivity),
         area: deviceData.area || '',
         homeId: deviceData.homeId || selectedHomeId,
         createdAt: new Date().toISOString()
@@ -180,15 +180,15 @@ function updateDevice(id, deviceData) {
     const device = allDevices.find(d => d.id === id);
     if (device) {
         device.name = name;
-        device.brand = deviceData.brand.trim();
+        device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
-        device.type = deviceData.type.trim();
+        device.type = normalizeOptionValue(deviceData.type);
         device.ip = deviceData.ip.trim() || '';
         device.mac = deviceData.mac.trim() || '';
         device.status = deviceData.status;
         device.power = deviceData.power;
-        device.batteryType = deviceData.batteryType.trim() || '';
-        device.connectivity = deviceData.connectivity;
+        device.batteryType = normalizeOptionValue(deviceData.batteryType);
+        device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.area = deviceData.area || '';
         device.updatedAt = new Date().toISOString();
         device.homeId = deviceData.homeId || device.homeId || selectedHomeId;
@@ -295,16 +295,18 @@ function renderDevices() {
     } else {
         tbody.innerHTML = paginatedDevices.map(device => {
             const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
-            const typeDisplay = formatDeviceType(device.type);
+            const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
+            const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType);
+            const connectivityDisplay = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity);
             const statusLabel = formatStatusLabel(device.status);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
                     <td>${escapeHtml(areaName)}</td>
-                    <td>${escapeHtml(device.brand)}</td>
+                    <td>${escapeHtml(brandDisplay)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
                     <td><span class="status-badge status-${device.status}">${escapeHtml(statusLabel)}</span></td>
-                    <td>${escapeHtml(device.connectivity)}</td>
+                    <td>${escapeHtml(connectivityDisplay)}</td>
                     <td class="actions-cell">
                         <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -358,11 +360,9 @@ function renderDevicesGrid(devicesToRender) {
 
     grid.innerHTML = devicesToRender.map(device => {
         const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
-        const typeDisplay = formatDeviceType(device.type);
-        const connectivity = device.connectivity
-            ? device.connectivity.charAt(0).toUpperCase() + device.connectivity.slice(1).replace('-', ' ')
-            : '—';
-        const brand = device.brand || '—';
+        const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '—';
+        const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '—';
+        const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '—';
         const statusLabel = formatStatusLabel(device.status);
         return `
             <div class="device-card">
@@ -596,16 +596,16 @@ function applyQueryFilters() {
         const advancedFilters = document.getElementById('advanced-filters');
         advancedFilters.classList.remove('is-collapsed');
         document.getElementById('toggle-advanced-filters').textContent = 'Hide Advanced Filters';
-        document.getElementById('filter-battery-type').value = batteryTypeParam;
+        document.getElementById('filter-battery-type').value = normalizeOptionValue(batteryTypeParam);
     }
     if (typeParam) {
-        document.getElementById('filter-type').value = typeParam;
+        document.getElementById('filter-type').value = normalizeOptionValue(typeParam);
     }
     if (connectivityParam) {
-        document.getElementById('filter-connectivity').value = connectivityParam;
+        document.getElementById('filter-connectivity').value = normalizeOptionValue(connectivityParam);
     }
     if (brandParam) {
-        document.getElementById('filter-brand').value = brandParam;
+        document.getElementById('filter-brand').value = normalizeOptionValue(brandParam);
     }
     if (integrationParam) {
         const advancedFilters = document.getElementById('advanced-filters');
