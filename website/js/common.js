@@ -421,6 +421,7 @@ function initMobileNav() {
 
 function applyIconTooltip(el) {
     if (!el || !el.classList || !el.classList.contains('btn-icon')) return;
+    if (el.classList.contains('no-tooltip')) return;
     if (el.dataset.tooltip) return;
     const label = el.getAttribute('title') || el.getAttribute('aria-label') || '';
     if (!label) return;
