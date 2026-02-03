@@ -370,8 +370,17 @@ function showDeviceTooltip(node) {
     tooltipRoot.appendChild(tooltip);
     
     // Position tooltip
-    tooltip.style.left = (renderedPosition.x + 20) + 'px';
-    tooltip.style.top = (renderedPosition.y + 20) + 'px';
+    if (window.innerWidth <= 640) {
+        tooltip.classList.add('is-centered');
+        tooltip.style.left = '50%';
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+    } else {
+        tooltip.classList.remove('is-centered');
+        tooltip.style.transform = '';
+        tooltip.style.left = (renderedPosition.x + 20) + 'px';
+        tooltip.style.top = (renderedPosition.y + 20) + 'px';
+    }
 }
 
 function hideDeviceTooltip() {

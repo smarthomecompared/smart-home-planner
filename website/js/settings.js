@@ -55,7 +55,14 @@ function exportData() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `smart-home-data-${new Date().toISOString().split('T')[0]}.json`;
+        const now = new Date();
+        const datePart = now.toISOString().split('T')[0];
+        const timePart = [
+            String(now.getHours()).padStart(2, '0'),
+            String(now.getMinutes()).padStart(2, '0'),
+            String(now.getSeconds()).padStart(2, '0')
+        ].join('-');
+        a.download = `smart-home-data-${datePart}-${timePart}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

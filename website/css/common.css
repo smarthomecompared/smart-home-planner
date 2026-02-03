@@ -1063,6 +1063,28 @@ nav a.active::before {
     .form-actions .btn {
         width: 100%;
     }
+
+    .form-page .form-actions {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .form-page .form-actions .btn {
+        width: auto;
+        min-width: 120px;
+        flex: 0 0 auto;
+    }
+
+    .form-page .form-actions .btn:last-child {
+        margin-left: auto;
+    }
+
+    .form-group.is-hidden {
+        display: none;
+        visibility: hidden;
+    }
 }
 
 @media (max-width: 640px) {

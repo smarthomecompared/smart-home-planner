@@ -296,6 +296,14 @@ body.map-fullscreen .map-controls-overlay {
     animation: tooltipFadeIn 0.2s ease;
 }
 
+.device-tooltip.is-centered {
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%);
+    max-height: 80vh;
+    overflow: auto;
+}
+
 .connection-dialog-overlay {
     position: fixed;
     inset: 0;
