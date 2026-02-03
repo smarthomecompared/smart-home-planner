@@ -106,8 +106,12 @@ class DeviceFilters {
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => {
                 const advancedFilters = document.getElementById('advanced-filters');
-                if (advancedFilters) {
-                    const isCollapsed = advancedFilters.classList.toggle('is-collapsed');
+                const container = toggleBtn.closest('.filters-container');
+                if (container) {
+                    const isCollapsed = container.classList.toggle('is-collapsed');
+                    if (advancedFilters) {
+                        advancedFilters.classList.toggle('is-collapsed', isCollapsed);
+                    }
                     toggleBtn.classList.toggle('is-expanded', !isCollapsed);
                     toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
                 }

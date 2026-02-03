@@ -1367,6 +1367,10 @@ nav a.active::before {
     z-index: 1;
 }
 
+.filters-container.is-collapsed .filters-body {
+    display: none;
+}
+
 .filters,
 .filters-row {
     display: grid;
@@ -1480,6 +1484,10 @@ select,
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 0.9rem;
     align-items: stretch;
+}
+
+.filters-advanced > .filters-row {
+    grid-column: 1 / -1;
 }
 
 .filters-block {

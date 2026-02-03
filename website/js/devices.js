@@ -637,11 +637,17 @@ function applyQueryFilters() {
     const integrationParam = params.get('integration');
     const localOnlyParam = params.get('localOnly');
     const upsProtectedParam = params.get('upsProtected');
+    const advancedFilters = document.getElementById('advanced-filters');
+    const filtersContainer = document.querySelector('.filters-container');
+    const toggleBtn = document.getElementById('toggle-advanced-filters');
 
     if (batteryTypeParam) {
-        const advancedFilters = document.getElementById('advanced-filters');
-        advancedFilters.classList.remove('is-collapsed');
-        document.getElementById('toggle-advanced-filters').textContent = 'Hide Advanced Filters';
+        if (advancedFilters) advancedFilters.classList.remove('is-collapsed');
+        if (filtersContainer) filtersContainer.classList.remove('is-collapsed');
+        if (toggleBtn) {
+            toggleBtn.classList.add('is-expanded');
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
         document.getElementById('filter-battery-type').value = normalizeOptionValue(batteryTypeParam);
     }
     if (typeParam) {
@@ -654,9 +660,12 @@ function applyQueryFilters() {
         document.getElementById('filter-brand').value = normalizeOptionValue(brandParam);
     }
     if (integrationParam) {
-        const advancedFilters = document.getElementById('advanced-filters');
-        advancedFilters.classList.remove('is-collapsed');
-        document.getElementById('toggle-advanced-filters').textContent = 'Hide Advanced Filters';
+        if (advancedFilters) advancedFilters.classList.remove('is-collapsed');
+        if (filtersContainer) filtersContainer.classList.remove('is-collapsed');
+        if (toggleBtn) {
+            toggleBtn.classList.add('is-expanded');
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
         const integrationMap = {
             homeAssistant: 'filter-home-assistant',
             googleHome: 'filter-google-home',
@@ -676,9 +685,12 @@ function applyQueryFilters() {
     }
 
     if (localOnlyParam) {
-        const advancedFilters = document.getElementById('advanced-filters');
-        advancedFilters.classList.remove('is-collapsed');
-        document.getElementById('toggle-advanced-filters').textContent = 'Hide Advanced Filters';
+        if (advancedFilters) advancedFilters.classList.remove('is-collapsed');
+        if (filtersContainer) filtersContainer.classList.remove('is-collapsed');
+        if (toggleBtn) {
+            toggleBtn.classList.add('is-expanded');
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
         const localOnlySelect = document.getElementById('filter-local-only');
         if (localOnlyParam === 'true' || localOnlyParam === 'false') {
             localOnlySelect.value = localOnlyParam;
@@ -686,9 +698,12 @@ function applyQueryFilters() {
     }
 
     if (upsProtectedParam) {
-        const advancedFilters = document.getElementById('advanced-filters');
-        advancedFilters.classList.remove('is-collapsed');
-        document.getElementById('toggle-advanced-filters').textContent = 'Hide Advanced Filters';
+        if (advancedFilters) advancedFilters.classList.remove('is-collapsed');
+        if (filtersContainer) filtersContainer.classList.remove('is-collapsed');
+        if (toggleBtn) {
+            toggleBtn.classList.add('is-expanded');
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
         const upsProtectedSelect = document.getElementById('filter-ups-protected');
         if (upsProtectedParam === 'true' || upsProtectedParam === 'false') {
             upsProtectedSelect.value = upsProtectedParam;

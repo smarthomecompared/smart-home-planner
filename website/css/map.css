@@ -62,24 +62,25 @@
 }
 
 .map-display-settings h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
     margin: 0;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     display: flex;
     align-items: center;
     gap: 0.75rem;
     position: relative;
     z-index: 1;
+    flex: 1 1 200px;
 }
 
 .map-display-settings h3::after {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(71, 85, 105, 0.7), transparent);
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), transparent);
 }
 
 .settings-group {
