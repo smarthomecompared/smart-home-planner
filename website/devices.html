@@ -43,12 +43,16 @@
         </header>
 
         <section>
-            <div class="section-header section-header-inline">
+            <div class="section-header section-header-inline devices-header">
                 <div class="section-title-group">
                     <h2>Devices</h2>
                     <div class="section-subtitle" id="devices-count">0 devices</div>
                 </div>
-                <a href="device-add.html" class="btn btn-primary">Add Device</a>
+                <div class="view-toggle" role="group" aria-label="View mode">
+                    <button class="view-toggle-btn" type="button" data-view="table" aria-pressed="false">Table</button>
+                    <button class="view-toggle-btn" type="button" data-view="grid" aria-pressed="false">Grid</button>
+                </div>
+                <a href="device-add.html" class="btn btn-primary devices-add-btn">Add Device</a>
             </div>
             
             <!-- Device Filters Component -->
@@ -154,7 +158,7 @@
                 </div>
             </div>
 
-            <div class="table-container">
+            <div class="table-container" id="devices-table-container">
                 <table class="devices-table">
                     <thead>
                         <tr>
@@ -184,6 +188,8 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="devices-grid" id="devices-grid"></div>
 
             <div class="pagination-container">
                 <div class="pagination-info">

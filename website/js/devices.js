@@ -13,6 +13,9 @@ let pageSize = 25;
 let sortColumn = null;
 let sortDirection = 'asc';
 let filteredDevices = [];
+let viewMode = 'table';
+
+const VIEW_STORAGE_KEY = 'smartHomeDevicesView';
 
 // Device Filters instance
 let deviceFilters = null;
@@ -37,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initializeEventListeners();
+    initializeViewToggle();
     applyQueryFilters();
     deviceFilters.applyFilters();
 });
@@ -66,6 +70,60 @@ function initializeEventListeners() {
             renderDevices();
         });
     });
+}
+
+function initializeViewToggle() {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === 'table' || saved === 'grid') {
+        viewMode = saved;
+    } else {
+        viewMode = window.innerWidth <= 640 ? 'grid' : 'table';
+    }
+
+    const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
+    buttons.forEach(button => {
+        button.addEventListener('click', () => {
+            const next = button.getAttribute('data-view');
+            if (!next || next === viewMode) return;
+            viewMode = next;
+            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            updateViewToggle();
+            updateViewVisibility();
+            renderDevices();
+        });
+    });
+
+    updateViewToggle();
+    updateViewVisibility();
+
+    window.addEventListener('resize', () => {
+        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
+        const next = window.innerWidth <= 640 ? 'grid' : 'table';
+        if (next === viewMode) return;
+        viewMode = next;
+        updateViewToggle();
+        updateViewVisibility();
+        renderDevices();
+    });
+}
+
+function updateViewToggle() {
+    document.querySelectorAll('.view-toggle-btn').forEach(button => {
+        const isActive = button.getAttribute('data-view') === viewMode;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function updateViewVisibility() {
+    const tableContainer = document.getElementById('devices-table-container');
+    const grid = document.getElementById('devices-grid');
+    if (tableContainer) {
+        tableContainer.style.display = viewMode === 'table' ? '' : 'none';
+    }
+    if (grid) {
+        grid.style.display = viewMode === 'grid' ? 'grid' : 'none';
+    }
 }
 
 // CRUD Operations
@@ -273,9 +331,87 @@ function renderDevices() {
             `;
         }).join('');
     }
-    
+
+    renderDevicesGrid(paginatedDevices);
+
     // Update pagination controls
     updatePaginationControls(totalPages, startIndex, endIndex, sortedDevices.length);
+}
+
+function renderDevicesGrid(devicesToRender) {
+    const grid = document.getElementById('devices-grid');
+    if (!grid) return;
+
+    if (!devicesToRender.length) {
+        grid.innerHTML = `
+            <div class="device-card">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔌</div>
+                    <div class="empty-state-text">No devices found</div>
+                    <div class="empty-state-subtext">${devices.length === 0 ? 'Add your first device to get started' : 'Try adjusting your filters'}</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = devicesToRender.map(device => {
+        const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
+        const typeDisplay = formatDeviceType(device.type);
+        const connectivity = device.connectivity
+            ? device.connectivity.charAt(0).toUpperCase() + device.connectivity.slice(1).replace('-', ' ')
+            : '—';
+        const brand = device.brand || '—';
+        return `
+            <div class="device-card">
+                <div class="device-card-header">
+                    <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
+                </div>
+                <div class="device-card-meta">
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Area</span>
+                        <span class="device-card-meta-value">${escapeHtml(areaName)}</span>
+                    </div>
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Type</span>
+                        <span class="device-card-meta-value">${escapeHtml(typeDisplay || '—')}</span>
+                    </div>
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Brand</span>
+                        <span class="device-card-meta-value">${escapeHtml(brand)}</span>
+                    </div>
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Connectivity</span>
+                        <span class="device-card-meta-value">${escapeHtml(connectivity)}</span>
+                    </div>
+                </div>
+                <div class="device-card-actions">
+                    <span class="device-card-status status-${device.status}" aria-label="${escapeHtml(device.status || '')}" title="${escapeHtml(device.status || '')}"></span>
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit device" title="Edit device">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                            <path d="M13.5 6.5l4 4"></path>
+                        </svg>
+                    </button>
+                    <button class="btn btn-sm btn-secondary btn-icon" onclick="duplicateDevice('${device.id}')" aria-label="Duplicate device" title="Duplicate device">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="9" y="9" width="10" height="10"></rect>
+                            <rect x="5" y="5" width="10" height="10"></rect>
+                        </svg>
+                    </button>
+                    <button class="btn btn-sm btn-danger btn-icon" onclick="deleteDeviceHandler('${device.id}')" aria-label="Delete device" title="Delete device">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 6h18"></path>
+                            <path d="M8 6V4h8v2"></path>
+                            <path d="M6 6l1 14h10l1-14"></path>
+                            <path d="M10 11v6"></path>
+                            <path d="M14 11v6"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function updatePaginationControls(totalPages, startIndex, endIndex, totalItems) {
