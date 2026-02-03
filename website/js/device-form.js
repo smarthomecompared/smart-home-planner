@@ -67,14 +67,16 @@ function initializeEventListeners() {
     }
     
     // Port buttons
-    document.getElementById('add-ethernet-input-btn').addEventListener('click', () => addPort('ethernet-input', '', 'ports-container'));
-    document.getElementById('add-ethernet-output-btn').addEventListener('click', () => addPort('ethernet-output', '', 'ports-container'));
-    document.getElementById('add-usb-input-btn').addEventListener('click', () => addPort('usb-input', '', 'ports-container'));
-    document.getElementById('add-usb-output-btn').addEventListener('click', () => addPort('usb-output', '', 'ports-container'));
+    const addPortBtn = document.getElementById('add-port-btn');
+    if (addPortBtn) {
+        addPortBtn.addEventListener('click', () => addPort('ethernet-input', '', 'ports-container'));
+    }
     
-    // Power port buttons
-    document.getElementById('add-power-input-btn').addEventListener('click', () => addPort('power-input', '', 'power-ports-container'));
-    document.getElementById('add-power-output-btn').addEventListener('click', () => addPort('power-output', '', 'power-ports-container'));
+    // Power port button
+    const addPowerPortBtn = document.getElementById('add-power-port-btn');
+    if (addPowerPortBtn) {
+        addPowerPortBtn.addEventListener('click', () => addPort('power-input', '', 'power-ports-container'));
+    }
 
     document.getElementById('brand-modal-close').addEventListener('click', closeBrandModal);
     document.getElementById('brand-modal-cancel').addEventListener('click', closeBrandModal);
@@ -870,6 +872,31 @@ const ETHERNET_SPEED_OPTIONS = [
     }
 ];
 
+function parsePortType(portType) {
+    if (!portType || typeof portType !== 'string') {
+        return { kind: 'ethernet', direction: 'input' };
+    }
+    const parts = portType.split('-');
+    return {
+        kind: parts[0] || 'ethernet',
+        direction: parts[1] || 'input'
+    };
+}
+
+function buildPortType(kind, direction) {
+    return `${kind}-${direction}`;
+}
+
+function normalizePortKind(kind, isPower) {
+    if (isPower) return 'power';
+    if (kind === 'usb' || kind === 'ethernet') return kind;
+    return 'ethernet';
+}
+
+function normalizePortDirection(direction) {
+    return direction === 'output' ? 'output' : 'input';
+}
+
 function getPortLabel(portType) {
     const labels = {
         'ethernet-input': 'Ethernet Input',
@@ -887,13 +914,19 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
     if (!container) return;
     
     const portId = `port-${Date.now()}-${portCounter++}`;
+    const isPowerContainer = containerId === 'power-ports-container';
+    const parsed = parsePortType(portType);
+    const portKind = normalizePortKind(parsed.kind, isPowerContainer);
+    const portDirection = normalizePortDirection(parsed.direction);
     
     const portEl = document.createElement('div');
     portEl.className = 'port-item';
     portEl.dataset.portId = portId;
-    portEl.dataset.portType = portType;
+    portEl.dataset.portKind = portKind;
+    portEl.dataset.portDirection = portDirection;
+    portEl.dataset.portType = buildPortType(portKind, portDirection);
     
-    const portLabel = getPortLabel(portType);
+    const portLabel = getPortLabel(portEl.dataset.portType);
     
     // Get connected device name if exists
     let connectedDeviceName = '';
@@ -904,27 +937,52 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
         }
     }
     
-    const isEthernetPort = portType.startsWith('ethernet');
-    const cableTypeMarkup = isEthernetPort ? `
-        <select id="${portId}-cable-type" class="port-select">
-            <option value="">Select cable type</option>
-            ${ETHERNET_CABLE_OPTIONS.map(option => `
-                <option value="${option.value}"${option.value === cableType ? ' selected' : ''}>
-                    ${escapeHtml(option.text)}
-                </option>
-            `).join('')}
-        </select>
-    ` : '';
-    const speedMarkup = isEthernetPort ? `
-        <select id="${portId}-speed" class="port-select">
-            <option value="">Select speed</option>
-            ${ETHERNET_SPEED_OPTIONS.map(option => `
-                <option value="${option.value}"${option.value === speed ? ' selected' : ''}>
-                    ${escapeHtml(option.text)}
-                </option>
-            `).join('')}
-        </select>
-    ` : '';
+    const isEthernetPort = portKind === 'ethernet';
+    const cableTypeMarkup = `
+        <div class="port-field">
+            <label for="${portId}-cable-type">Cable type</label>
+            <select id="${portId}-cable-type" class="port-select"${isEthernetPort ? '' : ' disabled'}>
+                <option value="">Select cable type</option>
+                ${ETHERNET_CABLE_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === cableType ? ' selected' : ''}>
+                        ${escapeHtml(option.text)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    const speedMarkup = `
+        <div class="port-field">
+            <label for="${portId}-speed">Speed</label>
+            <select id="${portId}-speed" class="port-select"${isEthernetPort ? '' : ' disabled'}>
+                <option value="">Select speed</option>
+                ${ETHERNET_SPEED_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === speed ? ' selected' : ''}>
+                        ${escapeHtml(option.text)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    const directionSelectMarkup = `
+        <div class="port-field">
+            <label for="${portId}-direction">Direction</label>
+            <select id="${portId}-direction" class="port-select port-direction-select">
+                <option value="input"${portDirection === 'input' ? ' selected' : ''}>Input</option>
+                <option value="output"${portDirection === 'output' ? ' selected' : ''}>Output</option>
+            </select>
+        </div>
+    `;
+    const typeSelectMarkup = isPowerContainer ? '' : `
+        <div class="port-field">
+            <label for="${portId}-type">Type</label>
+            <select id="${portId}-type" class="port-select port-type-select">
+                <option value="ethernet"${portKind === 'ethernet' ? ' selected' : ''}>Ethernet</option>
+                <option value="usb"${portKind === 'usb' ? ' selected' : ''}>USB</option>
+            </select>
+        </div>
+    `;
+    const showExtraRow = Boolean(typeSelectMarkup) || isEthernetPort;
 
     portEl.innerHTML = `
         <div class="port-header">
@@ -940,9 +998,10 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             </button>
         </div>
         <div class="port-body">
-            <label for="${portId}-search">Connected to:</label>
-            <div class="port-connection-row">
+            <div class="port-main-row">
+                ${directionSelectMarkup}
                 <div class="port-search-wrapper">
+                    <label for="${portId}-search">Connected to</label>
                     <input 
                         type="text" 
                         id="${portId}-search" 
@@ -954,13 +1013,60 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
                     />
                     <div id="${portId}-results" class="port-search-results is-hidden"></div>
                 </div>
-                ${cableTypeMarkup}
-                ${speedMarkup}
+            </div>
+            <div class="port-extra-row${showExtraRow ? '' : ' is-hidden'}">
+                ${typeSelectMarkup}
+                <div class="port-ethernet-fields${isEthernetPort ? '' : ' is-hidden'}" data-ethernet-fields>
+                    ${cableTypeMarkup}
+                    ${speedMarkup}
+                </div>
             </div>
         </div>
     `;
     
     container.appendChild(portEl);
+
+    const typeSelect = document.getElementById(`${portId}-type`);
+    const directionSelect = document.getElementById(`${portId}-direction`);
+    const labelEl = portEl.querySelector('.port-label');
+    const ethernetFields = portEl.querySelector('[data-ethernet-fields]');
+    const extraRow = portEl.querySelector('.port-extra-row');
+    const cableSelect = document.getElementById(`${portId}-cable-type`);
+    const speedSelect = document.getElementById(`${portId}-speed`);
+
+    const updatePortType = () => {
+        const kind = typeSelect ? typeSelect.value : portEl.dataset.portKind;
+        const direction = directionSelect ? directionSelect.value : portEl.dataset.portDirection;
+        portEl.dataset.portKind = kind;
+        portEl.dataset.portDirection = direction;
+        const newPortType = buildPortType(kind, direction);
+        portEl.dataset.portType = newPortType;
+        if (labelEl) {
+            labelEl.textContent = getPortLabel(newPortType);
+        }
+        const isEthernet = kind === 'ethernet';
+        if (ethernetFields) {
+            ethernetFields.classList.toggle('is-hidden', !isEthernet);
+        }
+        if (extraRow) {
+            const showExtra = Boolean(typeSelect) || isEthernet;
+            extraRow.classList.toggle('is-hidden', !showExtra);
+        }
+        if (cableSelect) {
+            cableSelect.disabled = !isEthernet;
+        }
+        if (speedSelect) {
+            speedSelect.disabled = !isEthernet;
+        }
+    };
+
+    if (typeSelect) {
+        typeSelect.addEventListener('change', updatePortType);
+    }
+    if (directionSelect) {
+        directionSelect.addEventListener('change', updatePortType);
+    }
+    updatePortType();
     
     // Setup search functionality
     setupPortSearch(portId);
@@ -1095,22 +1201,26 @@ function getPortsData() {
         
         const portEls = container.querySelectorAll('.port-item');
         portEls.forEach(portEl => {
-            const portType = portEl.dataset.portType;
             const portId = portEl.dataset.portId;
             const searchInput = document.getElementById(`${portId}-search`);
             const connectedTo = searchInput ? searchInput.dataset.deviceId : '';
             const cableSelect = document.getElementById(`${portId}-cable-type`);
             const speedSelect = document.getElementById(`${portId}-speed`);
+            const typeSelect = document.getElementById(`${portId}-type`);
+            const directionSelect = document.getElementById(`${portId}-direction`);
+            const portKind = typeSelect ? typeSelect.value : (portEl.dataset.portKind || 'power');
+            const portDirection = directionSelect ? directionSelect.value : (portEl.dataset.portDirection || 'input');
+            const portType = buildPortType(portKind, portDirection);
             
             if (connectedTo) {
                 const portData = {
                     type: portType,
                     connectedTo: connectedTo
                 };
-                if (cableSelect) {
+                if (portKind === 'ethernet' && cableSelect) {
                     portData.cableType = cableSelect.value;
                 }
-                if (speedSelect) {
+                if (portKind === 'ethernet' && speedSelect) {
                     portData.speed = speedSelect.value;
                 }
                 ports.push(portData);

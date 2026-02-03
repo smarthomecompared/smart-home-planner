@@ -880,6 +880,40 @@ nav a.active::before {
     gap: 0.5rem;
 }
 
+.port-main-row,
+.port-extra-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.port-main-row {
+    align-items: flex-end;
+}
+
+.port-extra-row {
+    align-items: center;
+}
+
+.port-extra-row.is-hidden {
+    display: none;
+}
+
+.port-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 160px;
+    flex: 0 0 180px;
+}
+
+.port-field label {
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
 .port-body label {
     font-size: 0.875rem;
     color: var(--text-secondary);
@@ -890,17 +924,17 @@ nav a.active::before {
     position: relative;
 }
 
-.port-connection-row {
+.port-ethernet-fields {
     display: flex;
     gap: 0.75rem;
     align-items: center;
 }
 
-.form-page .port-connection-row {
-    flex-wrap: wrap;
+.port-ethernet-fields.is-hidden {
+    display: none;
 }
 
-.port-connection-row .port-search-wrapper {
+.port-main-row .port-search-wrapper {
     flex: 1;
 }
 
@@ -955,13 +989,25 @@ nav a.active::before {
 }
 
 @media (max-width: 768px) {
-    .port-connection-row {
+    .port-main-row,
+    .port-extra-row {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .port-connection-row .port-search-wrapper,
-    .port-connection-row .port-select {
+    .port-field {
+        width: 100%;
+        flex: 1 1 auto;
+    }
+
+    .port-ethernet-fields {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .port-main-row .port-search-wrapper,
+    .port-main-row .port-select {
         width: 100%;
         flex: 1 1 auto;
     }
@@ -1017,6 +1063,14 @@ nav a.active::before {
     cursor: default;
     text-align: center;
     font-size: 0.875rem;
+}
+
+.form-page #add-port-btn,
+.form-page #add-power-port-btn {
+    justify-self: start;
+    align-self: start;
+    width: auto;
+    padding-inline: 0.9rem;
 }
 
 .port-search-result-item.no-results:hover {
