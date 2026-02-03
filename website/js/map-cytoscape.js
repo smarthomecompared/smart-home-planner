@@ -1,38 +1,95 @@
-// Map Page JavaScript with Cytoscape.js
+// Device Diagram JavaScript with Cytoscape.js
 
-let devices = [];
-let areas = [];
-let floors = [];
-let settings = {};
-let cy = null;
-let deviceFilters = null;
-let isLayoutEditable = false;
-let hasUnsavedLayoutChanges = false;
-let isPanningFromNode = false;
-let lastPanPosition = null;
-let cachedPositions = null;
+window.DeviceDiagram = (() => {
+    let devices = [];
+    let areas = [];
+    let floors = [];
+    let settings = {};
+    let filteredDevices = null;
+    let cy = null;
+    let deviceFilters = null;
+    let isLayoutEditable = false;
+    let hasUnsavedLayoutChanges = false;
+    let isPanningFromNode = false;
+    let lastPanPosition = null;
+    let cachedPositions = null;
+    let isInitialized = false;
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const data = loadData();
-    const selectedHomeId = data.selectedHomeId;
-    devices = data.devices.filter(device => device.homeId === selectedHomeId);
-    areas = data.areas.filter(area => area.homeId === selectedHomeId);
-    floors = data.floors.filter(floor => floor.homeId === selectedHomeId);
-    settings = loadSettings();
-    
-    // Initialize device filters
-    deviceFilters = new DeviceFilters();
-    deviceFilters.init(devices, areas, floors, settings);
-    deviceFilters.onFilterChange = (filteredDevices) => {
-        // Just re-render the network with filtered devices
+    function init(options = {}) {
+        if (isInitialized) return;
+        const mapContainer = document.getElementById('network-map');
+        if (!mapContainer) return;
+        if (typeof cytoscape === 'undefined') {
+            console.error('Cytoscape library not loaded.');
+            return;
+        }
+
+        devices = Array.isArray(options.devices) ? options.devices : [];
+        areas = Array.isArray(options.areas) ? options.areas : [];
+        floors = Array.isArray(options.floors) ? options.floors : [];
+        settings = options.settings || {};
+        filteredDevices = Array.isArray(options.filteredDevices) ? options.filteredDevices : null;
+
+        if (options.enableFilters && window.DeviceFilters) {
+            deviceFilters = new DeviceFilters();
+            deviceFilters.init(devices, areas, floors, settings);
+            deviceFilters.onFilterChange = () => {
+                if (filteredDevices === null) {
+                    renderNetwork();
+                }
+            };
+        }
+
+        initializeEventListeners();
+        initializeCytoscape();
         renderNetwork();
-    };
-    
-    initializeEventListeners();
-    initializeCytoscape();
-    renderNetwork();
-});
+        isInitialized = true;
+    }
+
+    function initWithStoredData(options = {}) {
+        const data = loadData();
+        const selectedHomeId = data.selectedHomeId;
+        init({
+            ...options,
+            devices: data.devices.filter(device => device.homeId === selectedHomeId),
+            areas: data.areas.filter(area => area.homeId === selectedHomeId),
+            floors: data.floors.filter(floor => floor.homeId === selectedHomeId),
+            settings: loadSettings()
+        });
+    }
+
+    function updateData(next = {}) {
+        if (Array.isArray(next.devices)) {
+            devices = next.devices;
+        }
+        if (Array.isArray(next.areas)) {
+            areas = next.areas;
+        }
+        if (Array.isArray(next.floors)) {
+            floors = next.floors;
+        }
+        if (next.settings) {
+            settings = next.settings;
+        }
+
+        if (deviceFilters) {
+            deviceFilters.updateData(devices, areas, floors, settings);
+            deviceFilters.applyFilters();
+        }
+
+        renderNetwork();
+    }
+
+    function setFilteredDevices(next) {
+        filteredDevices = Array.isArray(next) ? next : [];
+        renderNetwork();
+    }
+
+    function setVisible(isVisible) {
+        if (!cy) return;
+        if (!isVisible) return;
+        resizeCytoscape();
+    }
 
 // Event listeners
 function initializeEventListeners() {
@@ -60,17 +117,26 @@ function initializeEventListeners() {
             configToggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
         });
     }
-    document.getElementById('fit-network-btn').addEventListener('click', fitNetwork);
+    const fitBtn = document.getElementById('fit-network-btn');
+    if (fitBtn) {
+        fitBtn.addEventListener('click', fitNetwork);
+    }
     const editLayoutBtn = document.getElementById('toggle-edit-layout-btn');
     if (editLayoutBtn) {
         editLayoutBtn.addEventListener('click', toggleLayoutEdit);
     }
-    document.getElementById('reset-layout-btn').addEventListener('click', resetLayout);
+    const resetBtn = document.getElementById('reset-layout-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetLayout);
+    }
     const cancelLayoutBtn = document.getElementById('cancel-layout-btn');
     if (cancelLayoutBtn) {
         cancelLayoutBtn.addEventListener('click', cancelLayoutChanges);
     }
-    document.getElementById('save-positions-btn').addEventListener('click', savePositions);
+    const saveBtn = document.getElementById('save-positions-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', savePositions);
+    }
     const fullscreenBtn = document.getElementById('fullscreen-map-btn');
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleMapFullscreen);
@@ -162,7 +228,7 @@ function toggleMapFullscreen() {
         return;
     }
 
-    const mapSection = document.getElementById('map-section');
+    const mapSection = document.getElementById('diagram-section') || document.getElementById('map-section');
     if (mapSection && mapSection.requestFullscreen) {
         mapSection.requestFullscreen().catch(() => {
             setMapFullscreen(false);
@@ -495,7 +561,7 @@ function showDeviceTooltip(node) {
         </div>
     `;
     
-    const tooltipRoot = document.fullscreenElement || document.getElementById('map-section') || document.body;
+    const tooltipRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
     tooltipRoot.appendChild(tooltip);
     
     // Position tooltip
@@ -529,23 +595,27 @@ function renderNetwork() {
     hideDeviceTooltip();
     
     // Get display settings
-    const showEthernet = document.getElementById('show-ethernet-connections').checked;
-    const showUsb = document.getElementById('show-usb-connections').checked;
-    const showPower = document.getElementById('show-power-connections').checked;
+    const ethernetToggle = document.getElementById('show-ethernet-connections');
+    const usbToggle = document.getElementById('show-usb-connections');
+    const powerToggle = document.getElementById('show-power-connections');
+    const showEthernet = ethernetToggle ? ethernetToggle.checked : true;
+    const showUsb = usbToggle ? usbToggle.checked : true;
+    const showPower = powerToggle ? powerToggle.checked : true;
     
-    // Use filtered devices from DeviceFilters module
-    const filteredDevices = (deviceFilters ? deviceFilters.getFilteredDevices() : devices)
-        .filter(device => device.status !== 'wishlist');
+    const sourceDevices = Array.isArray(filteredDevices)
+        ? filteredDevices
+        : (deviceFilters ? deviceFilters.getFilteredDevices() : devices);
+    const filteredDevicesList = sourceDevices.filter(device => device.status !== 'wishlist');
 
     const mapCountLabel = document.getElementById('map-devices-count');
     if (mapCountLabel) {
-        mapCountLabel.textContent = `${filteredDevices.length} device${filteredDevices.length !== 1 ? 's' : ''}`;
+        mapCountLabel.textContent = `${filteredDevicesList.length} device${filteredDevicesList.length !== 1 ? 's' : ''}`;
     }
     
-    console.log('Rendering map with devices:', filteredDevices.length);
+    console.log('Rendering map with devices:', filteredDevicesList.length);
     
     // Check if there are devices to show
-    if (filteredDevices.length === 0) {
+    if (filteredDevicesList.length === 0) {
         cy.elements().remove();
         showEmptyMapMessage();
         return;
@@ -553,14 +623,14 @@ function renderNetwork() {
     
     // Get unique floors and areas from filtered devices
     const validAreaIds = new Set(areas.map(area => area.id));
-    const deviceAreaIds = [...new Set(filteredDevices.map(d => d.area).filter(areaId => areaId && validAreaIds.has(areaId)))];
+    const deviceAreaIds = [...new Set(filteredDevicesList.map(d => d.area).filter(areaId => areaId && validAreaIds.has(areaId)))];
     const filteredAreas = areas.filter(a => deviceAreaIds.includes(a.id));
     const floorIds = [...new Set(filteredAreas.map(a => a.floor).filter(Boolean))];
     const filteredFloors = floors.filter(f => floorIds.includes(f.id));
-    const unassignedDevices = filteredDevices.filter(d => !d.area || !validAreaIds.has(d.area));
+    const unassignedDevices = filteredDevicesList.filter(d => !d.area || !validAreaIds.has(d.area));
     
     console.log('Map data:', {
-        devices: filteredDevices.length,
+        devices: filteredDevicesList.length,
         areas: filteredAreas.length,
         floors: filteredFloors.length,
         totalDevices: devices.length,
@@ -603,7 +673,7 @@ function renderNetwork() {
         let xOffset = 0;
         
         areasInFloor.forEach((area, areaIndex) => {
-            const devicesInArea = filteredDevices.filter(d => d.area === area.id);
+            const devicesInArea = filteredDevicesList.filter(d => d.area === area.id);
             
             // Add area node with floor as parent
             elements.push({
@@ -660,7 +730,7 @@ function renderNetwork() {
         
         // Calculate floor height based on number of devices in areas
         const maxDevicesInAnyArea = Math.max(...areasInFloor.map(a => 
-            filteredDevices.filter(d => d.area === a.id).length
+            filteredDevicesList.filter(d => d.area === a.id).length
         ), 1);
         const rowsNeeded = Math.ceil(maxDevicesInAnyArea / 3);
         const floorHeight = Math.max(500, rowsNeeded * deviceSpacingY + 200);
@@ -730,14 +800,14 @@ function renderNetwork() {
     // Add edges for connections
     const processedConnections = new Set();
     
-    filteredDevices.forEach(device => {
+    filteredDevicesList.forEach(device => {
         if (!device.ports || !Array.isArray(device.ports)) return;
         
         device.ports.forEach(port => {
             if (!port.connectedTo) return;
             
             // Check if connected device is in filtered list
-            if (!filteredDevices.find(d => d.id === port.connectedTo)) return;
+            if (!filteredDevicesList.find(d => d.id === port.connectedTo)) return;
             
             // Create unique connection ID to avoid duplicates
             const connectionId = [device.id, port.connectedTo].sort().join('-');
@@ -762,12 +832,12 @@ function renderNetwork() {
             if (show) {
                 let label = '';
                 if (connectionType === 'ethernet') {
-                    const meta = getEthernetConnectionMeta(device, port, filteredDevices);
+                    const meta = getEthernetConnectionMeta(device, port, filteredDevicesList);
                     label = formatEthernetLabel(meta);
                 } else if (connectionType === 'usb') {
                     label = 'USB';
                 } else if (connectionType === 'power') {
-                    label = getPowerConnectionLabel(device, port, filteredDevices);
+                    label = getPowerConnectionLabel(device, port, filteredDevicesList);
                 }
 
                 // Determine arrow direction based on port type
@@ -990,7 +1060,7 @@ function showPowerConnectionDialog(device) {
         closeBtn.addEventListener('click', hidePowerConnectionDialog);
     }
 
-    const dialogRoot = document.fullscreenElement || document.getElementById('map-section') || document.body;
+    const dialogRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
     dialogRoot.appendChild(overlay);
 }
 
@@ -1187,3 +1257,13 @@ function hideEmptyMapMessage() {
         message.remove();
     }
 }
+
+    return {
+        init,
+        initWithStoredData,
+        updateData,
+        setFilteredDevices,
+        setVisible,
+        resize: resizeCytoscape
+    };
+})();

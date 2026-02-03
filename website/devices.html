@@ -15,6 +15,8 @@
     <title>Devices - Smart Home Planner</title>
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/devices.css">
+    <link rel="stylesheet" href="css/map.css">
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -35,7 +37,6 @@
             <nav class="site-nav" id="main-nav">
                 <a href="index.html">Dashboard</a>
                 <a href="devices.html" class="active">Devices</a>
-                <a href="map.html">Map</a>
                 <a href="areas.html">Areas</a>
                 <a href="floors.html">Floors</a>
                 <a href="settings.html">Settings</a>
@@ -51,6 +52,7 @@
                 <div class="view-toggle" role="group" aria-label="View mode">
                     <button class="view-toggle-btn" type="button" data-view="table" aria-pressed="false">Table</button>
                     <button class="view-toggle-btn" type="button" data-view="grid" aria-pressed="false">Grid</button>
+                    <button class="view-toggle-btn" type="button" data-view="diagram" aria-pressed="false">Diagram</button>
                 </div>
                 <a href="device-add.html" class="btn btn-primary devices-add-btn">Add Device</a>
             </div>
@@ -241,6 +243,75 @@
 
             <div class="devices-grid" id="devices-grid"></div>
 
+            <div id="diagram-section" class="devices-diagram">
+                <div class="map-display-settings is-collapsed" id="map-config">
+                    <div class="map-display-header">
+                        <h3>Diagram settings</h3>
+                        <button class="btn btn-secondary btn-sm btn-icon map-display-toggle" type="button" aria-expanded="false" aria-controls="map-config-body" aria-label="Toggle diagram settings">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 9l6 6 6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="map-display-body" id="map-config-body">
+                        <div class="settings-group connection-toggles">
+                            <label class="checkbox-label connection-toggle">
+                                <input type="checkbox" id="show-ethernet-connections" checked>
+                                <span class="legend-line ethernet" aria-hidden="true"></span>
+                                <span>Ethernet Connection</span>
+                            </label>
+                            <label class="checkbox-label connection-toggle">
+                                <input type="checkbox" id="show-usb-connections" checked>
+                                <span class="legend-line usb" aria-hidden="true"></span>
+                                <span>USB Connection</span>
+                            </label>
+                            <label class="checkbox-label connection-toggle">
+                                <input type="checkbox" id="show-power-connections" checked>
+                                <span class="legend-line power" aria-hidden="true"></span>
+                                <span>Power Connection</span>
+                            </label>
+                        </div>
+                        <div class="settings-group connection-toggles">
+                            <div class="form-group">
+                                <label for="power-label-mode">Power connection label</label>
+                                <select id="power-label-mode">
+                                    <option value="idle">Idle</option>
+                                    <option value="mean" selected>Mean</option>
+                                    <option value="max">Max</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-stage">
+                    <div id="network-map"></div>
+                    <div class="map-controls-overlay">
+                        <div class="map-controls">
+                            <button class="btn btn-secondary btn-sm" id="toggle-edit-layout-btn">Edit Layout</button>
+                            <button class="btn btn-secondary btn-sm" id="fit-network-btn">Fit to Screen</button>
+                            <button class="btn btn-secondary btn-sm btn-icon" id="fullscreen-map-btn" aria-pressed="false" aria-label="Full screen" title="Full screen">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 9V4h5"></path>
+                                    <path d="M20 15v5h-5"></path>
+                                    <path d="M20 9V4h-5"></path>
+                                    <path d="M4 15v5h5"></path>
+                                    <path d="M4 4l6 6"></path>
+                                    <path d="M20 4l-6 6"></path>
+                                    <path d="M4 20l6-6"></path>
+                                    <path d="M20 20l-6-6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="map-controls map-controls-secondary">
+                            <button class="btn btn-secondary btn-sm" id="reset-layout-btn" style="display: none;" disabled>Reset</button>
+                            <button class="btn btn-secondary btn-sm" id="cancel-layout-btn" style="display: none;" disabled>Cancel</button>
+                            <button class="btn btn-primary btn-sm" id="save-positions-btn" style="display: none;" disabled>Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="pagination-container">
                 <div class="pagination-info">
                     <span id="pagination-info">Showing 0-0 of 0</span>
@@ -266,6 +337,7 @@
     <script src="js/metadata.js"></script>
     <script src="js/common.js"></script>
     <script src="js/device-filters.js"></script>
+    <script src="js/map-cytoscape.js"></script>
     <script src="js/devices.js"></script>
 </body>
 </html>

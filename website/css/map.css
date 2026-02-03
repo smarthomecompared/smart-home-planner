@@ -242,7 +242,9 @@ body.map-fullscreen .container {
 body.map-fullscreen header,
 body.map-fullscreen .filters-container,
 body.map-fullscreen .map-display-settings,
-body.map-fullscreen .map-info {
+body.map-fullscreen .map-info,
+body.map-fullscreen .devices-header,
+body.map-fullscreen .pagination-container {
     display: none;
 }
 

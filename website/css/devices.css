@@ -122,6 +122,11 @@
     margin-bottom: 1.5rem;
 }
 
+.devices-diagram {
+    display: none;
+    margin-bottom: 1.5rem;
+}
+
 .device-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -339,7 +344,8 @@
     }
 
     .view-toggle-btn {
-        flex: 1 1 50%;
+        flex: 1 1 0;
+        text-align: center;
     }
 
     .devices-header .section-title-group {

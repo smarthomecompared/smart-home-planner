@@ -14,6 +14,7 @@ let sortColumn = null;
 let sortDirection = 'asc';
 let filteredDevices = [];
 let viewMode = 'table';
+let diagramReady = false;
 
 const VIEW_STORAGE_KEY = 'smartHomeDevicesView';
 
@@ -37,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredDevices = filtered;
         currentPage = 1;
         renderDevices();
+        if (diagramReady && window.DeviceDiagram) {
+            window.DeviceDiagram.setFilteredDevices(filteredDevices);
+        }
     };
     
     initializeEventListeners();
@@ -74,7 +78,7 @@ function initializeEventListeners() {
 
 function initializeViewToggle() {
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
-    if (saved === 'table' || saved === 'grid') {
+    if (saved === 'table' || saved === 'grid' || saved === 'diagram') {
         viewMode = saved;
     } else {
         viewMode = window.innerWidth <= 640 ? 'grid' : 'table';
@@ -118,12 +122,45 @@ function updateViewToggle() {
 function updateViewVisibility() {
     const tableContainer = document.getElementById('devices-table-container');
     const grid = document.getElementById('devices-grid');
+    const diagram = document.getElementById('diagram-section');
+    const pagination = document.querySelector('.pagination-container');
     if (tableContainer) {
         tableContainer.style.display = viewMode === 'table' ? '' : 'none';
     }
     if (grid) {
         grid.style.display = viewMode === 'grid' ? 'grid' : 'none';
     }
+    if (diagram) {
+        diagram.style.display = viewMode === 'diagram' ? 'block' : 'none';
+    }
+    if (pagination) {
+        pagination.style.display = viewMode === 'diagram' ? 'none' : '';
+    }
+
+    if (viewMode === 'diagram') {
+        ensureDiagramReady();
+        if (window.DeviceDiagram) {
+            window.DeviceDiagram.setVisible(true);
+            window.DeviceDiagram.setFilteredDevices(filteredDevices);
+        }
+    } else if (diagramReady && window.DeviceDiagram) {
+        window.DeviceDiagram.setVisible(false);
+    }
+}
+
+function ensureDiagramReady() {
+    if (diagramReady) return;
+    if (!window.DeviceDiagram) return;
+    const mapContainer = document.getElementById('network-map');
+    if (!mapContainer) return;
+    window.DeviceDiagram.init({
+        devices,
+        areas,
+        floors,
+        settings,
+        filteredDevices
+    });
+    diagramReady = true;
 }
 
 // CRUD Operations
@@ -160,6 +197,9 @@ function createDevice(deviceData) {
     devices = allDevices.filter(item => item.homeId === selectedHomeId);
     saveData(getAllData());
     deviceFilters.updateData(devices, areas, floors, settings);
+    if (diagramReady && window.DeviceDiagram) {
+        window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+    }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
     return device;
 }
@@ -195,6 +235,9 @@ function updateDevice(id, deviceData) {
         saveData(getAllData());
         devices = allDevices.filter(item => item.homeId === selectedHomeId);
         deviceFilters.updateData(devices, areas, floors, settings);
+        if (diagramReady && window.DeviceDiagram) {
+            window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+        }
         deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
         return device;
     }
@@ -222,6 +265,9 @@ async function deleteDevice(id) {
     
     saveData(getAllData());
     deviceFilters.updateData(devices, areas, floors, settings);
+    if (diagramReady && window.DeviceDiagram) {
+        window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+    }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }
 
