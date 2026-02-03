@@ -656,7 +656,7 @@ nav a.active::before {
     border-radius: 8px;
     font-size: 0.875rem;
     font-family: inherit;
-    background: var(--bg-secondary);
+    background-color: var(--bg-secondary);
     color: var(--text-color);
     transition: all var(--transition-base);
 }
@@ -682,7 +682,7 @@ nav a.active::before {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    background: var(--card-bg);
+    background-color: var(--card-bg);
 }
 
 .form-group input:invalid:not(:placeholder-shown) {
@@ -979,7 +979,7 @@ nav a.active::before {
     font-size: 0.875rem;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    background: var(--bg-secondary);
+    background-color: var(--bg-secondary);
     color: var(--text-color);
     transition: all var(--transition-base);
 }
@@ -1021,7 +1021,7 @@ nav a.active::before {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px var(--primary-light);
-    background: var(--card-bg);
+    background-color: var(--card-bg);
 }
 
 .port-search-results {
@@ -1295,10 +1295,10 @@ nav a.active::before {
 .filters-container {
     margin-bottom: 1.5rem;
     padding: 1.25rem 1.5rem;
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
-    border-radius: 14px;
-    border: 1px solid rgba(71, 85, 105, 0.7);
-    box-shadow: var(--shadow-lg);
+    background: linear-gradient(160deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88));
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
     display: grid;
     gap: 1rem;
     position: relative;
@@ -1309,7 +1309,8 @@ nav a.active::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 55%, rgba(16, 185, 129, 0.08));
+    background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.1), transparent 60%);
     pointer-events: none;
 }
 
@@ -1324,11 +1325,11 @@ nav a.active::before {
 }
 
 .filters-header h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
     margin: 0;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     display: flex;
     align-items: center;
@@ -1340,7 +1341,7 @@ nav a.active::before {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(71, 85, 105, 0.7), transparent);
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), transparent);
 }
 
 .filters-actions {
@@ -1366,20 +1367,46 @@ nav a.active::before {
     z-index: 1;
 }
 
-.filters {
+.filters,
+.filters-row {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
     align-items: center;
     margin: 0;
 }
 
 .filters-primary {
-    grid-template-columns: minmax(240px, 1fr) auto;
+    grid-template-columns: minmax(280px, 1fr) auto;
+    align-items: end;
 }
 
-.filters-primary .filter-input-wide {
+.filters-primary .btn {
+    justify-self: end;
+    align-self: end;
+    min-height: 44px;
+    padding: 0.75rem 1.1rem;
+    font-size: 0.8rem;
+}
+
+.filters-primary .filter-input-wide,
+.filters-primary .filter-field-wide {
     grid-column: 1 / 2;
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.filter-field label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(226, 232, 240, 0.6);
+    font-weight: 600;
 }
 
 .filter-select {
@@ -1406,10 +1433,11 @@ nav a.active::before {
 
 .filters-container .filter-select,
 .filters-container .filter-input {
-    background: rgba(15, 23, 42, 0.8);
-    border-color: rgba(71, 85, 105, 0.7);
+    background-color: rgba(15, 23, 42, 0.75);
+    border-color: rgba(148, 163, 184, 0.3);
     color: var(--text-color);
     min-width: 0;
+    width: 100%;
 }
 
 .filter-input-wide {
@@ -1426,7 +1454,20 @@ nav a.active::before {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-    background: rgba(15, 23, 42, 0.9);
+    background-color: rgba(15, 23, 42, 0.9);
+}
+
+select,
+.filter-select,
+.port-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 2.4rem;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23cbd5e1' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-size: 0.55rem;
 }
 
 .filter-select.is-active,
@@ -1435,47 +1476,87 @@ nav a.active::before {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
-.filters-section-label {
-    grid-column: 1 / -1;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-    margin-top: 0.25rem;
-}
-
-.filters-section-label:first-child {
-    margin-top: 0;
-}
-
 .filters-advanced {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    padding: 0.75rem;
-    border-radius: 12px;
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    background: rgba(15, 23, 42, 0.7);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.9rem;
+    align-items: stretch;
 }
 
-.filters-advanced .checkbox-label {
+.filters-block {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 14px;
+    padding: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.35);
+}
+
+.filters-block-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.75);
+    font-weight: 700;
+}
+
+.filters-block-body {
+    display: grid;
+    gap: 0.6rem;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    align-items: start;
+}
+
+.filters-block-body .filter-field {
+    grid-column: 1 / -1;
+}
+
+.filters-block-body .filter-field + .filter-field {
+    grid-column: auto;
+}
+
+.filters-block.is-connectivity-options .filters-block-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: start;
+}
+
+.checkbox-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.65);
+    transition: all var(--transition-base);
+    min-width: 0;
+    line-height: 1.2;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+
+.checkbox-chip:hover {
+    border-color: rgba(148, 163, 184, 0.5);
+    color: var(--text-color);
+}
+
+.checkbox-chip.is-active {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    color: var(--text-color);
+}
+
+.checkbox-chip input[type="checkbox"] {
+    width: auto;
     margin: 0;
 }
 
-.filters-advanced .checkbox-label.is-active {
-    color: var(--text-color);
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-.filters-container .checkbox-label {
-    padding: 0.55rem 0.75rem;
-    border-radius: 10px;
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    background: rgba(15, 23, 42, 0.6);
-    transition: all var(--transition-base);
-}
-
-.filters-container .checkbox-label:hover {
-    border-color: var(--border-hover);
+.checkbox-chip span {
+    flex: 1;
+    min-width: 0;
 }
 
 .filters-advanced.is-collapsed {
@@ -1513,15 +1594,26 @@ nav a.active::before {
         width: auto;
     }
 
+    .filters-row,
     .filters-primary {
         grid-template-columns: 1fr;
     }
 
-    .filters-primary .filter-input-wide {
+    .filters-primary .filter-input-wide,
+    .filters-primary .filter-field-wide {
         grid-column: auto;
     }
 
     .filters-primary .btn {
         width: 100%;
+        justify-self: stretch;
+    }
+
+    .filters-advanced {
+        grid-template-columns: 1fr;
+    }
+
+    .filters-block-body {
+        grid-template-columns: 1fr;
     }
 }

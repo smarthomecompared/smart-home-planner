@@ -128,7 +128,7 @@ class DeviceFilters {
         const currentFloorValue = floorFilter ? floorFilter.value : '';
         if (floorFilter) {
             const sortedFloors = [...this.floors].sort((a, b) => a.name.localeCompare(b.name));
-            floorFilter.innerHTML = '<option value="">All Floors</option>' +
+            floorFilter.innerHTML = '<option value="">All</option>' +
                 sortedFloors.map(floor => `<option value="${floor.id}">${this.escapeHtml(floor.name)}</option>`).join('');
             floorFilter.value = currentFloorValue;
         }
@@ -138,7 +138,7 @@ class DeviceFilters {
         const currentAreaValue = areaFilter ? areaFilter.value : '';
         if (areaFilter) {
             const sortedAreas = [...this.areas].sort((a, b) => a.name.localeCompare(b.name));
-            areaFilter.innerHTML = '<option value="">All Areas</option>' +
+            areaFilter.innerHTML = '<option value="">All</option>' +
                 sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             areaFilter.value = currentAreaValue;
@@ -151,7 +151,7 @@ class DeviceFilters {
             const configuredBrands = this.settings.brands || [];
             const deviceBrands = [...new Set(this.devices.map(d => d.brand).filter(Boolean))];
             const brandOptions = this.buildFriendlyOptions(configuredBrands, deviceBrands, this.formatDeviceType);
-            brandFilter.innerHTML = '<option value="">All Brands</option>' +
+            brandFilter.innerHTML = '<option value="">All</option>' +
                 brandOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
             brandFilter.value = currentBrandValue ? normalizeOptionValue(currentBrandValue) : currentBrandValue;
         }
@@ -163,7 +163,7 @@ class DeviceFilters {
             const configuredTypes = this.settings.types || [];
             const deviceTypes = [...new Set(this.devices.map(d => d.type).filter(Boolean))];
             const typeOptions = this.buildFriendlyOptions(configuredTypes, deviceTypes, this.formatDeviceType);
-            typeFilter.innerHTML = '<option value="">All Types</option>' +
+            typeFilter.innerHTML = '<option value="">All</option>' +
                 typeOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
             typeFilter.value = currentTypeValue ? normalizeOptionValue(currentTypeValue) : currentTypeValue;
         }
@@ -175,7 +175,7 @@ class DeviceFilters {
             const configuredConnectivity = this.settings.connectivity || [];
             const deviceConnectivity = [...new Set(this.devices.map(d => d.connectivity).filter(Boolean))];
             const connectivityOptions = this.buildFriendlyOptions(configuredConnectivity, deviceConnectivity, this.formatConnectivity);
-            connectivityFilter.innerHTML = '<option value="">All Connectivity</option>' +
+            connectivityFilter.innerHTML = '<option value="">All</option>' +
                 connectivityOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             connectivityFilter.value = currentConnectivityValue ? normalizeOptionValue(currentConnectivityValue) : currentConnectivityValue;
@@ -188,7 +188,7 @@ class DeviceFilters {
             const configuredBatteryTypes = this.settings.batteryTypes || [];
             const deviceBatteryTypes = [...new Set(this.devices.map(d => d.batteryType).filter(Boolean))];
             const batteryOptions = this.buildFriendlyOptions(configuredBatteryTypes, deviceBatteryTypes, this.formatDeviceType);
-            batteryTypeFilter.innerHTML = '<option value="">All Battery Types</option>' +
+            batteryTypeFilter.innerHTML = '<option value="">All</option>' +
                 batteryOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
             batteryTypeFilter.value = currentBatteryTypeValue ? normalizeOptionValue(currentBatteryTypeValue) : currentBatteryTypeValue;
         }
