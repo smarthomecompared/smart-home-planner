@@ -134,6 +134,10 @@ function importData() {
             if (importedData.mapPositions) {
                 localStorage.setItem('smart-home-network-positions', JSON.stringify(importedData.mapPositions));
             }
+
+            settings = loadSettings();
+            renderHomesManagement();
+            renderOptionsManagement();
             
             // Reset file input
             document.getElementById('import-file').value = '';
@@ -141,7 +145,7 @@ function importData() {
             document.getElementById('import-confirm-btn').style.display = 'none';
             selectedFile = null;
             
-            showMessage('Data imported successfully! Please refresh the page.', 'success');
+            showMessage('Data imported successfully!', 'success');
         } catch (error) {
             console.error('Import error:', error);
             showMessage('Error importing data: ' + error.message, 'error');
@@ -200,11 +204,11 @@ function renderVersionInfo() {
     const notesWrap = document.getElementById('settings-version-notes');
     const notesEl = document.getElementById('settings-version-note');
     if (!badgeEl || !dateEl) return;
-    const version = typeof managerVersion === 'string' && managerVersion.trim() ? managerVersion.trim() : '0.1.0';
-    const releaseDate = typeof managerReleaseDate === 'string' && managerReleaseDate.trim() ? managerReleaseDate.trim() : 'Unknown';
-    const releaseNotes = Array.isArray(managerReleaseNotes)
-        ? managerReleaseNotes.map(note => String(note).trim()).filter(Boolean)
-        : (typeof managerReleaseNotes === 'string' && managerReleaseNotes.trim() ? [managerReleaseNotes.trim()] : []);
+    const version = typeof appVersion === 'string' && appVersion.trim() ? appVersion.trim() : '0.1.0';
+    const releaseDate = typeof appReleaseDate === 'string' && appReleaseDate.trim() ? appReleaseDate.trim() : 'Unknown';
+    const releaseNotes = Array.isArray(appReleaseNotes)
+        ? appReleaseNotes.map(note => String(note).trim()).filter(Boolean)
+        : (typeof appReleaseNotes === 'string' && appReleaseNotes.trim() ? [appReleaseNotes.trim()] : []);
     badgeEl.textContent = `v${version}`;
     dateEl.textContent = releaseDate;
     if (notesWrap && notesEl) {

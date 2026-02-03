@@ -41,6 +41,9 @@ Note: opening with `file://` may work, but localStorage and some behaviors depen
 ## Import/Export
 From **Settings** you can export a JSON with devices, areas, floors, homes, settings, and map positions, or import a backup.
 
+## Demo data
+A complete demo dataset lives at `sample.json`. Import it from **Settings** to explore the dashboard, map, and filters with sample data.
+
 
 ## License
 MIT. See `LICENSE`.
