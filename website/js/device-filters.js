@@ -138,8 +138,9 @@ class DeviceFilters {
         const currentAreaValue = areaFilter ? areaFilter.value : '';
         if (areaFilter) {
             const sortedAreas = [...this.areas].sort((a, b) => a.name.localeCompare(b.name));
-            areaFilter.innerHTML = '<option value="">All Areas</option>' + 
-                sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('');
+            areaFilter.innerHTML = '<option value="">All Areas</option>' +
+                sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
+                '<option value="__none__">-</option>';
             areaFilter.value = currentAreaValue;
         }
         
@@ -277,7 +278,12 @@ class DeviceFilters {
         }
 
         if (areaFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => d.area === areaFilter);
+            if (areaFilter === '__none__') {
+                const validAreaIds = new Set(this.areas.map(area => area.id));
+                this.filteredDevices = this.filteredDevices.filter(d => !d.area || !validAreaIds.has(d.area));
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => d.area === areaFilter);
+            }
         }
         
         if (brandFilter) {

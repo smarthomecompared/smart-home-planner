@@ -552,10 +552,12 @@ function renderNetwork() {
     }
     
     // Get unique floors and areas from filtered devices
-    const deviceAreaIds = [...new Set(filteredDevices.map(d => d.area).filter(Boolean))];
+    const validAreaIds = new Set(areas.map(area => area.id));
+    const deviceAreaIds = [...new Set(filteredDevices.map(d => d.area).filter(areaId => areaId && validAreaIds.has(areaId)))];
     const filteredAreas = areas.filter(a => deviceAreaIds.includes(a.id));
     const floorIds = [...new Set(filteredAreas.map(a => a.floor).filter(Boolean))];
     const filteredFloors = floors.filter(f => floorIds.includes(f.id));
+    const unassignedDevices = filteredDevices.filter(d => !d.area || !validAreaIds.has(d.area));
     
     console.log('Map data:', {
         devices: filteredDevices.length,
@@ -665,6 +667,65 @@ function renderNetwork() {
         
         yOffset += floorHeight + floorSpacing;
     });
+
+    if (unassignedDevices.length) {
+        const floorId = 'floor-unassigned';
+        const areaId = 'area-unassigned';
+
+        elements.push({
+            group: 'nodes',
+            data: {
+                id: floorId,
+                label: 'Unassigned',
+                type: 'floor',
+                level: -9999
+            }
+        });
+
+        elements.push({
+            group: 'nodes',
+            data: {
+                id: areaId,
+                label: 'No Area',
+                type: 'area',
+                parent: floorId
+            }
+        });
+
+        const devicesPerRow = 3;
+        unassignedDevices.forEach((device, deviceIndex) => {
+            const deviceLabel = device.name || device.model || 'Unnamed Device';
+            const storageLabel = formatStorageLabel(device);
+
+            const row = Math.floor(deviceIndex / devicesPerRow);
+            const col = deviceIndex % devicesPerRow;
+
+            const deviceData = {
+                id: device.id,
+                label: deviceLabel,
+                type: 'device',
+                status: device.status,
+                parent: areaId
+            };
+            if (storageLabel) {
+                deviceData.hasStorage = 'true';
+                deviceData.storageIcon = buildStorageIconDataUri(storageLabel);
+            }
+
+            elements.push({
+                group: 'nodes',
+                data: deviceData,
+                position: savedPositions[device.id] || {
+                    x: col * deviceSpacingX,
+                    y: yOffset + row * deviceSpacingY
+                }
+            });
+        });
+
+        const rowsNeeded = Math.ceil(unassignedDevices.length / devicesPerRow);
+        const floorHeight = Math.max(500, rowsNeeded * deviceSpacingY + 200);
+        yOffset += floorHeight + floorSpacing;
+    }
     
     // Add edges for connections
     const processedConnections = new Set();

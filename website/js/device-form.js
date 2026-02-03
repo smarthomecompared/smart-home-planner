@@ -412,12 +412,6 @@ function handleDeviceSubmit(e) {
         homeId: editingDeviceId ? (nextHomeId || editingDeviceHomeId) : getSelectedHomeId()
     };
     
-    // Validate required fields
-    if (deviceData.status !== 'wishlist' && !deviceData.area) {
-        showAlert('Please select an area for this device.');
-        return;
-    }
-    
     if (editingDeviceId) {
         updateDevice(editingDeviceId, deviceData);
     } else {
@@ -501,7 +495,7 @@ function handleStatusChange() {
         areaGroup.classList.toggle('is-hidden', isWishlist);
     }
     if (areaSelect) {
-        areaSelect.required = !isWishlist;
+        areaSelect.required = false;
     }
     if (installationGroup) {
         installationGroup.classList.remove('is-collapsed');
