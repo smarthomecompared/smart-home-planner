@@ -1283,6 +1283,17 @@ nav a.active::before {
         white-space: nowrap;
         flex: 0 0 auto;
     }
+
+    .modal {
+        align-items: flex-start;
+        padding: 1rem;
+        overflow-y: auto;
+    }
+
+    .modal-content {
+        width: 100%;
+        max-height: calc(100vh - 2rem);
+    }
 }
 
 @media (max-width: 480px) {
