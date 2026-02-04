@@ -52,12 +52,18 @@ body {
     line-height: 1.6;
     min-height: 100vh;
     transition: background-color var(--transition-base);
+    overflow-x: hidden;
+}
+
+html {
+    overflow-x: hidden;
 }
 
 .container {
     max-width: 1600px;
     margin: 0 auto;
     padding: 1rem;
+    width: 100%;
 }
 
 header {
