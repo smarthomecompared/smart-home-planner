@@ -16,7 +16,18 @@ let filteredDevices = [];
 let viewMode = 'table';
 let diagramReady = false;
 
-const VIEW_STORAGE_KEY = 'smartHomeDevicesView';
+const VIEW_STORAGE_KEYS = {
+    desktop: 'smartHomeDevicesViewDesktop',
+    mobile: 'smartHomeDevicesViewMobile'
+};
+
+function getViewStorageKey() {
+    return window.innerWidth <= 640 ? VIEW_STORAGE_KEYS.mobile : VIEW_STORAGE_KEYS.desktop;
+}
+
+function getDefaultViewMode() {
+    return window.innerWidth <= 640 ? 'grid' : 'table';
+}
 
 // Device Filters instance
 let deviceFilters = null;
@@ -77,11 +88,11 @@ function initializeEventListeners() {
 }
 
 function initializeViewToggle() {
-    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    const saved = localStorage.getItem(getViewStorageKey());
     if (saved === 'table' || saved === 'grid' || saved === 'diagram') {
         viewMode = saved;
     } else {
-        viewMode = window.innerWidth <= 640 ? 'grid' : 'table';
+        viewMode = getDefaultViewMode();
     }
 
     const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
@@ -90,7 +101,7 @@ function initializeViewToggle() {
             const next = button.getAttribute('data-view');
             if (!next || next === viewMode) return;
             viewMode = next;
-            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            localStorage.setItem(getViewStorageKey(), viewMode);
             updateViewToggle();
             updateViewVisibility();
             renderDevices();
@@ -101,8 +112,10 @@ function initializeViewToggle() {
     updateViewVisibility();
 
     window.addEventListener('resize', () => {
-        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
-        const next = window.innerWidth <= 640 ? 'grid' : 'table';
+        const savedNext = localStorage.getItem(getViewStorageKey());
+        const next = (savedNext === 'table' || savedNext === 'grid' || savedNext === 'diagram')
+            ? savedNext
+            : getDefaultViewMode();
         if (next === viewMode) return;
         viewMode = next;
         updateViewToggle();

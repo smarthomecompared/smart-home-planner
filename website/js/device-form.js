@@ -483,12 +483,14 @@ function handlePowerTypeChange() {
 function handleStatusChange() {
     const status = document.getElementById('device-status').value;
     const isWishlist = status === 'wishlist';
+    const isPending = status === 'pending';
     const areaGroup = document.getElementById('device-area-group');
     const areaSelect = document.getElementById('device-area');
     const installationGroup = document.getElementById('device-installation-group');
     const installationInput = document.getElementById('device-installation-date');
     const batteryChangeGroup = document.getElementById('battery-change-group');
     const batteryChangeInput = document.getElementById('device-last-battery-change');
+    const hideInstallationDate = isWishlist || isPending;
 
     if (areaGroup) {
         areaGroup.classList.remove('is-collapsed');
@@ -499,7 +501,10 @@ function handleStatusChange() {
     }
     if (installationGroup) {
         installationGroup.classList.remove('is-collapsed');
-        installationGroup.classList.toggle('is-hidden', isWishlist);
+        installationGroup.classList.toggle('is-hidden', hideInstallationDate);
+        if (hideInstallationDate && installationInput) {
+            installationInput.value = '';
+        }
     }
     if (batteryChangeGroup) {
         const shouldHideBatteryChange = isWishlist || document.getElementById('device-power').value !== 'battery';
