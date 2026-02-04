@@ -189,6 +189,21 @@ function importData() {
                 localStorage.setItem('smart-home-network-positions', JSON.stringify(importedData.mapPositions));
             }
 
+            if (window.isDemoModeEnabled && window.isDemoModeEnabled()) {
+                const demoKeys = window.DEMO_STORAGE_KEYS;
+                if (demoKeys) {
+                    localStorage.setItem(demoKeys.ENABLED, 'false');
+                    localStorage.removeItem(demoKeys.SNAPSHOT);
+                }
+                if (window.updateDemoBanner) {
+                    window.updateDemoBanner(false);
+                }
+                const demoToggle = document.getElementById('demo-mode-toggle');
+                if (demoToggle) {
+                    demoToggle.checked = false;
+                }
+            }
+
             settings = loadSettings();
             renderHomesManagement();
             renderOptionsManagement();
