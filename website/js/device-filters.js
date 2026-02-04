@@ -156,7 +156,8 @@ class DeviceFilters {
             const deviceBrands = [...new Set(this.devices.map(d => d.brand).filter(Boolean))];
             const brandOptions = this.buildFriendlyOptions(configuredBrands, deviceBrands, this.formatDeviceType);
             brandFilter.innerHTML = '<option value="">All</option>' +
-                brandOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+                brandOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
+                '<option value="__none__">-</option>';
             brandFilter.value = currentBrandValue ? normalizeOptionValue(currentBrandValue) : currentBrandValue;
         }
         
@@ -292,7 +293,11 @@ class DeviceFilters {
         }
         
         if (brandFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.brand) === brandFilter);
+            if (brandFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.brand);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.brand) === brandFilter);
+            }
         }
         
         if (statusFilter) {

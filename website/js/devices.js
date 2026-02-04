@@ -355,7 +355,7 @@ function renderDevices() {
         tbody.innerHTML = paginatedDevices.map(device => {
             const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
             const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
-            const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType);
+            const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
             const connectivityDisplay = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity);
             const statusLabel = formatStatusLabel(device.status);
             return `
