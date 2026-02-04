@@ -111,10 +111,25 @@ function initializeEventListeners() {
     }
     const configToggle = document.querySelector('.map-display-toggle');
     const configPanel = document.getElementById('map-config');
-    if (configToggle && configPanel) {
-        configToggle.addEventListener('click', () => {
-            const isCollapsed = configPanel.classList.toggle('is-collapsed');
+    const toggleConfigPanel = () => {
+        if (!configPanel) return;
+        const isCollapsed = configPanel.classList.toggle('is-collapsed');
+        if (configToggle) {
             configToggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        }
+    };
+    if (configToggle) {
+        configToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleConfigPanel();
+        });
+    }
+    if (configPanel) {
+        configPanel.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!target) return;
+            if (target.closest('button, a, input, select, textarea, label')) return;
+            toggleConfigPanel();
         });
     }
     const fitBtn = document.getElementById('fit-network-btn');

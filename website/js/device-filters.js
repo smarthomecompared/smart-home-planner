@@ -103,18 +103,32 @@ class DeviceFilters {
 
         // Toggle advanced filters
         const toggleBtn = document.getElementById('toggle-advanced-filters');
+        const advancedFilters = document.getElementById('advanced-filters');
+        const container = toggleBtn ? toggleBtn.closest('.filters-container') : document.querySelector('.filters-container');
+        const toggleFilters = () => {
+            if (!container) return;
+            const isCollapsed = container.classList.toggle('is-collapsed');
+            if (advancedFilters) {
+                advancedFilters.classList.toggle('is-collapsed', isCollapsed);
+            }
+            if (toggleBtn) {
+                toggleBtn.classList.toggle('is-expanded', !isCollapsed);
+                toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+            }
+        };
         if (toggleBtn) {
-            toggleBtn.addEventListener('click', () => {
-                const advancedFilters = document.getElementById('advanced-filters');
-                const container = toggleBtn.closest('.filters-container');
-                if (container) {
-                    const isCollapsed = container.classList.toggle('is-collapsed');
-                    if (advancedFilters) {
-                        advancedFilters.classList.toggle('is-collapsed', isCollapsed);
-                    }
-                    toggleBtn.classList.toggle('is-expanded', !isCollapsed);
-                    toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
-                }
+            toggleBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleFilters();
+            });
+        }
+        if (container) {
+            container.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!target) return;
+                if (target.closest('button, a, input, select, textarea, label')) return;
+                if (target.closest('.filters-actions')) return;
+                toggleFilters();
             });
         }
 

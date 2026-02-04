@@ -1343,6 +1343,7 @@ nav a.active::before {
     flex-wrap: wrap;
     position: relative;
     z-index: 1;
+    cursor: pointer;
 }
 
 .filters-header h3 {
