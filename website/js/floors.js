@@ -318,14 +318,14 @@ function renderFloorsGrid(floorRows) {
     }
 
     grid.innerHTML = floorRows.map(({ floor, areaCount, deviceCount }) => {
-        const levelText = floor.level !== null ? `Level ${floor.level}` : '—';
+        const levelText = floor.level !== null ? `${floor.level}` : '—';
         return `
             <div class="floor-card">
                 <div class="floor-card-header">
                     <div class="floor-card-title">${escapeHtml(floor.name)}</div>
                 </div>
                 <div class="floor-card-meta">
-                    <div class="floor-card-meta-row">
+                    <div class="floor-card-meta-row level">
                         <span class="floor-card-meta-label">Level</span>
                         <span class="floor-card-meta-value">${levelText}</span>
                     </div>
