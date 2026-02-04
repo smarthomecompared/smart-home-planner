@@ -469,7 +469,7 @@ function initializeCytoscape() {
     });
 
     // Allow panning by dragging on nodes when not in edit mode
-    cy.on('tapstart', 'node[type="device"]', (event) => {
+    cy.on('tapstart', 'node[type="device"], node[type="area"], node[type="floor"]', (event) => {
         if (isLayoutEditable) return;
         isPanningFromNode = true;
         lastPanPosition = event.renderedPosition;
