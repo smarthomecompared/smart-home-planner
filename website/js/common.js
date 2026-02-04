@@ -13,7 +13,8 @@ const STORAGE_KEYS = {
 const DEMO_STORAGE_KEYS = {
     ENABLED: 'smartHomeDemoMode',
     SNAPSHOT: 'smartHomeDemoSnapshot',
-    MAP_POSITIONS: 'smart-home-network-positions'
+    MAP_POSITIONS: 'smart-home-network-positions',
+    PROMPT_SEEN: 'smartHomeDemoPromptSeen'
 };
 
 function buildHome(name) {
@@ -490,12 +491,109 @@ function updateDemoBanner(enabled) {
     document.body.classList.add('demo-mode');
 }
 
+async function enableDemoMode() {
+    if (isDemoModeEnabled()) {
+        updateDemoBanner(true);
+        return true;
+    }
+    if (!localStorage.getItem(DEMO_STORAGE_KEYS.SNAPSHOT)) {
+        const snapshot = {
+            ...loadData(),
+            settings: loadSettings(),
+            mapPositions: localStorage.getItem(DEMO_STORAGE_KEYS.MAP_POSITIONS)
+                ? JSON.parse(localStorage.getItem(DEMO_STORAGE_KEYS.MAP_POSITIONS))
+                : null
+        };
+        localStorage.setItem(DEMO_STORAGE_KEYS.SNAPSHOT, JSON.stringify(snapshot));
+    }
+
+    const response = await fetch('json/sample.json', { cache: 'no-store' });
+    if (!response.ok) {
+        showAlert('Unable to load demo data. Please run a local server for demo mode.');
+        return false;
+    }
+    const demoData = await response.json();
+
+    if (Array.isArray(demoData.devices)) {
+        demoData.devices = demoData.devices.map(device => ({
+            ...device,
+            brand: normalizeOptionValue(device.brand),
+            type: normalizeOptionValue(device.type),
+            connectivity: normalizeOptionValue(device.connectivity),
+            batteryType: normalizeOptionValue(device.batteryType)
+        }));
+    }
+
+    saveData(demoData);
+    if (demoData.settings) {
+        saveSettings(demoData.settings);
+    }
+    if (demoData.mapPositions) {
+        localStorage.setItem(DEMO_STORAGE_KEYS.MAP_POSITIONS, JSON.stringify(demoData.mapPositions));
+    } else {
+        localStorage.removeItem(DEMO_STORAGE_KEYS.MAP_POSITIONS);
+    }
+
+    localStorage.setItem(DEMO_STORAGE_KEYS.ENABLED, 'true');
+    updateDemoBanner(true);
+    return true;
+}
+
+async function disableDemoMode() {
+    const snapshotRaw = localStorage.getItem(DEMO_STORAGE_KEYS.SNAPSHOT);
+    if (snapshotRaw) {
+        const snapshot = JSON.parse(snapshotRaw);
+        saveData(snapshot);
+        if (snapshot.settings) {
+            saveSettings(snapshot.settings);
+        }
+        if (snapshot.mapPositions) {
+            localStorage.setItem(DEMO_STORAGE_KEYS.MAP_POSITIONS, JSON.stringify(snapshot.mapPositions));
+        } else {
+            localStorage.removeItem(DEMO_STORAGE_KEYS.MAP_POSITIONS);
+        }
+        localStorage.removeItem(DEMO_STORAGE_KEYS.SNAPSHOT);
+    }
+    localStorage.setItem(DEMO_STORAGE_KEYS.ENABLED, 'false');
+    updateDemoBanner(false);
+    return true;
+}
+
+async function maybePromptForDemoMode() {
+    if (isDemoModeEnabled()) return;
+    if (localStorage.getItem(DEMO_STORAGE_KEYS.PROMPT_SEEN) === 'true') return;
+    const message = [
+        'Demo mode loads sample data so you can explore dashboards, filters, and the diagram.',
+        'Normal mode keeps your current data and starts with a clean workspace.',
+        '',
+        'You can change this anytime in Settings.'
+    ].join('\n');
+    const wantsDemo = await showConfirm(message, {
+        title: 'Choose your mode',
+        confirmText: 'Use Demo Mode',
+        cancelText: 'Use Normal Mode'
+    });
+    if (wantsDemo) {
+        const ok = await enableDemoMode();
+        if (ok) {
+            localStorage.setItem(DEMO_STORAGE_KEYS.PROMPT_SEEN, 'true');
+            window.location.reload();
+        }
+    } else {
+        localStorage.setItem(DEMO_STORAGE_KEYS.PROMPT_SEEN, 'true');
+        updateDemoBanner(false);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
     initIconTooltips();
     updateDemoBanner(isDemoModeEnabled());
+    maybePromptForDemoMode();
 });
 
 window.DEMO_STORAGE_KEYS = DEMO_STORAGE_KEYS;
 window.isDemoModeEnabled = isDemoModeEnabled;
 window.updateDemoBanner = updateDemoBanner;
+window.enableDemoMode = enableDemoMode;
+window.disableDemoMode = disableDemoMode;
