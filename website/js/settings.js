@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRepoLink();
     renderHomesManagement();
     renderOptionsManagement();
+    initializeDemoMode();
 });
 
 // Event Listeners
@@ -32,6 +33,39 @@ function initializeEventListeners() {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeHomeModal();
+        }
+    });
+}
+
+function initializeDemoMode() {
+    const toggle = document.getElementById('demo-mode-toggle');
+    if (!toggle) return;
+    toggle.checked = window.isDemoModeEnabled ? window.isDemoModeEnabled() : false;
+    toggle.addEventListener('change', async (event) => {
+        const shouldEnable = event.target.checked;
+        if (shouldEnable) {
+            const confirmed = await showConfirm('Enable demo mode? This will load sample data until you turn it off.', {
+                title: 'Enable demo mode',
+                confirmText: 'Enable'
+            });
+            if (!confirmed) {
+                event.target.checked = false;
+                return;
+            }
+            const success = await enableDemoMode();
+            if (!success) {
+                event.target.checked = false;
+            }
+        } else {
+            const confirmed = await showConfirm('Disable demo mode and restore your previous data?', {
+                title: 'Disable demo mode',
+                confirmText: 'Disable'
+            });
+            if (!confirmed) {
+                event.target.checked = true;
+                return;
+            }
+            await disableDemoMode();
         }
     });
 }
@@ -191,6 +225,94 @@ function validateDataStructure(data) {
     const hasFloors = Array.isArray(data.floors);
 
     return hasDevices && hasAreas && hasFloors;
+}
+
+async function enableDemoMode() {
+    const demoKeys = window.DEMO_STORAGE_KEYS;
+    if (!demoKeys) return false;
+    if (!localStorage.getItem(demoKeys.SNAPSHOT)) {
+        const snapshot = {
+            ...loadData(),
+            settings: loadSettings(),
+            mapPositions: localStorage.getItem(demoKeys.MAP_POSITIONS)
+                ? JSON.parse(localStorage.getItem(demoKeys.MAP_POSITIONS))
+                : null
+        };
+        localStorage.setItem(demoKeys.SNAPSHOT, JSON.stringify(snapshot));
+    }
+
+    const response = await fetch('json/sample.json', { cache: 'no-store' });
+    if (!response.ok) {
+        showMessage('Unable to load demo data.', 'error');
+        return false;
+    }
+    const demoData = await response.json();
+
+    if (Array.isArray(demoData.devices)) {
+        demoData.devices = demoData.devices.map(device => ({
+            ...device,
+            brand: normalizeOptionValue(device.brand),
+            type: normalizeOptionValue(device.type),
+            connectivity: normalizeOptionValue(device.connectivity),
+            batteryType: normalizeOptionValue(device.batteryType)
+        }));
+    }
+
+    saveData(demoData);
+    if (demoData.settings) {
+        saveSettings(demoData.settings);
+    }
+    if (demoData.mapPositions) {
+        localStorage.setItem(demoKeys.MAP_POSITIONS, JSON.stringify(demoData.mapPositions));
+    } else {
+        localStorage.removeItem(demoKeys.MAP_POSITIONS);
+    }
+
+    localStorage.setItem(demoKeys.ENABLED, 'true');
+    if (window.updateDemoBanner) {
+        window.updateDemoBanner(true);
+    }
+    settings = loadSettings();
+    renderHomesManagement();
+    renderOptionsManagement();
+    showMessage('Demo mode enabled.', 'success');
+    return true;
+}
+
+async function disableDemoMode() {
+    const demoKeys = window.DEMO_STORAGE_KEYS;
+    if (!demoKeys) return;
+    const snapshotRaw = localStorage.getItem(demoKeys.SNAPSHOT);
+    if (!snapshotRaw) {
+        localStorage.setItem(demoKeys.ENABLED, 'false');
+        if (window.updateDemoBanner) {
+            window.updateDemoBanner(false);
+        }
+        showMessage('Demo mode disabled.', 'success');
+        return;
+    }
+
+    const snapshot = JSON.parse(snapshotRaw);
+    saveData(snapshot);
+    if (snapshot.settings) {
+        saveSettings(snapshot.settings);
+    }
+
+    if (snapshot.mapPositions) {
+        localStorage.setItem(demoKeys.MAP_POSITIONS, JSON.stringify(snapshot.mapPositions));
+    } else {
+        localStorage.removeItem(demoKeys.MAP_POSITIONS);
+    }
+
+    localStorage.setItem(demoKeys.ENABLED, 'false');
+    localStorage.removeItem(demoKeys.SNAPSHOT);
+    if (window.updateDemoBanner) {
+        window.updateDemoBanner(false);
+    }
+    settings = loadSettings();
+    renderHomesManagement();
+    renderOptionsManagement();
+    showMessage('Demo mode disabled. Your data has been restored.', 'success');
 }
 
 // Show Message

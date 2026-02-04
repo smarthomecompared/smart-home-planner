@@ -1210,6 +1210,7 @@ nav a.active::before {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 0;
+        flex-wrap: wrap;
     }
 
     .nav-toggle {
@@ -1230,6 +1231,26 @@ nav a.active::before {
     nav.site-nav a {
         width: 100%;
         text-align: center;
+    }
+
+    .demo-mode-badge {
+        margin-left: auto;
+        margin-right: auto;
+        order: 3;
+        width: fit-content;
+        max-width: 100%;
+        justify-content: center;
+        height: 28px;
+        padding: 0 0.6rem;
+        font-size: 0.65rem;
+    }
+
+    .demo-mode-badge::after {
+        left: 0;
+        transform: none;
+        top: calc(100% + 6px);
+        white-space: normal;
+        max-width: min(320px, 90vw);
     }
 
     .section-header {
@@ -1571,6 +1592,55 @@ select,
     display: none;
 }
 
+.demo-mode-badge {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    border: 1px solid rgba(250, 204, 21, 0.35);
+    background: rgba(251, 191, 36, 0.18);
+    color: #fcd34d;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    position: relative;
+}
+
+.demo-mode-badge[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 10px);
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.92);
+    color: var(--text-color);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    z-index: 5;
+}
+
+.demo-mode-badge:hover::after,
+.demo-mode-badge:focus-visible::after {
+    opacity: 1;
+}
+
+body.demo-mode .header-brand .nav-toggle {
+    margin-left: 0;
+}
+
 /* Responsive filters */
 @media (max-width: 768px) {
     .filters-container {
@@ -1623,5 +1693,9 @@ select,
 
     .filters-block-body {
         grid-template-columns: 1fr;
+    }
+    
+    body.demo-mode .header-brand .nav-toggle {
+        margin-left: 0;
     }
 }

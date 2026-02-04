@@ -10,6 +10,12 @@ const STORAGE_KEYS = {
     SELECTED_HOME: 'smartHomeSelectedHome'
 };
 
+const DEMO_STORAGE_KEYS = {
+    ENABLED: 'smartHomeDemoMode',
+    SNAPSHOT: 'smartHomeDemoSnapshot',
+    MAP_POSITIONS: 'smart-home-network-positions'
+};
+
 function buildHome(name) {
     return {
         id: `home-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -449,7 +455,47 @@ function initIconTooltips() {
     }
 }
 
+function isDemoModeEnabled() {
+    return localStorage.getItem(DEMO_STORAGE_KEYS.ENABLED) === 'true';
+}
+
+function updateDemoBanner(enabled) {
+    const shouldShow = Boolean(enabled);
+    const existingBanner = document.getElementById('demo-mode-banner');
+    if (existingBanner) {
+        existingBanner.remove();
+    }
+    let badge = document.getElementById('demo-mode-badge');
+    if (!shouldShow) {
+        if (badge) {
+            badge.remove();
+        }
+        document.body.classList.remove('demo-mode');
+        return;
+    }
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.id = 'demo-mode-badge';
+        badge.className = 'demo-mode-badge';
+        badge.textContent = 'Demo mode';
+        badge.setAttribute('data-tooltip', 'Sample mode data is loaded for demonstration purposes. Go to Settings to disable.');
+        badge.setAttribute('tabindex', '0');
+    }
+    const headerBrand = document.querySelector('header .header-brand');
+    if (headerBrand) {
+        headerBrand.appendChild(badge);
+    } else {
+        document.body.prepend(badge);
+    }
+    document.body.classList.add('demo-mode');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initMobileNav();
     initIconTooltips();
+    updateDemoBanner(isDemoModeEnabled());
 });
+
+window.DEMO_STORAGE_KEYS = DEMO_STORAGE_KEYS;
+window.isDemoModeEnabled = isDemoModeEnabled;
+window.updateDemoBanner = updateDemoBanner;
