@@ -184,7 +184,7 @@
 }
 
 .map-display-settings .form-group select {
-    background: rgba(15, 23, 42, 0.85);
+    background-color: rgba(15, 23, 42, 0.85);
     border-color: rgba(71, 85, 105, 0.7);
 }
 

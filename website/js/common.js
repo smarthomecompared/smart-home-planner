@@ -169,7 +169,7 @@ function escapeHtml(text) {
 
 function normalizeOptionValue(value) {
     if (value === null || value === undefined) return '';
-    return String(value)
+    const normalized = String(value)
         .trim()
         .toLowerCase()
         .replace(/\s*&\s*/g, '-')
@@ -177,6 +177,8 @@ function normalizeOptionValue(value) {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
+    if (normalized === 'wi-fi') return 'wifi';
+    return normalized;
 }
 
 function ensureFriendlyList(values, formatter) {
@@ -238,7 +240,7 @@ function formatConnectivity(value) {
 
 function isWifiConnectivity(value) {
     const normalized = normalizeOptionValue(value);
-    return normalized === 'wifi' || normalized === 'wi-fi';
+    return normalized === 'wifi' || normalized === 'ethernet';
 }
 
 function ensureDialogModal() {
