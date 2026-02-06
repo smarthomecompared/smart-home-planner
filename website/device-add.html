@@ -79,7 +79,16 @@
                         <h3 class="form-section-title">Installation</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="device-status">Status *</label>
+                                <div class="form-label-row">
+                                    <label for="device-status">Status *</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Status info" title="Working: active and operating. Pending: not installed yet. Not Working: installed but not functioning. Wishlist: planned or desired device.">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <select id="device-status" required>
                                     <option value="working">Working</option>
                                     <option value="pending">Pending</option>

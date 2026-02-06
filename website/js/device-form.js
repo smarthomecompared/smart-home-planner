@@ -437,6 +437,8 @@ function handleDeviceSubmit(e) {
 
     const deviceHomeSelect = document.getElementById('device-home-select');
     const nextHomeId = deviceHomeSelect ? deviceHomeSelect.value : '';
+    const statusValue = document.getElementById('device-status').value;
+    const isPendingStatus = statusValue === 'pending';
     const deviceData = {
         name: document.getElementById('device-name').value,
         brand: brandValue,
@@ -444,7 +446,7 @@ function handleDeviceSubmit(e) {
         type: typeValue,
         ip: ipValue,
         mac: macValue,
-        status: document.getElementById('device-status').value,
+        status: statusValue,
         power: document.getElementById('device-power').value,
         batteryType: batteryTypeValue,
         batteryCount: document.getElementById('device-battery-count').value,
@@ -460,8 +462,8 @@ function handleDeviceSubmit(e) {
         notes: document.getElementById('device-notes').value,
         connectivity: connectivity,
         networkId: networkValue,
-        area: document.getElementById('device-area').value,
-        controlledArea: document.getElementById('device-controlled-area')?.value || '',
+        area: isPendingStatus ? '' : document.getElementById('device-area').value,
+        controlledArea: isPendingStatus ? '' : (document.getElementById('device-controlled-area')?.value || ''),
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
         matterHub: document.getElementById('device-matter-hub').checked,
         zigbeeController: document.getElementById('device-zigbee-controller').checked,
@@ -551,6 +553,7 @@ function handleStatusChange() {
     const areaGroup = document.getElementById('device-area-group');
     const controlledAreaGroup = document.getElementById('device-controlled-area-group');
     const areaSelect = document.getElementById('device-area');
+    const controlledAreaSelect = document.getElementById('device-controlled-area');
     const installationGroup = document.getElementById('device-installation-group');
     const installationInput = document.getElementById('device-installation-date');
     const batteryChangeGroup = document.getElementById('battery-change-group');
@@ -559,14 +562,23 @@ function handleStatusChange() {
 
     if (areaGroup) {
         areaGroup.classList.remove('is-collapsed');
-        areaGroup.classList.toggle('is-hidden', isWishlist);
+        areaGroup.classList.toggle('is-hidden', isWishlist || isPending);
     }
     if (controlledAreaGroup) {
         controlledAreaGroup.classList.remove('is-collapsed');
-        controlledAreaGroup.classList.toggle('is-hidden', isWishlist);
+        controlledAreaGroup.classList.toggle('is-hidden', isWishlist || isPending);
     }
     if (areaSelect) {
         areaSelect.required = false;
+    }
+    if (isPending) {
+        if (areaSelect) {
+            areaSelect.value = '';
+        }
+        if (controlledAreaSelect) {
+            controlledAreaSelect.value = '';
+        }
+        updateAreaAutoSyncState();
     }
     if (installationGroup) {
         installationGroup.classList.remove('is-collapsed');
