@@ -6,16 +6,18 @@ class DeviceFilters {
         this.devices = [];
         this.areas = [];
         this.floors = [];
+        this.networks = [];
         this.settings = {};
         this.filteredDevices = [];
         this.onFilterChange = null; // Callback for when filters change
     }
 
     // Initialize with data
-    init(devices, areas, floors, settings) {
+    init(devices, areas, floors, networks, settings) {
         this.devices = devices;
         this.areas = areas;
         this.floors = floors;
+        this.networks = networks || [];
         this.settings = settings;
         this.filteredDevices = devices; // Initialize with all devices
         this.setupEventListeners();
@@ -42,9 +44,11 @@ class DeviceFilters {
         setValue('filter-area', '');
         setValue('filter-controlled-area', '');
         setValue('filter-brand', '');
+        setValue('filter-model', '');
         setValue('filter-status', '');
         setValue('filter-type', '');
         setValue('filter-connectivity', '');
+        setValue('filter-network', '');
         setValue('filter-power', '');
         setValue('filter-ups-protected', '');
         setValue('filter-battery-type', '');
@@ -61,10 +65,11 @@ class DeviceFilters {
     }
 
     // Update data (called when data changes)
-    updateData(devices, areas, floors, settings) {
+    updateData(devices, areas, floors, networks, settings) {
         this.devices = devices;
         this.areas = areas;
         this.floors = floors;
+        this.networks = networks || [];
         this.settings = settings;
         this.updateFilterOptions();
     }
@@ -77,9 +82,11 @@ class DeviceFilters {
             'filter-area',
             'filter-controlled-area',
             'filter-brand',
+            'filter-model',
             'filter-status',
             'filter-type',
             'filter-connectivity',
+            'filter-network',
             'filter-power',
             'filter-ups-protected',
             'filter-battery-type',
@@ -188,6 +195,29 @@ class DeviceFilters {
                 '<option value="__none__">-</option>';
             brandFilter.value = currentBrandValue ? normalizeOptionValue(currentBrandValue) : currentBrandValue;
         }
+
+        // Update model filter
+        const modelFilter = document.getElementById('filter-model');
+        const currentModelValue = modelFilter ? modelFilter.value : '';
+        if (modelFilter) {
+            const modelMap = new Map();
+            this.devices.forEach(device => {
+                const rawModel = (device.model || '').trim();
+                if (!rawModel) return;
+                const normalized = normalizeOptionValue(rawModel);
+                if (!normalized) return;
+                if (!modelMap.has(normalized)) {
+                    modelMap.set(normalized, rawModel);
+                }
+            });
+            const modelOptions = [...modelMap.entries()]
+                .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }))
+                .map(([value, label]) => ({ value, label }));
+            modelFilter.innerHTML = '<option value="">All</option>' +
+                modelOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
+                '<option value="__none__">-</option>';
+            modelFilter.value = currentModelValue ? normalizeOptionValue(currentModelValue) : currentModelValue;
+        }
         
         // Update type filter
         const typeFilter = document.getElementById('filter-type');
@@ -212,6 +242,18 @@ class DeviceFilters {
                 connectivityOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             connectivityFilter.value = currentConnectivityValue ? normalizeOptionValue(currentConnectivityValue) : currentConnectivityValue;
+        }
+
+        // Update network filter
+        const networkFilter = document.getElementById('filter-network');
+        const currentNetworkValue = networkFilter ? networkFilter.value : '';
+        if (networkFilter) {
+            const sortedNetworks = [...(this.networks || [])]
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+            networkFilter.innerHTML = '<option value="">All</option>' +
+                sortedNetworks.map(network => `<option value="${network.id}">${this.escapeHtml(network.name)}</option>`).join('') +
+                '<option value="__none__">-</option>';
+            networkFilter.value = currentNetworkValue;
         }
 
         // Update battery type filter
@@ -246,10 +288,12 @@ class DeviceFilters {
         const floorFilter = getElementValue('filter-floor');
         const areaFilter = getElementValue('filter-area');
         const brandFilter = getElementValue('filter-brand');
+        const modelFilter = getElementValue('filter-model');
         const controlledAreaFilter = getElementValue('filter-controlled-area');
         const statusFilter = getElementValue('filter-status');
         const typeFilter = getElementValue('filter-type');
         const connectivityFilter = getElementValue('filter-connectivity');
+        const networkFilter = getElementValue('filter-network');
         const powerFilter = getElementValue('filter-power');
         const upsProtectedFilter = getElementValue('filter-ups-protected');
         const threadBorderRouterFilter = getElementValue('filter-thread-border-router');
@@ -271,9 +315,11 @@ class DeviceFilters {
             area: areaFilter,
             controlledArea: controlledAreaFilter,
             brand: brandFilter,
+            model: modelFilter,
             status: statusFilter,
             type: typeFilter,
             connectivity: connectivityFilter,
+            network: networkFilter,
             power: powerFilter,
             upsProtected: upsProtectedFilter,
             threadBorderRouter: threadBorderRouterFilter,
@@ -338,6 +384,14 @@ class DeviceFilters {
                 this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.brand) === brandFilter);
             }
         }
+
+        if (modelFilter) {
+            if (modelFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.model);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.model) === modelFilter);
+            }
+        }
         
         if (statusFilter) {
             this.filteredDevices = this.filteredDevices.filter(d => d.status === statusFilter);
@@ -352,6 +406,14 @@ class DeviceFilters {
                 this.filteredDevices = this.filteredDevices.filter(d => !d.connectivity);
             } else {
                 this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.connectivity) === connectivityFilter);
+            }
+        }
+
+        if (networkFilter) {
+            if (networkFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.networkId);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => d.networkId === networkFilter);
             }
         }
 

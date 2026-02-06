@@ -129,6 +129,19 @@
                 </div>
 
                 <div class="settings-section">
+                    <h3 class="settings-section-title">Networks</h3>
+                    <p class="settings-description">Create VLANs to organize devices by network.</p>
+
+                    <div class="networks-grid">
+                        <div class="form-group networks-actions">
+                            <button class="btn btn-primary" id="network-add-btn">Add Network</button>
+                        </div>
+                    </div>
+
+                    <div class="networks-list" id="networks-list"></div>
+                </div>
+
+                <div class="settings-section">
                     <h3 class="settings-section-title">Device Options</h3>
                     <p class="settings-description">Manage the available options for brands, types, connectivity, and battery types used in device forms.</p>
                     
@@ -154,6 +167,23 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" type="button" id="home-modal-cancel">Cancel</button>
                 <button class="btn btn-primary" type="button" id="home-modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal is-hidden" id="network-modal" aria-hidden="true">
+        <div class="modal-overlay" id="network-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="network-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="network-modal-title">Add Network</div>
+            </div>
+            <div class="form-group">
+                <label for="network-modal-input">Network Name</label>
+                <input type="text" id="network-modal-input" placeholder="e.g., vlan10">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="network-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="network-modal-save">Save</button>
             </div>
         </div>
     </div>

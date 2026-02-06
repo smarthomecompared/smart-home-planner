@@ -4,6 +4,7 @@ window.DeviceDiagram = (() => {
     let devices = [];
     let areas = [];
     let floors = [];
+    let networks = [];
     let settings = {};
     let filteredDevices = null;
     let cy = null;
@@ -27,12 +28,13 @@ window.DeviceDiagram = (() => {
         devices = Array.isArray(options.devices) ? options.devices : [];
         areas = Array.isArray(options.areas) ? options.areas : [];
         floors = Array.isArray(options.floors) ? options.floors : [];
+        networks = Array.isArray(options.networks) ? options.networks : [];
         settings = options.settings || {};
         filteredDevices = Array.isArray(options.filteredDevices) ? options.filteredDevices : null;
 
         if (options.enableFilters && window.DeviceFilters) {
             deviceFilters = new DeviceFilters();
-            deviceFilters.init(devices, areas, floors, settings);
+            deviceFilters.init(devices, areas, floors, networks, settings);
             deviceFilters.onFilterChange = () => {
                 if (filteredDevices === null) {
                     renderNetwork();
@@ -54,6 +56,7 @@ window.DeviceDiagram = (() => {
             devices: data.devices.filter(device => device.homeId === selectedHomeId),
             areas: data.areas.filter(area => area.homeId === selectedHomeId),
             floors: data.floors.filter(floor => floor.homeId === selectedHomeId),
+            networks: data.networks || [],
             settings: loadSettings()
         });
     }
@@ -68,12 +71,15 @@ window.DeviceDiagram = (() => {
         if (Array.isArray(next.floors)) {
             floors = next.floors;
         }
+        if (Array.isArray(next.networks)) {
+            networks = next.networks;
+        }
         if (next.settings) {
             settings = next.settings;
         }
 
         if (deviceFilters) {
-            deviceFilters.updateData(devices, areas, floors, settings);
+            deviceFilters.updateData(devices, areas, floors, networks, settings);
             deviceFilters.applyFilters();
         }
 

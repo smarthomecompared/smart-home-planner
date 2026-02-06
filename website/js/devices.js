@@ -4,6 +4,7 @@ let allDevices = [];
 let devices = [];
 let areas = [];
 let floors = [];
+let networks = [];
 let settings = {};
 let selectedHomeId = '';
 
@@ -40,11 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
     settings = loadSettings();
     areas = data.areas.filter(area => area.homeId === selectedHomeId);
     floors = data.floors.filter(floor => floor.homeId === selectedHomeId);
+    networks = data.networks || [];
     devices = allDevices.filter(device => device.homeId === selectedHomeId);
     
     // Initialize filters
     deviceFilters = new DeviceFilters();
-    deviceFilters.init(devices, areas, floors, settings);
+    deviceFilters.init(devices, areas, floors, networks, settings);
     deviceFilters.onFilterChange = (filtered) => {
         filteredDevices = filtered;
         currentPage = 1;
@@ -170,6 +172,7 @@ function ensureDiagramReady() {
         devices,
         areas,
         floors,
+        networks,
         settings,
         filteredDevices
     });
@@ -209,9 +212,9 @@ function createDevice(deviceData) {
     allDevices.push(device);
     devices = allDevices.filter(item => item.homeId === selectedHomeId);
     saveData(getAllData());
-    deviceFilters.updateData(devices, areas, floors, settings);
+    deviceFilters.updateData(devices, areas, floors, networks, settings);
     if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+        window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
     }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
     return device;
@@ -247,9 +250,9 @@ function updateDevice(id, deviceData) {
         device.homeId = deviceData.homeId || device.homeId || selectedHomeId;
         saveData(getAllData());
         devices = allDevices.filter(item => item.homeId === selectedHomeId);
-        deviceFilters.updateData(devices, areas, floors, settings);
+        deviceFilters.updateData(devices, areas, floors, networks, settings);
         if (diagramReady && window.DeviceDiagram) {
-            window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+            window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
         }
         deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
         return device;
@@ -277,9 +280,9 @@ async function deleteDevice(id) {
     });
     
     saveData(getAllData());
-    deviceFilters.updateData(devices, areas, floors, settings);
+    deviceFilters.updateData(devices, areas, floors, networks, settings);
     if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, settings });
+        window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
     }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }
@@ -573,9 +576,11 @@ function updateActiveFilters() {
         'filter-floor',
         'filter-area',
         'filter-brand',
+        'filter-model',
         'filter-status',
         'filter-type',
         'filter-connectivity',
+        'filter-network',
         'filter-power',
         'filter-ups-protected',
         'filter-battery-type',

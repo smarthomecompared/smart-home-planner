@@ -7,6 +7,7 @@ let areas = [];
 let editingDeviceId = null;
 let editingDeviceHomeId = null;
 let settings = {};
+let networks = [];
 let lastBrandValue = '';
 let lastTypeValue = '';
 let lastBatteryTypeValue = '';
@@ -21,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     allDevices = data.devices;
     allAreas = data.areas;
     settings = loadSettings();
+    networks = data.networks || [];
     selectedHomeId = data.selectedHomeId;
     availableHomes = data.homes || [];
     devices = allDevices.filter(device => device.homeId === selectedHomeId);
@@ -33,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     populateBrands();
     populateTypes();
     populateConnectivity();
+    populateNetworks();
     populateBatteryTypes();
     setAreasForHome(selectedHomeId);
     handleBrandChange();
@@ -198,6 +201,18 @@ function populateConnectivity() {
     lastConnectivityValue = connectivitySelect.value || '';
 }
 
+function populateNetworks() {
+    const networkSelect = document.getElementById('device-network');
+    if (!networkSelect) return;
+    const currentValue = networkSelect.value;
+    const sortedNetworks = [...(networks || [])].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    networkSelect.innerHTML = '<option value="">Select network</option>' +
+        sortedNetworks.map(network => `<option value="${network.id}">${escapeHtml(network.name)}</option>`).join('');
+    if (currentValue) {
+        networkSelect.value = currentValue;
+    }
+}
+
 function populateBatteryTypes() {
     const batteryTypeSelect = document.getElementById('device-battery-type');
     const currentValue = batteryTypeSelect.value;
@@ -323,6 +338,10 @@ function loadDeviceData(device) {
     document.getElementById('device-storage-unit').value = device.storageUnit || '';
     document.getElementById('device-notes').value = device.notes || '';
     document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : '';
+    const networkSelect = document.getElementById('device-network');
+    if (networkSelect) {
+        networkSelect.value = device.networkId || '';
+    }
     document.getElementById('device-area').value = device.area || '';
     const controlledAreaInput = document.getElementById('device-controlled-area');
     if (controlledAreaInput) {
@@ -371,6 +390,7 @@ function handleDeviceSubmit(e) {
     connectivity = normalizeOptionValue(connectivity);
     const ipValue = isWifiConnectivity(connectivity) ? document.getElementById('device-ip').value : '';
     const macValue = isWifiConnectivity(connectivity) ? document.getElementById('device-mac').value : '';
+    const networkValue = isWifiConnectivity(connectivity) ? (document.getElementById('device-network')?.value || '') : '';
     const brandSelect = document.getElementById('device-brand');
     let brandValue = brandSelect.value;
     if (brandValue === '__new__') {
@@ -439,6 +459,7 @@ function handleDeviceSubmit(e) {
         storageUnit: document.getElementById('device-storage-unit').value,
         notes: document.getElementById('device-notes').value,
         connectivity: connectivity,
+        networkId: networkValue,
         area: document.getElementById('device-area').value,
         controlledArea: document.getElementById('device-controlled-area')?.value || '',
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
@@ -833,14 +854,22 @@ function handleConnectivityChange() {
     const connectivity = document.getElementById('device-connectivity').value;
     const ipGroup = document.getElementById('ip-address-group');
     const macGroup = document.getElementById('mac-address-group');
+    const networkGroup = document.getElementById('network-group');
     const showNetworkFields = isWifiConnectivity(connectivity);
 
     ipGroup.classList.toggle('is-hidden', !showNetworkFields);
     macGroup.classList.toggle('is-hidden', !showNetworkFields);
+    if (networkGroup) {
+        networkGroup.classList.toggle('is-hidden', !showNetworkFields);
+    }
 
     if (!showNetworkFields) {
         document.getElementById('device-ip').value = '';
         document.getElementById('device-mac').value = '';
+        const networkSelect = document.getElementById('device-network');
+        if (networkSelect) {
+            networkSelect.value = '';
+        }
     }
 }
 
@@ -1419,6 +1448,7 @@ function createDevice(deviceData) {
         notes: deviceData.notes ? deviceData.notes.trim() : '',
         homeId: deviceData.homeId || getSelectedHomeId(),
         connectivity: normalizeOptionValue(deviceData.connectivity),
+        networkId: deviceData.networkId || '',
         area: deviceData.area,
         controlledArea: deviceData.controlledArea || '',
         threadBorderRouter: deviceData.threadBorderRouter || false,
@@ -1485,6 +1515,7 @@ function updateDevice(id, deviceData) {
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
         device.homeId = deviceData.homeId || device.homeId || getSelectedHomeId();
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
+        device.networkId = deviceData.networkId || '';
         device.area = deviceData.area;
         device.controlledArea = deviceData.controlledArea || '';
         device.threadBorderRouter = deviceData.threadBorderRouter || false;

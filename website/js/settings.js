@@ -3,9 +3,12 @@
 let selectedFile = null;
 let settings = {};
 let homes = [];
+let networks = [];
 let selectedHomeId = '';
 let homeModalMode = 'add';
 let homeModalTargetId = '';
+let networkModalMode = 'add';
+let networkModalTargetId = '';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderVersionInfo();
     renderRepoLink();
     renderHomesManagement();
+    renderNetworksManagement();
     renderOptionsManagement();
     initializeDemoMode();
 });
@@ -30,9 +34,14 @@ function initializeEventListeners() {
     document.getElementById('home-modal-cancel').addEventListener('click', closeHomeModal);
     document.getElementById('home-modal-save').addEventListener('click', handleHomeModalSave);
     document.getElementById('home-modal-overlay').addEventListener('click', closeHomeModal);
+    document.getElementById('network-add-btn').addEventListener('click', () => openNetworkModal('add'));
+    document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
+    document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
+    document.getElementById('network-modal-overlay').addEventListener('click', closeNetworkModal);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeHomeModal();
+            closeNetworkModal();
         }
     });
 }
@@ -206,6 +215,7 @@ function importData() {
 
             settings = loadSettings();
             renderHomesManagement();
+            renderNetworksManagement();
             renderOptionsManagement();
             
             // Reset file input
@@ -289,6 +299,7 @@ async function enableDemoMode() {
     }
     settings = loadSettings();
     renderHomesManagement();
+    renderNetworksManagement();
     renderOptionsManagement();
     showMessage('Demo mode enabled.', 'success');
     return true;
@@ -326,6 +337,7 @@ async function disableDemoMode() {
     }
     settings = loadSettings();
     renderHomesManagement();
+    renderNetworksManagement();
     renderOptionsManagement();
     showMessage('Demo mode disabled. Your data has been restored.', 'success');
 }
@@ -453,6 +465,53 @@ function renderHomesManagement() {
     });
 }
 
+function renderNetworksManagement() {
+    const data = loadData();
+    networks = data.networks || [];
+
+    const list = document.getElementById('networks-list');
+    if (!list) return;
+
+    list.innerHTML = networks.map(network => `
+        <div class="networks-item">
+            <div class="networks-item-info">
+                <span>${escapeHtml(network.name)}</span>
+            </div>
+            <div class="networks-item-actions">
+                <button class="btn btn-secondary btn-sm btn-icon" data-network-rename="${network.id}" aria-label="Rename network" title="Rename network">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                        <path d="M13.5 6.5l4 4"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-danger btn-sm btn-icon" data-network-delete="${network.id}" aria-label="Delete network" title="Delete network">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M6 6l1 14h10l1-14"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    list.querySelectorAll('button[data-network-delete]').forEach(button => {
+        button.addEventListener('click', () => {
+            const networkId = button.getAttribute('data-network-delete');
+            handleDeleteNetwork(networkId);
+        });
+    });
+
+    list.querySelectorAll('button[data-network-rename]').forEach(button => {
+        button.addEventListener('click', () => {
+            const networkId = button.getAttribute('data-network-rename');
+            openNetworkModal('rename', networkId);
+        });
+    });
+}
+
 function openHomeModal(mode, homeId = '') {
     const modal = document.getElementById('home-modal');
     const title = document.getElementById('home-modal-title');
@@ -514,6 +573,69 @@ function handleHomeModalSave() {
 
     closeHomeModal();
     renderHomesManagement();
+}
+
+function openNetworkModal(mode, networkId = '') {
+    const modal = document.getElementById('network-modal');
+    const title = document.getElementById('network-modal-title');
+    const input = document.getElementById('network-modal-input');
+    if (!modal || !title || !input) return;
+
+    networkModalMode = mode;
+    networkModalTargetId = networkId;
+    const currentNetwork = networks.find(network => network.id === networkId);
+
+    title.textContent = mode === 'rename' ? 'Rename Network' : 'Add Network';
+    input.value = mode === 'rename' && currentNetwork ? currentNetwork.name : '';
+
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    input.focus();
+    input.select();
+}
+
+function closeNetworkModal() {
+    const modal = document.getElementById('network-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function handleNetworkModalSave() {
+    const input = document.getElementById('network-modal-input');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) {
+        showMessage('Network name cannot be empty.', 'error');
+        return;
+    }
+    if (networks.some(network => network.name.toLowerCase() === name.toLowerCase() && network.id !== networkModalTargetId)) {
+        showMessage('A network with this name already exists.', 'error');
+        return;
+    }
+
+    const data = loadData();
+    if (networkModalMode === 'rename') {
+        const updatedNetworks = (data.networks || []).map(network => (
+            network.id === networkModalTargetId ? { ...network, name: name } : network
+        ));
+        saveData({
+            ...data,
+            networks: updatedNetworks
+        });
+        showMessage('Network renamed successfully!', 'success');
+    } else {
+        const newNetwork = buildNetwork(name);
+        const updatedNetworks = [...(data.networks || []), newNetwork];
+        saveData({
+            ...data,
+            networks: updatedNetworks
+        });
+        showMessage('Network created successfully!', 'success');
+    }
+
+    closeNetworkModal();
+    renderNetworksManagement();
 }
 
 function handleHomeSwitch(nextHomeId) {
@@ -591,6 +713,44 @@ async function handleDeleteHome(homeId) {
 
     renderHomesManagement();
     showMessage('Home deleted successfully!', 'success');
+}
+
+async function handleDeleteNetwork(networkId) {
+    if (!networkId) return;
+    if (networks.length <= 1) {
+        showMessage('You must keep at least one network.', 'error');
+        return;
+    }
+    const targetNetwork = networks.find(network => network.id === networkId);
+    const name = targetNetwork ? targetNetwork.name : 'this network';
+    const confirmed = await showConfirm(`Delete "${name}"? Devices using this network will be cleared.`, {
+        title: 'Delete network',
+        confirmText: 'Delete'
+    });
+    if (!confirmed) {
+        return;
+    }
+
+    const data = loadData();
+    const remainingNetworks = (data.networks || []).filter(network => network.id !== networkId);
+    const updatedDevices = (data.devices || []).map(device => {
+        if (device.networkId === networkId) {
+            return {
+                ...device,
+                networkId: ''
+            };
+        }
+        return device;
+    });
+
+    saveData({
+        ...data,
+        networks: remainingNetworks,
+        devices: updatedDevices
+    });
+
+    renderNetworksManagement();
+    showMessage('Network deleted successfully!', 'success');
 }
 
 

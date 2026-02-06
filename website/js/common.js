@@ -7,7 +7,8 @@ const STORAGE_KEYS = {
     FLOORS: 'smartHomeFloors',
     SETTINGS: 'smartHomeSettings',
     HOMES: 'smartHomeHomes',
-    SELECTED_HOME: 'smartHomeSelectedHome'
+    SELECTED_HOME: 'smartHomeSelectedHome',
+    NETWORKS: 'smartHomeNetworks'
 };
 
 const DEMO_STORAGE_KEYS = {
@@ -25,18 +26,28 @@ function buildHome(name) {
     };
 }
 
+function buildNetwork(name) {
+    return {
+        id: `network-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: name,
+        createdAt: new Date().toISOString()
+    };
+}
+
 // Data Management Functions
 function loadData() {
     const devicesData = localStorage.getItem(STORAGE_KEYS.DEVICES);
     const areasData = localStorage.getItem(STORAGE_KEYS.AREAS);
     const floorsData = localStorage.getItem(STORAGE_KEYS.FLOORS);
     const homesData = localStorage.getItem(STORAGE_KEYS.HOMES);
+    const networksData = localStorage.getItem(STORAGE_KEYS.NETWORKS);
     const selectedHomeRaw = localStorage.getItem(STORAGE_KEYS.SELECTED_HOME);
     
     let devices = devicesData ? JSON.parse(devicesData) : [];
     let areas = areasData ? JSON.parse(areasData) : [];
     let floors = floorsData ? JSON.parse(floorsData) : [];
     let homes = homesData ? JSON.parse(homesData) : [];
+    let networks = networksData ? JSON.parse(networksData) : [];
     let selectedHomeId = selectedHomeRaw || '';
     let didUpdate = false;
 
@@ -52,6 +63,11 @@ function loadData() {
     }
 
     const homeIds = new Set(homes.map(home => home.id));
+
+    if (!Array.isArray(networks) || networks.length === 0) {
+        networks = [buildNetwork('vlan0')];
+        didUpdate = true;
+    }
 
     devices = (devices || []).map(device => {
         if (!device.homeId || !homeIds.has(device.homeId)) {
@@ -90,6 +106,7 @@ function loadData() {
         localStorage.setItem(STORAGE_KEYS.DEVICES, JSON.stringify(devices));
         localStorage.setItem(STORAGE_KEYS.HOMES, JSON.stringify(homes));
         localStorage.setItem(STORAGE_KEYS.SELECTED_HOME, selectedHomeId);
+        localStorage.setItem(STORAGE_KEYS.NETWORKS, JSON.stringify(networks));
     }
 
     return {
@@ -97,6 +114,7 @@ function loadData() {
         areas: areas,
         floors: floors,
         homes: homes,
+        networks: networks,
         selectedHomeId: selectedHomeId
     };
 }
@@ -107,6 +125,9 @@ function saveData(data) {
     localStorage.setItem(STORAGE_KEYS.FLOORS, JSON.stringify(data.floors));
     if (data.homes) {
         localStorage.setItem(STORAGE_KEYS.HOMES, JSON.stringify(data.homes));
+    }
+    if (data.networks) {
+        localStorage.setItem(STORAGE_KEYS.NETWORKS, JSON.stringify(data.networks));
     }
     if (data.selectedHomeId) {
         localStorage.setItem(STORAGE_KEYS.SELECTED_HOME, data.selectedHomeId);
