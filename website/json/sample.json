@@ -49,7 +49,8 @@
       ],
       "createdAt": "2025-06-01T11:00:00.000Z",
       "updatedAt": "2026-02-03T15:11:08.495Z",
-      "controlledArea": "area-network"
+      "controlledArea": "area-network",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-2",
@@ -138,7 +139,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:10:00.000Z",
-      "controlledArea": "area-network"
+      "controlledArea": "area-network",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-4",
@@ -210,7 +212,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:12:00.000Z",
-      "controlledArea": "area-network"
+      "controlledArea": "area-network",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-5",
@@ -254,7 +257,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:15:00.000Z",
-      "controlledArea": "area-office"
+      "controlledArea": "area-office",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-6",
@@ -298,7 +302,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:18:00.000Z",
-      "controlledArea": "area-living"
+      "controlledArea": "area-living",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-7",
@@ -342,7 +347,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:22:00.000Z",
-      "controlledArea": "area-patio"
+      "controlledArea": "area-patio",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-8",
@@ -472,7 +478,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:30:00.000Z",
-      "controlledArea": "area-network"
+      "controlledArea": "area-network",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-11",
@@ -511,7 +518,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:35:00.000Z",
-      "controlledArea": "area-kitchen"
+      "controlledArea": "area-kitchen",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-12",
@@ -550,7 +558,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:38:00.000Z",
-      "controlledArea": "area-living"
+      "controlledArea": "area-living",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-13",
@@ -628,7 +637,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:42:00.000Z",
-      "controlledArea": ""
+      "controlledArea": "",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-15",
@@ -667,7 +677,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:45:00.000Z",
-      "controlledArea": "area-hall"
+      "controlledArea": "area-hall",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-16",
@@ -745,7 +756,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:50:00.000Z",
-      "controlledArea": "area-kitchen"
+      "controlledArea": "area-kitchen",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-18",
@@ -784,7 +796,8 @@
       "localOnly": true,
       "ports": [],
       "createdAt": "2025-06-01T11:52:00.000Z",
-      "controlledArea": "area-living"
+      "controlledArea": "area-living",
+      "networkId": "network-admin"
     },
     {
       "id": "dev-19",
@@ -823,7 +836,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:55:00.000Z",
-      "controlledArea": "area-garage"
+      "controlledArea": "area-garage",
+      "networkId": "network-iot"
     },
     {
       "id": "dev-20",
@@ -862,7 +876,8 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:58:00.000Z",
-      "controlledArea": ""
+      "controlledArea": "",
+      "networkId": ""
     }
   ],
   "areas": [
@@ -958,6 +973,18 @@
       "level": 1,
       "homeId": "home-main",
       "createdAt": "2025-06-01T10:12:00.000Z"
+    }
+  ],
+  "networks": [
+    {
+      "id": "network-admin",
+      "name": "Admin",
+      "createdAt": "2025-06-01T10:06:00.000Z"
+    },
+    {
+      "id": "network-iot",
+      "name": "IoT",
+      "createdAt": "2025-06-01T10:07:00.000Z"
     }
   ],
   "homes": [
