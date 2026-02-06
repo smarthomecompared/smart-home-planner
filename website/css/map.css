@@ -111,6 +111,7 @@
     gap: 1rem;
     position: relative;
     z-index: 1;
+    justify-content: flex-start;
 }
 
 .settings-group + .settings-group {
@@ -120,8 +121,12 @@
 
 .connection-toggles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, max-content);
+    column-gap: 0;
+    row-gap: 0.75rem;
+    width: max-content;
+    justify-items: start;
+    align-items: start;
 }
 
 .connection-toggle {
@@ -181,6 +186,17 @@
 .map-display-settings .form-group select {
     background: rgba(15, 23, 42, 0.85);
     border-color: rgba(71, 85, 105, 0.7);
+}
+
+.map-settings-row {
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    column-gap: 0;
+    row-gap: 0.75rem;
+    width: max-content;
+    align-items: start;
+    justify-content: start;
+    justify-items: start;
 }
 
 #network-map {
@@ -539,10 +555,17 @@ body.map-fullscreen .map-controls-overlay {
         flex-direction: column;
         gap: 0.75rem;
     }
+
+    .map-settings-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        width: 100%;
+    }
     
     .connection-toggles {
         grid-template-columns: 1fr;
         gap: 0.75rem;
+        width: 100%;
     }
     
     #network-map {

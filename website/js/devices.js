@@ -304,6 +304,11 @@ function renderDevices() {
                 aVal = a.area ? getAreaName(areas, a.area) : '';
                 bVal = b.area ? getAreaName(areas, b.area) : '';
             }
+
+            if (sortColumn === 'controlledArea') {
+                aVal = a.controlledArea ? getAreaName(areas, a.controlledArea) : '';
+                bVal = b.controlledArea ? getAreaName(areas, b.controlledArea) : '';
+            }
             
             // Handle name field
             if (sortColumn === 'name') {
@@ -353,19 +358,19 @@ function renderDevices() {
         `;
     } else {
         tbody.innerHTML = paginatedDevices.map(device => {
-            const areaName = device.area ? getAreaName(areas, device.area) : 'No area';
+            const areaName = device.area ? getAreaName(areas, device.area) : '-';
             const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
             const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
-            const connectivityDisplay = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity);
+            const modelDisplay = device.model ? device.model.trim() : '-';
             const statusLabel = formatStatusLabel(device.status);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
                     <td>${escapeHtml(areaName)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
+                    <td>${escapeHtml(modelDisplay)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
                     <td><span class="status-badge status-${device.status}">${escapeHtml(statusLabel)}</span></td>
-                    <td>${escapeHtml(connectivityDisplay)}</td>
                     <td class="actions-cell">
                         <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -419,6 +424,7 @@ function renderDevicesGrid(devicesToRender) {
 
     grid.innerHTML = devicesToRender.map(device => {
         const areaName = device.area ? getAreaName(areas, device.area) : '-';
+        const controlledAreaName = device.controlledArea ? getAreaName(areas, device.controlledArea) : '-';
         const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
         const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
         const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
@@ -430,8 +436,12 @@ function renderDevicesGrid(devicesToRender) {
                 </div>
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
-                        <span class="device-card-meta-label">Area</span>
+                        <span class="device-card-meta-label">Installed Area</span>
                         <span class="device-card-meta-value">${escapeHtml(areaName)}</span>
+                    </div>
+                    <div class="device-card-meta-row">
+                        <span class="device-card-meta-label">Controlled Area</span>
+                        <span class="device-card-meta-value">${escapeHtml(controlledAreaName)}</span>
                     </div>
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Type</span>

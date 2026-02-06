@@ -109,8 +109,13 @@ function initializeEventListeners() {
     if (powerLabelMode) {
         powerLabelMode.addEventListener('change', renderNetwork);
     }
+    const areaModeSelect = document.getElementById('device-area-mode');
+    if (areaModeSelect) {
+        areaModeSelect.addEventListener('change', renderNetwork);
+    }
     const configToggle = document.querySelector('.map-display-toggle');
     const configPanel = document.getElementById('map-config');
+    const configHeader = configPanel ? configPanel.querySelector('.map-display-header') : null;
     const toggleConfigPanel = () => {
         if (!configPanel) return;
         const isCollapsed = configPanel.classList.toggle('is-collapsed');
@@ -124,8 +129,8 @@ function initializeEventListeners() {
             toggleConfigPanel();
         });
     }
-    if (configPanel) {
-        configPanel.addEventListener('click', (event) => {
+    if (configHeader) {
+        configHeader.addEventListener('click', (event) => {
             const target = event.target;
             if (!target) return;
             if (target.closest('button, a, input, select, textarea, label')) return;
@@ -519,9 +524,13 @@ function showDeviceTooltip(node) {
     
     const device = devices.find(d => d.id === node.id());
     if (!device) return;
-    
-    const area = areas.find(a => a.id === device.area);
-    const floor = area ? floors.find(f => f.id === area.floor) : null;
+    const areaModeSelect = document.getElementById('device-area-mode');
+    const areaMode = areaModeSelect ? areaModeSelect.value : 'installed';
+    const installedAreaId = device.area;
+    const controlledAreaId = device.controlledArea;
+    const activeAreaId = areaMode === 'controlled' ? controlledAreaId : installedAreaId;
+    const activeArea = areas.find(a => a.id === activeAreaId);
+    const floor = activeArea ? floors.find(f => f.id === activeArea.floor) : null;
     
     const renderedPosition = node.renderedPosition();
     
@@ -531,7 +540,8 @@ function showDeviceTooltip(node) {
     
     const name = device.name || device.model || 'Unnamed Device';
     const floorName = floor ? floor.name : 'No Floor';
-    const areaName = area ? area.name : 'No Area';
+    const installedAreaName = installedAreaId ? getAreaName(areas, installedAreaId) : 'No Area';
+    const controlledAreaName = controlledAreaId ? getAreaName(areas, controlledAreaId) : 'No Area';
     const type = device.type ? getFriendlyOption(settings?.types, device.type, formatDeviceType) : 'N/A';
     const brand = device.brand ? getFriendlyOption(settings?.brands, device.brand, formatDeviceType) : 'N/A';
     const status = device.status || 'N/A';
@@ -548,8 +558,12 @@ function showDeviceTooltip(node) {
                 <span class="tooltip-value">${escapeHtml(floorName)}</span>
             </div>
             <div class="tooltip-row">
-                <span class="tooltip-label">Area:</span>
-                <span class="tooltip-value">${escapeHtml(areaName)}</span>
+                <span class="tooltip-label">Installed area:</span>
+                <span class="tooltip-value">${escapeHtml(installedAreaName)}</span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">Controlled area:</span>
+                <span class="tooltip-value">${escapeHtml(controlledAreaName)}</span>
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">Type:</span>
@@ -637,12 +651,17 @@ function renderNetwork() {
     }
     
     // Get unique floors and areas from filtered devices
+    const areaModeSelect = document.getElementById('device-area-mode');
+    const areaMode = areaModeSelect ? areaModeSelect.value : 'installed';
+    const areaKey = areaMode === 'controlled' ? 'controlledArea' : 'area';
     const validAreaIds = new Set(areas.map(area => area.id));
-    const deviceAreaIds = [...new Set(filteredDevicesList.map(d => d.area).filter(areaId => areaId && validAreaIds.has(areaId)))];
+    const deviceAreaIds = [...new Set(filteredDevicesList
+        .map(d => d[areaKey])
+        .filter(areaId => areaId && validAreaIds.has(areaId)))];
     const filteredAreas = areas.filter(a => deviceAreaIds.includes(a.id));
     const floorIds = [...new Set(filteredAreas.map(a => a.floor).filter(Boolean))];
     const filteredFloors = floors.filter(f => floorIds.includes(f.id));
-    const unassignedDevices = filteredDevicesList.filter(d => !d.area || !validAreaIds.has(d.area));
+    const unassignedDevices = filteredDevicesList.filter(d => !d[areaKey] || !validAreaIds.has(d[areaKey]));
     
     console.log('Map data:', {
         devices: filteredDevicesList.length,
@@ -688,7 +707,7 @@ function renderNetwork() {
         let xOffset = 0;
         
         areasInFloor.forEach((area, areaIndex) => {
-            const devicesInArea = filteredDevicesList.filter(d => d.area === area.id);
+            const devicesInArea = filteredDevicesList.filter(d => d[areaKey] === area.id);
             
             // Add area node with floor as parent
             elements.push({
@@ -745,7 +764,7 @@ function renderNetwork() {
         
         // Calculate floor height based on number of devices in areas
         const maxDevicesInAnyArea = Math.max(...areasInFloor.map(a => 
-            filteredDevicesList.filter(d => d.area === a.id).length
+            filteredDevicesList.filter(d => d[areaKey] === a.id).length
         ), 1);
         const rowsNeeded = Math.ceil(maxDevicesInAnyArea / 3);
         const floorHeight = Math.max(500, rowsNeeded * deviceSpacingY + 200);

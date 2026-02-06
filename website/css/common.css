@@ -518,6 +518,32 @@ nav a.active::before {
     color: var(--text-muted);
 }
 
+.form-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.form-label-row label {
+    margin-bottom: 0;
+}
+
+.form-help-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    padding: 0.2rem;
+}
+
+.form-help-btn[data-tooltip]::after {
+    text-transform: none;
+    white-space: normal;
+    width: max-content;
+    max-width: min(240px, 80vw);
+}
+
 .form-page .form-group input,
 .form-page .form-group select,
 .form-page .form-group textarea {
@@ -1419,6 +1445,22 @@ nav a.active::before {
     margin: 0;
 }
 
+.filters-row.filters-secondary {
+    grid-template-columns: minmax(320px, 1.2fr) repeat(2, minmax(200px, 1fr)) auto;
+    align-items: end;
+}
+
+.filters-row.filters-secondary .filter-field-wide {
+    grid-column: 1;
+}
+
+.filters-row.filters-secondary .btn {
+    width: auto;
+    min-height: 44px;
+    padding: 0.65rem 1rem;
+    justify-self: end;
+}
+
 .filters-primary {
     grid-template-columns: minmax(280px, 1fr) auto;
     align-items: end;
@@ -1525,6 +1567,16 @@ select,
     align-items: stretch;
 }
 
+@media (min-width: 1200px) {
+    .filters-advanced {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .filters-row.filters-secondary {
+        grid-template-columns: minmax(420px, 1.8fr) repeat(2, minmax(140px, 0.7fr)) auto;
+    }
+}
+
 .filters-advanced > .filters-row {
     grid-column: 1 / -1;
 }
@@ -1539,6 +1591,7 @@ select,
     gap: 0.75rem;
     min-width: 0;
     box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.35);
+    width: 100%;
 }
 
 .filters-block-title {
@@ -1691,7 +1744,8 @@ body.demo-mode .header-brand .nav-toggle {
     }
 
     .filters-row,
-    .filters-primary {
+    .filters-primary,
+    .filters-row.filters-secondary {
         grid-template-columns: 1fr;
     }
 
@@ -1700,7 +1754,8 @@ body.demo-mode .header-brand .nav-toggle {
         grid-column: auto;
     }
 
-    .filters-primary .btn {
+    .filters-primary .btn,
+    .filters-row.filters-secondary .btn {
         width: 100%;
         justify-self: stretch;
     }

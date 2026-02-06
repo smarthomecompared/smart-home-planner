@@ -40,6 +40,7 @@ class DeviceFilters {
         setValue('filter-name', '');
         setValue('filter-floor', '');
         setValue('filter-area', '');
+        setValue('filter-controlled-area', '');
         setValue('filter-brand', '');
         setValue('filter-status', '');
         setValue('filter-type', '');
@@ -74,6 +75,7 @@ class DeviceFilters {
             'filter-name',
             'filter-floor',
             'filter-area',
+            'filter-controlled-area',
             'filter-brand',
             'filter-status',
             'filter-type',
@@ -105,6 +107,7 @@ class DeviceFilters {
         const toggleBtn = document.getElementById('toggle-advanced-filters');
         const advancedFilters = document.getElementById('advanced-filters');
         const container = toggleBtn ? toggleBtn.closest('.filters-container') : document.querySelector('.filters-container');
+        const header = container ? container.querySelector('.filters-header') : null;
         const toggleFilters = () => {
             if (!container) return;
             const isCollapsed = container.classList.toggle('is-collapsed');
@@ -122,8 +125,8 @@ class DeviceFilters {
                 toggleFilters();
             });
         }
-        if (container) {
-            container.addEventListener('click', (event) => {
+        if (header) {
+            header.addEventListener('click', (event) => {
                 const target = event.target;
                 if (!target) return;
                 if (target.closest('button, a, input, select, textarea, label')) return;
@@ -160,6 +163,17 @@ class DeviceFilters {
                 sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             areaFilter.value = currentAreaValue;
+        }
+
+        // Update controlled area filter
+        const controlledAreaFilter = document.getElementById('filter-controlled-area');
+        const currentControlledValue = controlledAreaFilter ? controlledAreaFilter.value : '';
+        if (controlledAreaFilter) {
+            const sortedAreas = [...this.areas].sort((a, b) => a.name.localeCompare(b.name));
+            controlledAreaFilter.innerHTML = '<option value="">All</option>' +
+                sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
+                '<option value="__none__">-</option>';
+            controlledAreaFilter.value = currentControlledValue;
         }
         
         // Update brand filter
@@ -232,6 +246,7 @@ class DeviceFilters {
         const floorFilter = getElementValue('filter-floor');
         const areaFilter = getElementValue('filter-area');
         const brandFilter = getElementValue('filter-brand');
+        const controlledAreaFilter = getElementValue('filter-controlled-area');
         const statusFilter = getElementValue('filter-status');
         const typeFilter = getElementValue('filter-type');
         const connectivityFilter = getElementValue('filter-connectivity');
@@ -254,6 +269,7 @@ class DeviceFilters {
             name: nameFilter,
             floor: floorFilter,
             area: areaFilter,
+            controlledArea: controlledAreaFilter,
             brand: brandFilter,
             status: statusFilter,
             type: typeFilter,
@@ -303,6 +319,15 @@ class DeviceFilters {
                 this.filteredDevices = this.filteredDevices.filter(d => !d.area || !validAreaIds.has(d.area));
             } else {
                 this.filteredDevices = this.filteredDevices.filter(d => d.area === areaFilter);
+            }
+        }
+
+        if (controlledAreaFilter) {
+            if (controlledAreaFilter === '__none__') {
+                const validAreaIds = new Set(this.areas.map(area => area.id));
+                this.filteredDevices = this.filteredDevices.filter(d => !d.controlledArea || !validAreaIds.has(d.controlledArea));
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => d.controlledArea === controlledAreaFilter);
             }
         }
         
@@ -411,6 +436,7 @@ class DeviceFilters {
         setValue('filter-name', '');
         setValue('filter-floor', '');
         setValue('filter-area', '');
+        setValue('filter-controlled-area', '');
         setValue('filter-brand', '');
         setValue('filter-status', '');
         setValue('filter-type', '');

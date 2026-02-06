@@ -48,7 +48,8 @@
         }
       ],
       "createdAt": "2025-06-01T11:00:00.000Z",
-      "updatedAt": "2026-02-03T15:11:08.495Z"
+      "updatedAt": "2026-02-03T15:11:08.495Z",
+      "controlledArea": "area-network"
     },
     {
       "id": "dev-2",
@@ -86,7 +87,8 @@
       "samsungSmartThings": false,
       "localOnly": true,
       "ports": [],
-      "createdAt": "2025-06-01T11:05:00.000Z"
+      "createdAt": "2025-06-01T11:05:00.000Z",
+      "controlledArea": "area-network"
     },
     {
       "id": "dev-3",
@@ -135,7 +137,8 @@
           "connectedTo": "dev-10"
         }
       ],
-      "createdAt": "2025-06-01T11:10:00.000Z"
+      "createdAt": "2025-06-01T11:10:00.000Z",
+      "controlledArea": "area-network"
     },
     {
       "id": "dev-4",
@@ -206,7 +209,8 @@
           "speed": "1Gbps"
         }
       ],
-      "createdAt": "2025-06-01T11:12:00.000Z"
+      "createdAt": "2025-06-01T11:12:00.000Z",
+      "controlledArea": "area-network"
     },
     {
       "id": "dev-5",
@@ -249,7 +253,8 @@
           "connectedTo": "dev-4"
         }
       ],
-      "createdAt": "2025-06-01T11:15:00.000Z"
+      "createdAt": "2025-06-01T11:15:00.000Z",
+      "controlledArea": "area-office"
     },
     {
       "id": "dev-6",
@@ -292,7 +297,8 @@
           "connectedTo": "dev-4"
         }
       ],
-      "createdAt": "2025-06-01T11:18:00.000Z"
+      "createdAt": "2025-06-01T11:18:00.000Z",
+      "controlledArea": "area-living"
     },
     {
       "id": "dev-7",
@@ -335,7 +341,8 @@
           "connectedTo": "dev-4"
         }
       ],
-      "createdAt": "2025-06-01T11:22:00.000Z"
+      "createdAt": "2025-06-01T11:22:00.000Z",
+      "controlledArea": "area-patio"
     },
     {
       "id": "dev-8",
@@ -373,7 +380,8 @@
       "samsungSmartThings": true,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:25:00.000Z"
+      "createdAt": "2025-06-01T11:25:00.000Z",
+      "controlledArea": "area-entry"
     },
     {
       "id": "dev-9",
@@ -411,7 +419,8 @@
       "samsungSmartThings": false,
       "localOnly": true,
       "ports": [],
-      "createdAt": "2025-06-01T11:27:00.000Z"
+      "createdAt": "2025-06-01T11:27:00.000Z",
+      "controlledArea": "area-living"
     },
     {
       "id": "dev-10",
@@ -462,7 +471,8 @@
           "connectedTo": "dev-1"
         }
       ],
-      "createdAt": "2025-06-01T11:30:00.000Z"
+      "createdAt": "2025-06-01T11:30:00.000Z",
+      "controlledArea": "area-network"
     },
     {
       "id": "dev-11",
@@ -500,7 +510,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:35:00.000Z"
+      "createdAt": "2025-06-01T11:35:00.000Z",
+      "controlledArea": "area-kitchen"
     },
     {
       "id": "dev-12",
@@ -538,7 +549,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:38:00.000Z"
+      "createdAt": "2025-06-01T11:38:00.000Z",
+      "controlledArea": "area-living"
     },
     {
       "id": "dev-13",
@@ -576,7 +588,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:40:00.000Z"
+      "createdAt": "2025-06-01T11:40:00.000Z",
+      "controlledArea": "area-patio"
     },
     {
       "id": "dev-14",
@@ -614,7 +627,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:42:00.000Z"
+      "createdAt": "2025-06-01T11:42:00.000Z",
+      "controlledArea": ""
     },
     {
       "id": "dev-15",
@@ -652,7 +666,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:45:00.000Z"
+      "createdAt": "2025-06-01T11:45:00.000Z",
+      "controlledArea": "area-hall"
     },
     {
       "id": "dev-16",
@@ -690,7 +705,8 @@
       "samsungSmartThings": false,
       "localOnly": true,
       "ports": [],
-      "createdAt": "2025-06-01T11:48:00.000Z"
+      "createdAt": "2025-06-01T11:48:00.000Z",
+      "controlledArea": "area-laundry"
     },
     {
       "id": "dev-17",
@@ -728,7 +744,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:50:00.000Z"
+      "createdAt": "2025-06-01T11:50:00.000Z",
+      "controlledArea": "area-kitchen"
     },
     {
       "id": "dev-18",
@@ -766,7 +783,8 @@
       "samsungSmartThings": false,
       "localOnly": true,
       "ports": [],
-      "createdAt": "2025-06-01T11:52:00.000Z"
+      "createdAt": "2025-06-01T11:52:00.000Z",
+      "controlledArea": "area-living"
     },
     {
       "id": "dev-19",
@@ -804,7 +822,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:55:00.000Z"
+      "createdAt": "2025-06-01T11:55:00.000Z",
+      "controlledArea": "area-garage"
     },
     {
       "id": "dev-20",
@@ -842,7 +861,8 @@
       "samsungSmartThings": false,
       "localOnly": false,
       "ports": [],
-      "createdAt": "2025-06-01T11:58:00.000Z"
+      "createdAt": "2025-06-01T11:58:00.000Z",
+      "controlledArea": ""
     }
   ],
   "areas": [

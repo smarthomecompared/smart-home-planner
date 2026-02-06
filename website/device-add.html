@@ -88,8 +88,32 @@
                                 </select>
                             </div>
                             <div class="form-group" id="device-area-group">
-                                <label for="device-area">Area</label>
+                                <div class="form-label-row">
+                                    <label for="device-area">Installed Area</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Installed area info" title="Installed area is where the device is physically located.">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <select id="device-area">
+                                    <option value="">Select an area</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="device-controlled-area-group">
+                                <div class="form-label-row">
+                                    <label for="device-controlled-area">Controlled Area</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Controlled area info" title="Controlled area is the space this device controls, even if it is installed elsewhere.">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <select id="device-controlled-area">
                                     <option value="">Select an area</option>
                                 </select>
                             </div>

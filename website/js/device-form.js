@@ -13,6 +13,7 @@ let lastBatteryTypeValue = '';
 let lastConnectivityValue = '';
 let selectedHomeId = '';
 let availableHomes = [];
+let autoSyncAreasEnabled = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -57,6 +58,14 @@ function initializeEventListeners() {
     document.getElementById('device-brand').addEventListener('change', handleBrandChange);
     document.getElementById('device-type').addEventListener('change', handleTypeChange);
     document.getElementById('device-status').addEventListener('change', handleStatusChange);
+    const areaSelect = document.getElementById('device-area');
+    const controlledAreaSelect = document.getElementById('device-controlled-area');
+    if (areaSelect) {
+        areaSelect.addEventListener('change', () => handleAreaAutoSync(areaSelect, controlledAreaSelect));
+    }
+    if (controlledAreaSelect) {
+        controlledAreaSelect.addEventListener('change', () => handleAreaAutoSync(controlledAreaSelect, areaSelect));
+    }
     const deleteButton = document.getElementById('delete-device-btn');
     if (deleteButton) {
         deleteButton.addEventListener('click', handleDeleteDevice);
@@ -213,19 +222,47 @@ function populateBatteryTypes() {
 
 function populateAreas() {
     const areaSelect = document.getElementById('device-area');
-    const currentValue = areaSelect.value;
-    
-    areaSelect.innerHTML = '<option value="">Select an area</option>' + 
-        areas.map(area => `<option value="${area.id}">${escapeHtml(area.name)}</option>`).join('');
-    
-    if (currentValue) {
-        areaSelect.value = currentValue;
+    const controlledSelect = document.getElementById('device-controlled-area');
+    const installedValue = areaSelect ? areaSelect.value : '';
+    const controlledValue = controlledSelect ? controlledSelect.value : '';
+    const optionsHtml = areas.map(area => `<option value="${area.id}">${escapeHtml(area.name)}</option>`).join('');
+
+    if (areaSelect) {
+        areaSelect.innerHTML = '<option value="">Select an area</option>' + optionsHtml;
+        if (installedValue) {
+            areaSelect.value = installedValue;
+        }
+    }
+
+    if (controlledSelect) {
+        controlledSelect.innerHTML = '<option value="">Select an area</option>' + optionsHtml;
+        if (controlledValue) {
+            controlledSelect.value = controlledValue;
+        }
     }
 }
 
 function setAreasForHome(homeId) {
     areas = allAreas.filter(area => area.homeId === homeId);
     populateAreas();
+    updateAreaAutoSyncState();
+}
+
+function updateAreaAutoSyncState() {
+    const installed = document.getElementById('device-area')?.value || '';
+    const controlled = document.getElementById('device-controlled-area')?.value || '';
+    autoSyncAreasEnabled = !installed && !controlled;
+}
+
+function handleAreaAutoSync(sourceSelect, targetSelect) {
+    if (!autoSyncAreasEnabled) return;
+    if (!sourceSelect) return;
+    const value = sourceSelect.value;
+    if (!value) return;
+    if (targetSelect && !targetSelect.value) {
+        targetSelect.value = value;
+        autoSyncAreasEnabled = false;
+    }
 }
 
 // Load device for editing
@@ -287,6 +324,11 @@ function loadDeviceData(device) {
     document.getElementById('device-notes').value = device.notes || '';
     document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : '';
     document.getElementById('device-area').value = device.area || '';
+    const controlledAreaInput = document.getElementById('device-controlled-area');
+    if (controlledAreaInput) {
+        controlledAreaInput.value = device.controlledArea || '';
+    }
+    updateAreaAutoSyncState();
     populateHomeSelector(editingDeviceHomeId);
     
     // Load checkbox values
@@ -398,6 +440,7 @@ function handleDeviceSubmit(e) {
         notes: document.getElementById('device-notes').value,
         connectivity: connectivity,
         area: document.getElementById('device-area').value,
+        controlledArea: document.getElementById('device-controlled-area')?.value || '',
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
         matterHub: document.getElementById('device-matter-hub').checked,
         zigbeeController: document.getElementById('device-zigbee-controller').checked,
@@ -485,6 +528,7 @@ function handleStatusChange() {
     const isWishlist = status === 'wishlist';
     const isPending = status === 'pending';
     const areaGroup = document.getElementById('device-area-group');
+    const controlledAreaGroup = document.getElementById('device-controlled-area-group');
     const areaSelect = document.getElementById('device-area');
     const installationGroup = document.getElementById('device-installation-group');
     const installationInput = document.getElementById('device-installation-date');
@@ -495,6 +539,10 @@ function handleStatusChange() {
     if (areaGroup) {
         areaGroup.classList.remove('is-collapsed');
         areaGroup.classList.toggle('is-hidden', isWishlist);
+    }
+    if (controlledAreaGroup) {
+        controlledAreaGroup.classList.remove('is-collapsed');
+        controlledAreaGroup.classList.toggle('is-hidden', isWishlist);
     }
     if (areaSelect) {
         areaSelect.required = false;
@@ -557,6 +605,11 @@ function handleHomeSelectChange(event) {
     if (areaSelect) {
         areaSelect.value = '';
     }
+    const controlledSelect = document.getElementById('device-controlled-area');
+    if (controlledSelect) {
+        controlledSelect.value = '';
+    }
+    updateAreaAutoSyncState();
 }
 
 function handleBatteryTypeChange() {
@@ -1367,6 +1420,7 @@ function createDevice(deviceData) {
         homeId: deviceData.homeId || getSelectedHomeId(),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         area: deviceData.area,
+        controlledArea: deviceData.controlledArea || '',
         threadBorderRouter: deviceData.threadBorderRouter || false,
         matterHub: deviceData.matterHub || false,
         zigbeeController: deviceData.zigbeeController || false,
@@ -1432,6 +1486,7 @@ function updateDevice(id, deviceData) {
         device.homeId = deviceData.homeId || device.homeId || getSelectedHomeId();
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.area = deviceData.area;
+        device.controlledArea = deviceData.controlledArea || '';
         device.threadBorderRouter = deviceData.threadBorderRouter || false;
         device.matterHub = deviceData.matterHub || false;
         device.zigbeeController = deviceData.zigbeeController || false;
