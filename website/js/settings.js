@@ -472,6 +472,7 @@ function renderNetworksManagement() {
     const list = document.getElementById('networks-list');
     if (!list) return;
 
+    const canDelete = networks.length > 1;
     list.innerHTML = networks.map(network => `
         <div class="networks-item">
             <div class="networks-item-info">
@@ -484,7 +485,7 @@ function renderNetworksManagement() {
                         <path d="M13.5 6.5l4 4"></path>
                     </svg>
                 </button>
-                <button class="btn btn-danger btn-sm btn-icon" data-network-delete="${network.id}" aria-label="Delete network" title="Delete network">
+                ${canDelete ? `<button class="btn btn-danger btn-sm btn-icon" data-network-delete="${network.id}" aria-label="Delete network" title="Delete network">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M3 6h18"></path>
                         <path d="M8 6V4h8v2"></path>
@@ -492,7 +493,7 @@ function renderNetworksManagement() {
                         <path d="M10 11v6"></path>
                         <path d="M14 11v6"></path>
                     </svg>
-                </button>
+                </button>` : ''}
             </div>
         </div>
     `).join('');
