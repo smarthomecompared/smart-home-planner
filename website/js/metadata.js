@@ -1,6 +1,6 @@
 // App metadata
 var appVersion = "0.1.0"
-var appReleaseDate = "2026-02-03"
+var appReleaseDate = "2026-02-09"
 var appReleaseNotes = [
     "A quick dashboard that highlights what matters most in your smart home.",
     "Easy device list with search, filters, and a clear status overview.",
