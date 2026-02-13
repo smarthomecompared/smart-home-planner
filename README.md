@@ -13,11 +13,13 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. E
 
 ## Installation
 
-1. Go to the **App Store**, click **⋮ → Repositories**, fill in</br> `https://github.com/smarthomecompared/smart-home-planner` and click **Add → Close** or click the **Add repository** button below, click **Add → Close** (You might need to enter the **internal IP address** of your Home Assistant instance first).  
-   [![Open your Home Assistant instance and show the add app repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%smarthomecompared%2Fhsmart-home-planne)
-2. Click on the Smart Home Planner App and press **Install** and wait till the app is installed.
-3. Start the app by going to **Info** and click **Start**
-4. Wait a few seconds and press **OPEN WEB UI**, you will now see the onboarding page.
+* Go to the **App Store**, click **⋮ → Repositories**, fill in</br> `https://github.com/smarthomecompared/smart-home-planner` and click **Add → Close** or click the **Add repository** button below, click **Add → Close** (You might need to enter the **internal IP address** of your Home Assistant instance first).
+
+[![Open your Home Assistant instance and show the add app repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%smarthomecompared%2Fhsmart-home-planner)
+
+* Click on the Smart Home Planner App and press **Install** and wait till the app is installed.
+* Start the app by going to **Info** and click **Start**
+* Wait a few seconds and press **OPEN WEB UI**, you will now see the onboarding page.
 
 ## Tech Stack
 - Home Assistant App with ingress (served by Caddy).
@@ -52,3 +54,15 @@ If you want to import the sample manually, use `website/json/sample.json`.
 
 ## License
 MIT. See `LICENSE`.
+
+![Supports aarch64 Architecture][aarch64-shield]
+![Supports amd64 Architecture][amd64-shield]
+![Supports armhf Architecture][armhf-shield]
+![Supports armv7 Architecture][armv7-shield]
+![Supports i386 Architecture][i386-shield]
+
+[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
+[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
+[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
+[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
+[i386-shield]: https://img.shields.io/badge/i386-yes-green.svg
