@@ -12,6 +12,3 @@ It provides a clean, static web interface to:
 - Backup and restore your planning data from the add-on's settings.
 
 This add-on serves everything as static HTML/CSS/JS files via a built-in web server (Caddy), making it fast, secure, and fully integrated with Home Assistant via **ingress**.
-
-## License
-This add-on is provided under the **MIT License** (or choose your preferred open-source license). Feel free to fork, modify, and share.
