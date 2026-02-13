@@ -1,0 +1,46 @@
+# Add-on metadata
+name: "Smart Home Planner"
+description: "Plan, document, and visualize your smart home ecosystem"
+version: "0.2.0"
+slug: "smart-home-planner"
+url: "https://github.com/smarthomecompared/smart-home-planner"
+
+# Architecture support (the Supervisor will build for the correct one)
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+
+# Startup & boot behavior
+init: false
+startup: application                        # Starts after HA core is ready
+boot: auto                                  # Starts automatically on boot
+
+# Use ingress so the site can be opened nicely from the Home Assistant sidebar
+ingress: true
+ingress_port: 80
+ingress_stream: false
+
+# Do not expose any port to the host (we use ingress instead)
+ports:
+  80/tcp: null
+
+
+# Optional: allow access to /share if you want to serve files from there later
+map:
+  - share:rw
+
+# Panel / Sidebar integration
+panel_admin: false
+panel_icon: "mdi:home-analytics"
+panel_title: "Smart Home Planner"
+
+# Health & reliability
+watchdog: "http://[HOST]:[PORT:80]/"        # Supervisor pings this URL → if fails → restarts add-on
+                                            # For static site → root / is fine (Caddy responds 200 OK)
+
+# No configuration options needed for now
+options: {}
+schema: {}
