@@ -4,12 +4,7 @@
 # Uses bashio helpers for nice logging inside Home Assistant
 # =============================================================================
 
-bashio::log.info "Starting Caddy web server..."
-bashio::log.info "Serving static files from /srv on port 80"
+bashio::log.info "Starting Smart Home Planner server..."
+bashio::log.info "Serving UI from /srv and data from /data on port 80"
 
-# Execute Caddy with the same parameters as in Dockerfile
-# Using 'exec' replaces this process with Caddy (cleaner)
-exec caddy file-server \
-  --browse \
-  --root /srv \
-  --listen :80
+exec python3 /app/server.py

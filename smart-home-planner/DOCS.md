@@ -11,4 +11,4 @@ It provides a clean, static web interface to:
 - Support multiple homes or locations.
 - Backup and restore your planning data from the add-on's settings.
 
-This add-on serves everything as static HTML/CSS/JS files via a built-in web server (Caddy), making it fast, secure, and fully integrated with Home Assistant via **ingress**.
+This app serves the UI and a small storage API via a built-in Python server, keeping everything fast, secure, and fully integrated with Home Assistant via **ingress**. All app data is stored in the app `/data` volume so Home Assistant backups include it.

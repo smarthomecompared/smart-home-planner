@@ -11,15 +11,15 @@ let viewMode = 'table';
 const VIEW_STORAGE_KEY = 'smartHomeFloorsView';
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const data = loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    const data = await loadData();
     allFloors = data.floors;
     selectedHomeId = data.selectedHomeId;
     floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
     
     initializeEventListeners();
-    initializeViewToggle();
-    renderFloors();
+    await initializeViewToggle();
+    await renderFloors();
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('add') === '1') {
@@ -63,8 +63,8 @@ function initializeEventListeners() {
     });
 }
 
-function initializeViewToggle() {
-    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+async function initializeViewToggle() {
+    const saved = await getUiPreference(VIEW_STORAGE_KEY);
     if (saved === 'table' || saved === 'grid') {
         viewMode = saved;
     } else {
@@ -73,11 +73,11 @@ function initializeViewToggle() {
 
     const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
     buttons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const next = button.getAttribute('data-view');
             if (!next || next === viewMode) return;
             viewMode = next;
-            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            await setUiPreference(VIEW_STORAGE_KEY, viewMode);
             updateViewToggle();
             updateViewVisibility();
             renderFloors();
@@ -87,8 +87,8 @@ function initializeViewToggle() {
     updateViewToggle();
     updateViewVisibility();
 
-    window.addEventListener('resize', () => {
-        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
+    window.addEventListener('resize', async () => {
+        if (await getUiPreference(VIEW_STORAGE_KEY)) return;
         const next = window.innerWidth <= 640 ? 'grid' : 'table';
         if (next === viewMode) return;
         viewMode = next;
@@ -118,7 +118,7 @@ function updateViewVisibility() {
 }
 
 // CRUD Operations
-function createFloor(name, level) {
+async function createFloor(name, level) {
     const floor = {
         id: Date.now().toString(),
         name: name.trim(),
@@ -128,26 +128,26 @@ function createFloor(name, level) {
     };
     allFloors.push(floor);
     floors = allFloors.filter(item => item.homeId === selectedHomeId);
-    saveData(getAllData());
-    renderFloors();
+    await saveData(await getAllData());
+    await renderFloors();
     return floor;
 }
 
-function updateFloor(id, name, level) {
+async function updateFloor(id, name, level) {
     const floor = allFloors.find(f => f.id === id);
     if (floor) {
         floor.name = name.trim();
         floor.level = level ? parseInt(level) : null;
-        saveData(getAllData());
+        await saveData(await getAllData());
         floors = allFloors.filter(item => item.homeId === selectedHomeId);
-        renderFloors();
+        await renderFloors();
         return floor;
     }
     return null;
 }
 
 async function deleteFloor(id) {
-    const data = loadData();
+    const data = await loadData();
     const areasAssigned = data.areas.filter(a => a.floor === id && a.homeId === selectedHomeId);
     
     if (areasAssigned.length > 0) {
@@ -166,12 +166,12 @@ async function deleteFloor(id) {
     }
     allFloors = allFloors.filter(f => f.id !== id);
     floors = allFloors.filter(f => f.homeId === selectedHomeId);
-    saveData(getAllData());
-    renderFloors();
+    await saveData(await getAllData());
+    await renderFloors();
 }
 
 // Rendering
-function renderFloors() {
+async function renderFloors() {
     const floorsList = document.getElementById('floors-list');
     const countLabel = document.getElementById('floors-count');
     if (countLabel) {
@@ -195,7 +195,7 @@ function renderFloors() {
         return;
     }
     
-    const data = loadData();
+    const data = await loadData();
     const areas = data.areas.filter(area => area.homeId === selectedHomeId);
     const devices = data.devices.filter(device => device.homeId === selectedHomeId);
     
@@ -395,16 +395,16 @@ function closeFloorForm() {
     document.getElementById('floor-form').reset();
 }
 
-function handleFloorSubmit(e) {
+async function handleFloorSubmit(e) {
     e.preventDefault();
     
     const name = document.getElementById('floor-name').value;
     const level = document.getElementById('floor-level').value;
     
     if (editingFloorId) {
-        updateFloor(editingFloorId, name, level);
+        await updateFloor(editingFloorId, name, level);
     } else {
-        createFloor(name, level);
+        await createFloor(name, level);
     }
     
     closeFloorForm();
@@ -415,14 +415,14 @@ window.editFloor = function(id) {
     openFloorForm(id);
 };
 
-window.deleteFloorHandler = function(id) {
-    deleteFloor(id);
+window.deleteFloorHandler = async function(id) {
+    await deleteFloor(id);
 };
 
 // Helper Functions
-function getAllData() {
+async function getAllData() {
     return {
-        ...loadData(),
+        ...(await loadData()),
         floors: allFloors
     };
 }

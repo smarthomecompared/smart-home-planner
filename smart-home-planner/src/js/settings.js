@@ -11,15 +11,15 @@ let networkModalMode = 'add';
 let networkModalTargetId = '';
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    settings = loadSettings();
+document.addEventListener('DOMContentLoaded', async () => {
+    settings = await loadSettings();
     initializeEventListeners();
     renderVersionInfo();
     renderRepoLink();
-    renderHomesManagement();
-    renderNetworksManagement();
+    await renderHomesManagement();
+    await renderNetworksManagement();
     renderOptionsManagement();
-    initializeDemoMode();
+    await initializeDemoMode();
 });
 
 // Event Listeners
@@ -46,10 +46,10 @@ function initializeEventListeners() {
     });
 }
 
-function initializeDemoMode() {
+async function initializeDemoMode() {
     const toggle = document.getElementById('demo-mode-toggle');
     if (!toggle) return;
-    toggle.checked = window.isDemoModeEnabled ? window.isDemoModeEnabled() : false;
+    toggle.checked = window.isDemoModeEnabled ? await window.isDemoModeEnabled() : false;
     toggle.addEventListener('change', async (event) => {
         const shouldEnable = event.target.checked;
         if (shouldEnable) {
@@ -61,10 +61,16 @@ function initializeDemoMode() {
                 event.target.checked = false;
                 return;
             }
-            const success = await enableDemoMode();
+            const success = await window.enableDemoMode();
             if (!success) {
                 event.target.checked = false;
+                return;
             }
+            settings = await loadSettings();
+            await renderHomesManagement();
+            await renderNetworksManagement();
+            renderOptionsManagement();
+            showMessage('Demo mode enabled.', 'success');
         } else {
             const confirmed = await showConfirm('Disable demo mode and restore your previous data?', {
                 title: 'Disable demo mode',
@@ -74,16 +80,21 @@ function initializeDemoMode() {
                 event.target.checked = true;
                 return;
             }
-            await disableDemoMode();
+            await window.disableDemoMode();
+            settings = await loadSettings();
+            await renderHomesManagement();
+            await renderNetworksManagement();
+            renderOptionsManagement();
+            showMessage('Demo mode disabled. Your data has been restored.', 'success');
         }
     });
 }
 
 // Export Data
-function exportData() {
+async function exportData() {
     try {
-        const data = loadData();
-        const settings = loadSettings();
+        const data = await loadData();
+        const settings = await loadSettings();
 
         const normalizedDevices = (data.devices || []).map(device => ({
             ...device,
@@ -94,8 +105,7 @@ function exportData() {
         }));
         
         // Include map positions
-        const mapPositionsStr = localStorage.getItem('smart-home-network-positions');
-        const mapPositions = mapPositionsStr ? JSON.parse(mapPositionsStr) : {};
+        const mapPositions = await loadMapPositions();
         
         const exportData = {
             ...data,
@@ -186,24 +196,22 @@ function importData() {
             }
 
             // Save imported data using the same method as saveData
-            saveData(importedData);
+            await saveData(importedData);
             
             // Import settings if present
             if (importedData.settings) {
-                saveSettings(importedData.settings);
+                await saveSettings(importedData.settings);
             }
             
             // Import map positions if present
             if (importedData.mapPositions) {
-                localStorage.setItem('smart-home-network-positions', JSON.stringify(importedData.mapPositions));
+                await saveMapPositions(importedData.mapPositions);
+            } else {
+                await clearMapPositions();
             }
 
-            if (window.isDemoModeEnabled && window.isDemoModeEnabled()) {
-                const demoKeys = window.DEMO_STORAGE_KEYS;
-                if (demoKeys) {
-                    localStorage.setItem(demoKeys.ENABLED, 'false');
-                    localStorage.removeItem(demoKeys.SNAPSHOT);
-                }
+            if (window.isDemoModeEnabled && await window.isDemoModeEnabled()) {
+                await disableDemoMode();
                 if (window.updateDemoBanner) {
                     window.updateDemoBanner(false);
                 }
@@ -213,9 +221,9 @@ function importData() {
                 }
             }
 
-            settings = loadSettings();
-            renderHomesManagement();
-            renderNetworksManagement();
+            settings = await loadSettings();
+            await renderHomesManagement();
+            await renderNetworksManagement();
             renderOptionsManagement();
             
             // Reset file input
@@ -252,95 +260,6 @@ function validateDataStructure(data) {
     return hasDevices && hasAreas && hasFloors;
 }
 
-async function enableDemoMode() {
-    const demoKeys = window.DEMO_STORAGE_KEYS;
-    if (!demoKeys) return false;
-    if (!localStorage.getItem(demoKeys.SNAPSHOT)) {
-        const snapshot = {
-            ...loadData(),
-            settings: loadSettings(),
-            mapPositions: localStorage.getItem(demoKeys.MAP_POSITIONS)
-                ? JSON.parse(localStorage.getItem(demoKeys.MAP_POSITIONS))
-                : null
-        };
-        localStorage.setItem(demoKeys.SNAPSHOT, JSON.stringify(snapshot));
-    }
-
-    const response = await fetch('json/sample.json', { cache: 'no-store' });
-    if (!response.ok) {
-        showMessage('Unable to load demo data.', 'error');
-        return false;
-    }
-    const demoData = await response.json();
-
-    if (Array.isArray(demoData.devices)) {
-        demoData.devices = demoData.devices.map(device => ({
-            ...device,
-            brand: normalizeOptionValue(device.brand),
-            type: normalizeOptionValue(device.type),
-            connectivity: normalizeOptionValue(device.connectivity),
-            batteryType: normalizeOptionValue(device.batteryType)
-        }));
-    }
-
-    saveData(demoData);
-    if (demoData.settings) {
-        saveSettings(demoData.settings);
-    }
-    if (demoData.mapPositions) {
-        localStorage.setItem(demoKeys.MAP_POSITIONS, JSON.stringify(demoData.mapPositions));
-    } else {
-        localStorage.removeItem(demoKeys.MAP_POSITIONS);
-    }
-
-    localStorage.setItem(demoKeys.ENABLED, 'true');
-    if (window.updateDemoBanner) {
-        window.updateDemoBanner(true);
-    }
-    settings = loadSettings();
-    renderHomesManagement();
-    renderNetworksManagement();
-    renderOptionsManagement();
-    showMessage('Demo mode enabled.', 'success');
-    return true;
-}
-
-async function disableDemoMode() {
-    const demoKeys = window.DEMO_STORAGE_KEYS;
-    if (!demoKeys) return;
-    const snapshotRaw = localStorage.getItem(demoKeys.SNAPSHOT);
-    if (!snapshotRaw) {
-        localStorage.setItem(demoKeys.ENABLED, 'false');
-        if (window.updateDemoBanner) {
-            window.updateDemoBanner(false);
-        }
-        showMessage('Demo mode disabled.', 'success');
-        return;
-    }
-
-    const snapshot = JSON.parse(snapshotRaw);
-    saveData(snapshot);
-    if (snapshot.settings) {
-        saveSettings(snapshot.settings);
-    }
-
-    if (snapshot.mapPositions) {
-        localStorage.setItem(demoKeys.MAP_POSITIONS, JSON.stringify(snapshot.mapPositions));
-    } else {
-        localStorage.removeItem(demoKeys.MAP_POSITIONS);
-    }
-
-    localStorage.setItem(demoKeys.ENABLED, 'false');
-    localStorage.removeItem(demoKeys.SNAPSHOT);
-    if (window.updateDemoBanner) {
-        window.updateDemoBanner(false);
-    }
-    settings = loadSettings();
-    renderHomesManagement();
-    renderNetworksManagement();
-    renderOptionsManagement();
-    showMessage('Demo mode disabled. Your data has been restored.', 'success');
-}
 
 // Show Message
 function showMessage(message, type) {
@@ -406,8 +325,8 @@ function renderRepoLink() {
     textEl.textContent = label;
 }
 
-function renderHomesManagement() {
-    const data = loadData();
+async function renderHomesManagement() {
+    const data = await loadData();
     homes = data.homes || [];
     selectedHomeId = data.selectedHomeId || '';
 
@@ -465,8 +384,8 @@ function renderHomesManagement() {
     });
 }
 
-function renderNetworksManagement() {
-    const data = loadData();
+async function renderNetworksManagement() {
+    const data = await loadData();
     networks = data.networks || [];
 
     const list = document.getElementById('networks-list');
@@ -539,7 +458,7 @@ function closeHomeModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-function handleHomeModalSave() {
+async function handleHomeModalSave() {
     const input = document.getElementById('home-modal-input');
     if (!input) return;
     const name = input.value.trim();
@@ -552,12 +471,12 @@ function handleHomeModalSave() {
         return;
     }
 
-    const data = loadData();
+    const data = await loadData();
     if (homeModalMode === 'rename') {
         const updatedHomes = (data.homes || []).map(home => (
             home.id === homeModalTargetId ? { ...home, name: name } : home
         ));
-        saveData({
+        await saveData({
             ...data,
             homes: updatedHomes
         });
@@ -565,7 +484,7 @@ function handleHomeModalSave() {
     } else {
         const newHome = buildHome(name);
         const updatedHomes = [...(data.homes || []), newHome];
-        saveData({
+        await saveData({
             ...data,
             homes: updatedHomes
         });
@@ -573,7 +492,7 @@ function handleHomeModalSave() {
     }
 
     closeHomeModal();
-    renderHomesManagement();
+    await renderHomesManagement();
 }
 
 function openNetworkModal(mode, networkId = '') {
@@ -602,7 +521,7 @@ function closeNetworkModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-function handleNetworkModalSave() {
+async function handleNetworkModalSave() {
     const input = document.getElementById('network-modal-input');
     if (!input) return;
     const name = input.value.trim();
@@ -615,12 +534,12 @@ function handleNetworkModalSave() {
         return;
     }
 
-    const data = loadData();
+    const data = await loadData();
     if (networkModalMode === 'rename') {
         const updatedNetworks = (data.networks || []).map(network => (
             network.id === networkModalTargetId ? { ...network, name: name } : network
         ));
-        saveData({
+        await saveData({
             ...data,
             networks: updatedNetworks
         });
@@ -628,7 +547,7 @@ function handleNetworkModalSave() {
     } else {
         const newNetwork = buildNetwork(name);
         const updatedNetworks = [...(data.networks || []), newNetwork];
-        saveData({
+        await saveData({
             ...data,
             networks: updatedNetworks
         });
@@ -636,19 +555,19 @@ function handleNetworkModalSave() {
     }
 
     closeNetworkModal();
-    renderNetworksManagement();
+    await renderNetworksManagement();
 }
 
-function handleHomeSwitch(nextHomeId) {
+async function handleHomeSwitch(nextHomeId) {
     if (!nextHomeId || nextHomeId === selectedHomeId) {
         return;
     }
-    const data = loadData();
-    saveData({
+    const data = await loadData();
+    await saveData({
         ...data,
         selectedHomeId: nextHomeId
     });
-    renderHomesManagement();
+    await renderHomesManagement();
     showMessage('Home switched successfully!', 'success');
 }
 
@@ -668,7 +587,7 @@ async function handleDeleteHome(homeId) {
         return;
     }
 
-    const data = loadData();
+    const data = await loadData();
     const remainingHomes = (data.homes || []).filter(home => home.id !== homeId);
     let nextSelectedHomeId = data.selectedHomeId;
     if (nextSelectedHomeId === homeId || !remainingHomes.some(home => home.id === nextSelectedHomeId)) {
@@ -703,7 +622,7 @@ async function handleDeleteHome(homeId) {
         return floor;
     });
 
-    saveData({
+    await saveData({
         ...data,
         homes: remainingHomes,
         selectedHomeId: nextSelectedHomeId,
@@ -712,7 +631,7 @@ async function handleDeleteHome(homeId) {
         floors: updatedFloors
     });
 
-    renderHomesManagement();
+    await renderHomesManagement();
     showMessage('Home deleted successfully!', 'success');
 }
 
@@ -732,7 +651,7 @@ async function handleDeleteNetwork(networkId) {
         return;
     }
 
-    const data = loadData();
+    const data = await loadData();
     const remainingNetworks = (data.networks || []).filter(network => network.id !== networkId);
     const updatedDevices = (data.devices || []).map(device => {
         if (device.networkId === networkId) {
@@ -744,13 +663,13 @@ async function handleDeleteNetwork(networkId) {
         return device;
     });
 
-    saveData({
+    await saveData({
         ...data,
         networks: remainingNetworks,
         devices: updatedDevices
     });
 
-    renderNetworksManagement();
+    await renderNetworksManagement();
     showMessage('Network deleted successfully!', 'success');
 }
 
@@ -792,7 +711,7 @@ function renderOptionsManagement() {
     document.getElementById('reset-options-btn').addEventListener('click', resetOptions);
 }
 
-function saveOptions() {
+async function saveOptions() {
     const optionsConfig = ['brands', 'types', 'connectivity', 'batteryTypes'];
     const newSettings = {};
     
@@ -805,7 +724,7 @@ function saveOptions() {
         newSettings[key] = values;
     });
     
-    saveSettings(newSettings);
+    await saveSettings(newSettings);
     settings = newSettings;
     showMessage('Options saved successfully!', 'success');
 }
@@ -818,7 +737,7 @@ async function resetOptions() {
     if (confirmed) {
         const defaultSettings = getDefaultSettings();
         
-        saveSettings(defaultSettings);
+        await saveSettings(defaultSettings);
         settings = defaultSettings;
         renderOptionsManagement();
         showMessage('Options reset to defaults successfully!', 'success');

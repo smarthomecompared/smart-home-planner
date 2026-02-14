@@ -34,11 +34,11 @@ function getDefaultViewMode() {
 let deviceFilters = null;
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const data = loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    const data = await loadData();
     selectedHomeId = data.selectedHomeId;
     allDevices = data.devices;
-    settings = loadSettings();
+    settings = await loadSettings();
     areas = data.areas.filter(area => area.homeId === selectedHomeId);
     floors = data.floors.filter(floor => floor.homeId === selectedHomeId);
     networks = data.networks || [];
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     initializeEventListeners();
-    initializeViewToggle();
+    await initializeViewToggle();
     applyQueryFilters();
     deviceFilters.applyFilters();
 });
@@ -89,8 +89,8 @@ function initializeEventListeners() {
     });
 }
 
-function initializeViewToggle() {
-    const saved = localStorage.getItem(getViewStorageKey());
+async function initializeViewToggle() {
+    const saved = await getUiPreference(getViewStorageKey());
     if (saved === 'table' || saved === 'grid' || saved === 'diagram') {
         viewMode = saved;
     } else {
@@ -99,11 +99,11 @@ function initializeViewToggle() {
 
     const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
     buttons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const next = button.getAttribute('data-view');
             if (!next || next === viewMode) return;
             viewMode = next;
-            localStorage.setItem(getViewStorageKey(), viewMode);
+            await setUiPreference(getViewStorageKey(), viewMode);
             updateViewToggle();
             updateViewVisibility();
             renderDevices();
@@ -113,8 +113,8 @@ function initializeViewToggle() {
     updateViewToggle();
     updateViewVisibility();
 
-    window.addEventListener('resize', () => {
-        const savedNext = localStorage.getItem(getViewStorageKey());
+    window.addEventListener('resize', async () => {
+        const savedNext = await getUiPreference(getViewStorageKey());
         const next = (savedNext === 'table' || savedNext === 'grid' || savedNext === 'diagram')
             ? savedNext
             : getDefaultViewMode();
@@ -180,7 +180,7 @@ function ensureDiagramReady() {
 }
 
 // CRUD Operations
-function createDevice(deviceData) {
+async function createDevice(deviceData) {
     // Validate unique name
     const name = deviceData.name.trim();
     if (!name) {
@@ -211,7 +211,7 @@ function createDevice(deviceData) {
     };
     allDevices.push(device);
     devices = allDevices.filter(item => item.homeId === selectedHomeId);
-    saveData(getAllData());
+    await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings);
     if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
@@ -220,7 +220,7 @@ function createDevice(deviceData) {
     return device;
 }
 
-function updateDevice(id, deviceData) {
+async function updateDevice(id, deviceData) {
     // Validate unique name
     const name = deviceData.name.trim();
     if (!name) {
@@ -248,7 +248,7 @@ function updateDevice(id, deviceData) {
         device.area = deviceData.area || '';
         device.updatedAt = new Date().toISOString();
         device.homeId = deviceData.homeId || device.homeId || selectedHomeId;
-        saveData(getAllData());
+        await saveData(await getAllData());
         devices = allDevices.filter(item => item.homeId === selectedHomeId);
         deviceFilters.updateData(devices, areas, floors, networks, settings);
         if (diagramReady && window.DeviceDiagram) {
@@ -279,7 +279,7 @@ async function deleteDevice(id) {
         }
     });
     
-    saveData(getAllData());
+    await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings);
     if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
@@ -620,7 +620,7 @@ window.editDevice = function(id) {
     window.location.href = `device-edit.html?id=${id}`;
 };
 
-window.duplicateDevice = function(id) {
+window.duplicateDevice = async function(id) {
     const device = devices.find(d => d.id === id);
     if (device) {
         // Create a copy with modified name
@@ -629,19 +629,19 @@ window.duplicateDevice = function(id) {
             name: `${device.name || 'Unnamed'} (Copy)`
         };
         // Store duplicate data temporarily and redirect
-        sessionStorage.setItem('duplicateDevice', JSON.stringify(duplicateData));
+        await setUiPreference('duplicateDevice', duplicateData);
         window.location.href = 'device-add.html?duplicate=true';
     }
 };
 
-window.deleteDeviceHandler = function(id) {
-    deleteDevice(id);
+window.deleteDeviceHandler = async function(id) {
+    await deleteDevice(id);
 };
 
 // Helper Functions
-function getAllData() {
+async function getAllData() {
     return {
-        ...loadData(),
+        ...(await loadData()),
         devices: allDevices
     };
 }

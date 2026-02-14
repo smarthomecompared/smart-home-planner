@@ -1,21 +1,9 @@
 // Common JavaScript for Smart Home Manager
 
-// Data Storage Keys
-const STORAGE_KEYS = {
-    DEVICES: 'smartHomeDevices',
-    AREAS: 'smartHomeAreas',
-    FLOORS: 'smartHomeFloors',
-    SETTINGS: 'smartHomeSettings',
-    HOMES: 'smartHomeHomes',
-    SELECTED_HOME: 'smartHomeSelectedHome',
-    NETWORKS: 'smartHomeNetworks'
-};
-
-const DEMO_STORAGE_KEYS = {
-    ENABLED: 'smartHomeDemoMode',
-    SNAPSHOT: 'smartHomeDemoSnapshot',
-    MAP_POSITIONS: 'smart-home-network-positions',
-    PROMPT_SEEN: 'smartHomeDemoPromptSeen'
+const STORAGE_API_URL = '/api/storage';
+const DEFAULT_DEMO_STATE = {
+    enabled: false,
+    snapshot: null
 };
 
 function buildHome(name) {
@@ -34,21 +22,98 @@ function buildNetwork(name) {
     };
 }
 
+function buildDefaultStorage() {
+    return {
+        devices: [],
+        areas: [],
+        floors: [],
+        homes: [],
+        networks: [],
+        selectedHomeId: '',
+        settings: null,
+        mapPositions: null,
+        demo: { ...DEFAULT_DEMO_STATE },
+        ui: {}
+    };
+}
+
+function mergeStorage(raw) {
+    const base = buildDefaultStorage();
+    const merged = { ...base, ...(raw || {}) };
+    merged.demo = { ...base.demo, ...(raw && raw.demo ? raw.demo : {}) };
+    merged.ui = { ...base.ui, ...(raw && raw.ui ? raw.ui : {}) };
+    return merged;
+}
+
+let storageCache = null;
+let storageLoadPromise = null;
+let storageSavePromise = Promise.resolve();
+
+function enqueueStorageWrite(task) {
+    storageSavePromise = storageSavePromise.then(task, task);
+    return storageSavePromise;
+}
+
+async function loadStorage() {
+    if (storageCache) return storageCache;
+    if (!storageLoadPromise) {
+        storageLoadPromise = fetch(STORAGE_API_URL, { cache: 'no-store' })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Storage request failed: ${response.status}`);
+                }
+                const payload = await response.json();
+                return mergeStorage(payload);
+            })
+            .catch((error) => {
+                console.error('Failed to load storage:', error);
+                return mergeStorage({});
+            })
+            .then((storage) => {
+                storageCache = storage;
+                storageLoadPromise = null;
+                return storage;
+            });
+    }
+    return storageLoadPromise;
+}
+
+async function saveStorage(nextStorage) {
+    return enqueueStorageWrite(async () => {
+        const payload = mergeStorage(nextStorage);
+        storageCache = payload;
+        await fetch(STORAGE_API_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return payload;
+    });
+}
+
+async function patchStorage(patch) {
+    return enqueueStorageWrite(async () => {
+        const storage = await loadStorage();
+        const payload = mergeStorage({ ...storage, ...(patch || {}) });
+        storageCache = payload;
+        await fetch(STORAGE_API_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return payload;
+    });
+}
+
 // Data Management Functions
-function loadData() {
-    const devicesData = localStorage.getItem(STORAGE_KEYS.DEVICES);
-    const areasData = localStorage.getItem(STORAGE_KEYS.AREAS);
-    const floorsData = localStorage.getItem(STORAGE_KEYS.FLOORS);
-    const homesData = localStorage.getItem(STORAGE_KEYS.HOMES);
-    const networksData = localStorage.getItem(STORAGE_KEYS.NETWORKS);
-    const selectedHomeRaw = localStorage.getItem(STORAGE_KEYS.SELECTED_HOME);
-    
-    let devices = devicesData ? JSON.parse(devicesData) : [];
-    let areas = areasData ? JSON.parse(areasData) : [];
-    let floors = floorsData ? JSON.parse(floorsData) : [];
-    let homes = homesData ? JSON.parse(homesData) : [];
-    let networks = networksData ? JSON.parse(networksData) : [];
-    let selectedHomeId = selectedHomeRaw || '';
+async function loadData() {
+    const storage = await loadStorage();
+    let devices = storage.devices || [];
+    let areas = storage.areas || [];
+    let floors = storage.floors || [];
+    let homes = storage.homes || [];
+    let networks = storage.networks || [];
+    let selectedHomeId = storage.selectedHomeId || '';
     let didUpdate = false;
 
     if (!Array.isArray(homes) || homes.length === 0) {
@@ -103,10 +168,14 @@ function loadData() {
     });
 
     if (didUpdate) {
-        localStorage.setItem(STORAGE_KEYS.DEVICES, JSON.stringify(devices));
-        localStorage.setItem(STORAGE_KEYS.HOMES, JSON.stringify(homes));
-        localStorage.setItem(STORAGE_KEYS.SELECTED_HOME, selectedHomeId);
-        localStorage.setItem(STORAGE_KEYS.NETWORKS, JSON.stringify(networks));
+        await patchStorage({
+            devices,
+            areas,
+            floors,
+            homes,
+            networks,
+            selectedHomeId
+        });
     }
 
     return {
@@ -119,22 +188,13 @@ function loadData() {
     };
 }
 
-function saveData(data) {
-    localStorage.setItem(STORAGE_KEYS.DEVICES, JSON.stringify(data.devices));
-    localStorage.setItem(STORAGE_KEYS.AREAS, JSON.stringify(data.areas));
-    localStorage.setItem(STORAGE_KEYS.FLOORS, JSON.stringify(data.floors));
-    if (data.homes) {
-        localStorage.setItem(STORAGE_KEYS.HOMES, JSON.stringify(data.homes));
-    }
-    if (data.networks) {
-        localStorage.setItem(STORAGE_KEYS.NETWORKS, JSON.stringify(data.networks));
-    }
-    if (data.selectedHomeId) {
-        localStorage.setItem(STORAGE_KEYS.SELECTED_HOME, data.selectedHomeId);
-    }
-    if (data.settings) {
-        saveSettings(data.settings);
-    }
+async function saveData(data) {
+    const storage = await loadStorage();
+    await saveStorage({
+        ...storage,
+        ...data,
+        settings: data.settings ? data.settings : storage.settings
+    });
 }
 
 // Settings Management Functions
@@ -155,28 +215,32 @@ function getDefaultSettings() {
     };
 }
 
-function loadSettings() {
-    const settingsData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+async function loadSettings() {
+    const storage = await loadStorage();
     const defaults = getDefaultSettings();
-    if (settingsData) {
-        const saved = JSON.parse(settingsData);
-        // Merge with defaults to ensure all keys exist
-        return ensureFriendlySettings({
-            brands: saved.brands || defaults.brands,
-            types: saved.types || defaults.types,
-            connectivity: saved.connectivity || defaults.connectivity,
-            batteryTypes: saved.batteryTypes || defaults.batteryTypes
-        });
+    let settings = storage.settings || defaults;
+    settings = ensureFriendlySettings({
+        brands: settings.brands || defaults.brands,
+        types: settings.types || defaults.types,
+        connectivity: settings.connectivity || defaults.connectivity,
+        batteryTypes: settings.batteryTypes || defaults.batteryTypes
+    });
+    if (!storage.settings) {
+        await saveStorage({ ...storage, settings });
     }
-    return ensureFriendlySettings(defaults);
+    return settings;
 }
 
-function saveSettings(settings) {
-    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+async function saveSettings(settings) {
+    const storage = await loadStorage();
+    await saveStorage({
+        ...storage,
+        settings
+    });
 }
 
-function getSelectedHomeId() {
-    const data = loadData();
+async function getSelectedHomeId() {
+    const data = await loadData();
     return data.selectedHomeId;
 }
 
@@ -479,8 +543,38 @@ function initIconTooltips() {
     }
 }
 
-function isDemoModeEnabled() {
-    return localStorage.getItem(DEMO_STORAGE_KEYS.ENABLED) === 'true';
+async function getUiPreference(key) {
+    const storage = await loadStorage();
+    return storage.ui ? storage.ui[key] : null;
+}
+
+async function setUiPreference(key, value) {
+    const storage = await loadStorage();
+    const nextUi = { ...(storage.ui || {}) };
+    if (value === null || value === undefined) {
+        delete nextUi[key];
+    } else {
+        nextUi[key] = value;
+    }
+    await patchStorage({ ui: nextUi });
+}
+
+async function loadMapPositions() {
+    const storage = await loadStorage();
+    return storage.mapPositions || {};
+}
+
+async function saveMapPositions(positions) {
+    await patchStorage({ mapPositions: positions || {} });
+}
+
+async function clearMapPositions() {
+    await patchStorage({ mapPositions: null });
+}
+
+async function isDemoModeEnabled() {
+    const storage = await loadStorage();
+    return Boolean(storage.demo && storage.demo.enabled);
 }
 
 function updateDemoBanner(enabled) {
@@ -515,24 +609,27 @@ function updateDemoBanner(enabled) {
 }
 
 async function enableDemoMode() {
-    if (isDemoModeEnabled()) {
+    const storage = await loadStorage();
+    if (storage.demo && storage.demo.enabled) {
         updateDemoBanner(true);
         return true;
     }
-    if (!localStorage.getItem(DEMO_STORAGE_KEYS.SNAPSHOT)) {
+    if (!storage.demo || !storage.demo.snapshot) {
         const snapshot = {
-            ...loadData(),
-            settings: loadSettings(),
-            mapPositions: localStorage.getItem(DEMO_STORAGE_KEYS.MAP_POSITIONS)
-                ? JSON.parse(localStorage.getItem(DEMO_STORAGE_KEYS.MAP_POSITIONS))
-                : null
+            ...(await loadData()),
+            settings: await loadSettings(),
+            mapPositions: storage.mapPositions || null
         };
-        localStorage.setItem(DEMO_STORAGE_KEYS.SNAPSHOT, JSON.stringify(snapshot));
+        storage.demo = {
+            ...(storage.demo || {}),
+            snapshot
+        };
+        await saveStorage(storage);
     }
 
     const response = await fetch('json/sample.json', { cache: 'no-store' });
     if (!response.ok) {
-        showAlert('Unable to load demo data. Please run a local server for demo mode.');
+        showAlert('Unable to load demo data.');
         return false;
     }
     const demoData = await response.json();
@@ -547,76 +644,61 @@ async function enableDemoMode() {
         }));
     }
 
-    saveData(demoData);
+    await saveData(demoData);
     if (demoData.settings) {
-        saveSettings(demoData.settings);
-    }
-    if (demoData.mapPositions) {
-        localStorage.setItem(DEMO_STORAGE_KEYS.MAP_POSITIONS, JSON.stringify(demoData.mapPositions));
-    } else {
-        localStorage.removeItem(DEMO_STORAGE_KEYS.MAP_POSITIONS);
+        await saveSettings(demoData.settings);
     }
 
-    localStorage.setItem(DEMO_STORAGE_KEYS.ENABLED, 'true');
+    const nextStorage = await loadStorage();
+    nextStorage.mapPositions = demoData.mapPositions || null;
+    nextStorage.demo = {
+        ...(nextStorage.demo || {}),
+        enabled: true
+    };
+    await saveStorage(nextStorage);
     updateDemoBanner(true);
     return true;
 }
 
 async function disableDemoMode() {
-    const snapshotRaw = localStorage.getItem(DEMO_STORAGE_KEYS.SNAPSHOT);
-    if (snapshotRaw) {
-        const snapshot = JSON.parse(snapshotRaw);
-        saveData(snapshot);
+    const storage = await loadStorage();
+    const snapshot = storage.demo ? storage.demo.snapshot : null;
+    if (snapshot) {
+        await saveData(snapshot);
         if (snapshot.settings) {
-            saveSettings(snapshot.settings);
+            await saveSettings(snapshot.settings);
         }
-        if (snapshot.mapPositions) {
-            localStorage.setItem(DEMO_STORAGE_KEYS.MAP_POSITIONS, JSON.stringify(snapshot.mapPositions));
-        } else {
-            localStorage.removeItem(DEMO_STORAGE_KEYS.MAP_POSITIONS);
-        }
-        localStorage.removeItem(DEMO_STORAGE_KEYS.SNAPSHOT);
+        const nextStorage = await loadStorage();
+        nextStorage.mapPositions = snapshot.mapPositions || null;
+        nextStorage.demo = {
+            ...(nextStorage.demo || {}),
+            snapshot: null,
+            enabled: false
+        };
+        await saveStorage(nextStorage);
+    } else {
+        storage.demo = {
+            ...(storage.demo || {}),
+            enabled: false
+        };
+        await saveStorage(storage);
     }
-    localStorage.setItem(DEMO_STORAGE_KEYS.ENABLED, 'false');
     updateDemoBanner(false);
     return true;
 }
 
-async function maybePromptForDemoMode() {
-    if (isDemoModeEnabled()) return;
-    if (localStorage.getItem(DEMO_STORAGE_KEYS.PROMPT_SEEN) === 'true') return;
-    const message = [
-        'Demo mode loads sample data so you can explore dashboards, filters, and the diagram.',
-        'Normal mode keeps your current data and starts with a clean workspace.',
-        '',
-        'You can change this anytime in Settings.'
-    ].join('\n');
-    const wantsDemo = await showConfirm(message, {
-        title: 'Choose your mode',
-        confirmText: 'Use Demo Mode',
-        cancelText: 'Use Normal Mode'
-    });
-    if (wantsDemo) {
-        const ok = await enableDemoMode();
-        if (ok) {
-            localStorage.setItem(DEMO_STORAGE_KEYS.PROMPT_SEEN, 'true');
-            window.location.reload();
-        }
-    } else {
-        localStorage.setItem(DEMO_STORAGE_KEYS.PROMPT_SEEN, 'true');
-        updateDemoBanner(false);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initMobileNav();
     initIconTooltips();
-    updateDemoBanner(isDemoModeEnabled());
-    maybePromptForDemoMode();
+    updateDemoBanner(await isDemoModeEnabled());
 });
 
-window.DEMO_STORAGE_KEYS = DEMO_STORAGE_KEYS;
 window.isDemoModeEnabled = isDemoModeEnabled;
 window.updateDemoBanner = updateDemoBanner;
 window.enableDemoMode = enableDemoMode;
 window.disableDemoMode = disableDemoMode;
+window.loadMapPositions = loadMapPositions;
+window.saveMapPositions = saveMapPositions;
+window.clearMapPositions = clearMapPositions;
+window.getUiPreference = getUiPreference;
+window.setUiPreference = setUiPreference;

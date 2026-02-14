@@ -48,8 +48,8 @@ window.DeviceDiagram = (() => {
         isInitialized = true;
     }
 
-    function initWithStoredData(options = {}) {
-        const data = loadData();
+    async function initWithStoredData(options = {}) {
+        const data = await loadData();
         const selectedHomeId = data.selectedHomeId;
         init({
             ...options,
@@ -57,7 +57,7 @@ window.DeviceDiagram = (() => {
             areas: data.areas.filter(area => area.homeId === selectedHomeId),
             floors: data.floors.filter(floor => floor.homeId === selectedHomeId),
             networks: data.networks || [],
-            settings: loadSettings()
+            settings: await loadSettings()
         });
     }
 
@@ -176,8 +176,8 @@ function initializeEventListeners() {
     document.addEventListener('keydown', handlePowerDialogEscape);
 }
 
-function toggleLayoutEdit() {
-    setLayoutEditable(!isLayoutEditable);
+async function toggleLayoutEdit() {
+    await setLayoutEditable(!isLayoutEditable);
 }
 
 function markLayoutDirty() {
@@ -209,14 +209,14 @@ function updateLayoutButtons() {
     }
 }
 
-function setLayoutEditable(editable) {
+async function setLayoutEditable(editable) {
     isLayoutEditable = Boolean(editable);
 
     if (cy) {
         const nodes = cy.nodes('[type="device"]');
         if (isLayoutEditable) {
             if (!cachedPositions) {
-                cachedPositions = loadPositions();
+                cachedPositions = await loadPositions();
             }
             nodes.unlock();
             nodes.grabify();
@@ -621,7 +621,7 @@ function hideDeviceTooltip() {
 }
 
 // Render network
-function renderNetwork() {
+async function renderNetwork() {
     if (!cy) {
         console.error('Cytoscape not initialized');
         return;
@@ -679,7 +679,7 @@ function renderNetwork() {
     });
     
     // Load saved positions
-    const savedPositions = loadPositions();
+    const savedPositions = await loadPositions();
     
     // Build elements array
     const elements = [];
@@ -911,7 +911,7 @@ function renderNetwork() {
         padding: 80
     }).run();
 
-    setLayoutEditable(isLayoutEditable);
+    await setLayoutEditable(isLayoutEditable);
 }
 
 function getEthernetConnectionMeta(device, port, devicesList) {
@@ -1138,7 +1138,7 @@ async function resetLayout() {
     if (!confirmed) {
         return;
     }
-    localStorage.removeItem('smart-home-network-positions');
+    await clearMapPositions();
     hasUnsavedLayoutChanges = true;
     renderNetwork();
     
@@ -1155,7 +1155,7 @@ async function resetLayout() {
 }
 
 // Save positions
-function savePositions() {
+async function savePositions() {
     if (!isLayoutEditable) {
         showAlert('Enable edit mode to save positions.');
         return;
@@ -1167,7 +1167,7 @@ function savePositions() {
         positions[node.id()] = node.position();
     });
     
-    localStorage.setItem('smart-home-network-positions', JSON.stringify(positions));
+    await saveMapPositions(positions);
     hasUnsavedLayoutChanges = false;
     cachedPositions = null;
     updateLayoutButtons();
@@ -1183,28 +1183,28 @@ function savePositions() {
         btn.classList.remove('btn-success');
     }, 2000);
 
-    setLayoutEditable(false);
+    await setLayoutEditable(false);
 }
 
-function cancelLayoutChanges() {
+async function cancelLayoutChanges() {
     if (!isLayoutEditable) {
         return;
     }
     if (cachedPositions) {
-        localStorage.setItem('smart-home-network-positions', JSON.stringify(cachedPositions));
+        await saveMapPositions(cachedPositions);
     } else {
-        localStorage.removeItem('smart-home-network-positions');
+        await clearMapPositions();
     }
     hasUnsavedLayoutChanges = false;
     cachedPositions = null;
     renderNetwork();
-    setLayoutEditable(false);
+    await setLayoutEditable(false);
 }
 
 // Load positions
-function loadPositions() {
-    const saved = localStorage.getItem('smart-home-network-positions');
-    return saved ? JSON.parse(saved) : {};
+async function loadPositions() {
+    const saved = await loadMapPositions();
+    return saved || {};
 }
 
 // Sort devices by connections to group connected devices together

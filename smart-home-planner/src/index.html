@@ -770,9 +770,9 @@
     <script>
         const chartRegistry = {};
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const data = loadData();
-            const settings = loadSettings();
+        document.addEventListener('DOMContentLoaded', async () => {
+            const data = await loadData();
+            const settings = await loadSettings();
             const dashboard = document.getElementById('dashboard');
             const selectedHomeId = data.selectedHomeId;
             const devices = (data.devices || []).filter(device => device.homeId === selectedHomeId);

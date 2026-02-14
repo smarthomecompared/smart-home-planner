@@ -39,7 +39,7 @@ panel_title: "Smart Home Planner"
 
 # Health & reliability
 watchdog: "http://[HOST]:[PORT:80]/"        # Supervisor pings this URL → if fails → restarts add-on
-                                            # For static site → root / is fine (Caddy responds 200 OK)
+                                            # For this UI server → root / is fine (responds 200 OK)
 
 # No configuration options needed for now
 options: {}

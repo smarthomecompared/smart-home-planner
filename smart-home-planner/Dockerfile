@@ -2,15 +2,15 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-# Install Caddy from the Alpine package repository
-RUN apk add --no-cache caddy
+# Install Python for the API server
+RUN apk add --no-cache python3
 
 # Copy the static website files into the container
-# Caddy will serve files from /srv by default in this setup
+# The Python server will serve files from /srv in this setup
 COPY src/ /srv/
+COPY server.py /app/server.py
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-# Run Caddy to serve static files on port 80
-# --browse enables directory listing (optional, remove if not wanted)
-# --root specifies where the files are
-# --listen makes it bind to all interfaces on port 80
-CMD ["caddy", "file-server", "--browse", "--root", "/srv", "--listen", ":80"]
+# Run the combined static + API server
+CMD ["/run.sh"]

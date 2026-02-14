@@ -17,11 +17,11 @@ let availableHomes = [];
 let autoSyncAreasEnabled = false;
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const data = loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    const data = await loadData();
     allDevices = data.devices;
     allAreas = data.areas;
-    settings = loadSettings();
+    settings = await loadSettings();
     networks = data.networks || [];
     selectedHomeId = data.selectedHomeId;
     availableHomes = data.homes || [];
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editingDeviceId) {
         loadDeviceForEdit(editingDeviceId);
     } else {
-        loadDuplicateDeviceFromSession();
+        await loadDuplicateDeviceFromStorage();
     }
 
     handlePowerTypeChange();
@@ -292,26 +292,26 @@ async function loadDeviceForEdit(deviceId) {
     loadDeviceData(device);
 }
 
-function loadDuplicateDeviceFromSession() {
+async function loadDuplicateDeviceFromStorage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('duplicate') !== 'true') {
         return;
     }
-    const stored = sessionStorage.getItem('duplicateDevice');
+    const stored = await getUiPreference('duplicateDevice');
     if (!stored) {
         return;
     }
     let duplicateData;
     try {
-        duplicateData = JSON.parse(stored);
+        duplicateData = typeof stored === 'string' ? JSON.parse(stored) : stored;
     } catch (error) {
-        sessionStorage.removeItem('duplicateDevice');
+        await setUiPreference('duplicateDevice', null);
         return;
     }
     duplicateData.installationDate = '';
     duplicateData.lastBatteryChange = '';
     loadDeviceData(duplicateData);
-    sessionStorage.removeItem('duplicateDevice');
+    await setUiPreference('duplicateDevice', null);
 }
 
 function loadDeviceData(device) {
@@ -379,7 +379,7 @@ function loadDeviceData(device) {
 }
 
 // Form Handlers
-function handleDeviceSubmit(e) {
+async function handleDeviceSubmit(e) {
     e.preventDefault();
 
     let connectivity = document.getElementById('device-connectivity').value;
@@ -439,6 +439,7 @@ function handleDeviceSubmit(e) {
     const nextHomeId = deviceHomeSelect ? deviceHomeSelect.value : '';
     const statusValue = document.getElementById('device-status').value;
     const isPendingStatus = statusValue === 'pending';
+    const fallbackHomeId = editingDeviceId ? (nextHomeId || editingDeviceHomeId) : await getSelectedHomeId();
     const deviceData = {
         name: document.getElementById('device-name').value,
         brand: brandValue,
@@ -475,13 +476,13 @@ function handleDeviceSubmit(e) {
         samsungSmartThings: document.getElementById('device-samsung-smartthings').checked,
         localOnly: document.getElementById('device-local-only').checked,
         ports: getPortsData(),
-        homeId: editingDeviceId ? (nextHomeId || editingDeviceHomeId) : getSelectedHomeId()
+        homeId: fallbackHomeId
     };
     
     if (editingDeviceId) {
-        updateDevice(editingDeviceId, deviceData);
+        await updateDevice(editingDeviceId, deviceData);
     } else {
-        createDevice(deviceData);
+        await createDevice(deviceData);
     }
 }
 
@@ -708,7 +709,7 @@ function closeBrandModal() {
     document.getElementById('device-brand').value = lastBrandValue;
 }
 
-function saveBrandModal() {
+async function saveBrandModal() {
     const input = document.getElementById('brand-modal-input');
     const name = input.value.trim();
     if (!name) {
@@ -716,13 +717,13 @@ function saveBrandModal() {
         return;
     }
 
-    const updatedSettings = loadSettings();
+    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
     const hasMatch = (updatedSettings.brands || []).some(item => normalizeOptionValue(item) === normalized);
     if (!hasMatch) {
         updatedSettings.brands = [...updatedSettings.brands, name]
             .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        saveSettings(updatedSettings);
+        await saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
@@ -750,7 +751,7 @@ function closeTypeModal() {
     document.getElementById('device-type').value = lastTypeValue;
 }
 
-function saveTypeModal() {
+async function saveTypeModal() {
     const input = document.getElementById('type-modal-input');
     const name = input.value.trim();
     if (!name) {
@@ -758,13 +759,13 @@ function saveTypeModal() {
         return;
     }
 
-    const updatedSettings = loadSettings();
+    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
     const hasMatch = (updatedSettings.types || []).some(item => normalizeOptionValue(item) === normalized);
     if (!hasMatch) {
         updatedSettings.types = [...updatedSettings.types, name]
             .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        saveSettings(updatedSettings);
+        await saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
@@ -793,7 +794,7 @@ function closeBatteryTypeModal() {
     handleBatteryTypeChange();
 }
 
-function saveBatteryTypeModal() {
+async function saveBatteryTypeModal() {
     const input = document.getElementById('battery-type-modal-input');
     const name = input.value.trim();
     if (!name) {
@@ -801,13 +802,13 @@ function saveBatteryTypeModal() {
         return;
     }
 
-    const updatedSettings = loadSettings();
+    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
     const hasMatch = (updatedSettings.batteryTypes || []).some(item => normalizeOptionValue(item) === normalized);
     if (!hasMatch) {
         updatedSettings.batteryTypes = [...updatedSettings.batteryTypes, name]
             .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        saveSettings(updatedSettings);
+        await saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
@@ -837,7 +838,7 @@ function closeConnectivityModal() {
     handleConnectivityChange();
 }
 
-function saveConnectivityModal() {
+async function saveConnectivityModal() {
     const input = document.getElementById('connectivity-modal-input');
     const name = input.value.trim();
     if (!name) {
@@ -845,13 +846,13 @@ function saveConnectivityModal() {
         return;
     }
 
-    const updatedSettings = loadSettings();
+    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
     const hasMatch = (updatedSettings.connectivity || []).some(item => normalizeOptionValue(item) === normalized);
     if (!hasMatch) {
         updatedSettings.connectivity = [...updatedSettings.connectivity, name]
             .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        saveSettings(updatedSettings);
+        await saveSettings(updatedSettings);
         settings = updatedSettings;
     }
 
@@ -1350,9 +1351,9 @@ function getOppositePortType(portType) {
 }
 
 // Sync ports bidirectionally
-function syncDevicePorts(currentDeviceId, currentDevicePorts) {
+async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
     // Reload all devices to get the latest data
-    const allData = loadData();
+    const allData = await loadData();
     const allDevices = allData.devices;
     
     // Track which devices are connected in the current device's ports
@@ -1413,7 +1414,7 @@ function syncDevicePorts(currentDeviceId, currentDevicePorts) {
     
     // Save updated devices
     allData.devices = allDevices;
-    saveData(allData);
+    await saveData(allData);
     
     // Update local devices array
     devices = allDevices;
@@ -1423,7 +1424,7 @@ function syncDevicePorts(currentDeviceId, currentDevicePorts) {
 window.removePort = removePort;
 
 // CRUD Operations
-function createDevice(deviceData) {
+async function createDevice(deviceData) {
     // Validate unique name
     const name = deviceData.name.trim();
     if (!name) {
@@ -1458,7 +1459,7 @@ function createDevice(deviceData) {
         storageSize: deviceData.storageSize ? parseFloat(deviceData.storageSize) : null,
         storageUnit: deviceData.storageUnit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
-        homeId: deviceData.homeId || getSelectedHomeId(),
+        homeId: deviceData.homeId || await getSelectedHomeId(),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
         area: deviceData.area,
@@ -1479,18 +1480,18 @@ function createDevice(deviceData) {
     
     allDevices.push(device);
     devices = allDevices.filter(item => item.homeId === selectedHomeId);
-    saveData({
-        ...loadData(),
+    await saveData({
+        ...(await loadData()),
         devices: allDevices
     });
     
     // Sync ports bidirectionally
-    syncDevicePorts(device.id, device.ports);
+    await syncDevicePorts(device.id, device.ports);
     
     window.location.href = 'devices.html';
 }
 
-function updateDevice(id, deviceData) {
+async function updateDevice(id, deviceData) {
     // Validate unique name
     const name = deviceData.name.trim();
     if (!name) {
@@ -1525,7 +1526,7 @@ function updateDevice(id, deviceData) {
         device.storageSize = deviceData.storageSize ? parseFloat(deviceData.storageSize) : null;
         device.storageUnit = deviceData.storageUnit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
-        device.homeId = deviceData.homeId || device.homeId || getSelectedHomeId();
+        device.homeId = deviceData.homeId || device.homeId || await getSelectedHomeId();
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.networkId = deviceData.networkId || '';
         device.area = deviceData.area;
@@ -1543,13 +1544,13 @@ function updateDevice(id, deviceData) {
         device.ports = deviceData.ports || [];
         device.updatedAt = new Date().toISOString();
         
-        saveData({
-            ...loadData(),
+        await saveData({
+            ...(await loadData()),
             devices: allDevices
         });
         
         // Sync ports bidirectionally
-        syncDevicePorts(device.id, device.ports);
+        await syncDevicePorts(device.id, device.ports);
         devices = allDevices.filter(item => item.homeId === selectedHomeId);
         
         window.location.href = 'devices.html';
@@ -1573,8 +1574,8 @@ async function handleDeleteDevice() {
         }
     });
 
-    saveData({
-        ...loadData(),
+    await saveData({
+        ...(await loadData()),
         devices: allDevices
     });
 

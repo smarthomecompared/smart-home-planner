@@ -13,8 +13,8 @@ let viewMode = 'table';
 const VIEW_STORAGE_KEY = 'smartHomeAreasView';
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const data = loadData();
+document.addEventListener('DOMContentLoaded', async () => {
+    const data = await loadData();
     allAreas = data.areas;
     allFloors = data.floors;
     selectedHomeId = data.selectedHomeId;
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
     
     initializeEventListeners();
-    initializeViewToggle();
+    await initializeViewToggle();
     updateFloorOptions();
     renderAreas();
 
@@ -68,8 +68,8 @@ function initializeEventListeners() {
     });
 }
 
-function initializeViewToggle() {
-    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+async function initializeViewToggle() {
+    const saved = await getUiPreference(VIEW_STORAGE_KEY);
     if (saved === 'table' || saved === 'grid') {
         viewMode = saved;
     } else {
@@ -78,11 +78,11 @@ function initializeViewToggle() {
 
     const buttons = Array.from(document.querySelectorAll('.view-toggle-btn'));
     buttons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', async () => {
             const next = button.getAttribute('data-view');
             if (!next || next === viewMode) return;
             viewMode = next;
-            localStorage.setItem(VIEW_STORAGE_KEY, viewMode);
+            await setUiPreference(VIEW_STORAGE_KEY, viewMode);
             updateViewToggle();
             updateViewVisibility();
             renderAreas();
@@ -92,8 +92,8 @@ function initializeViewToggle() {
     updateViewToggle();
     updateViewVisibility();
 
-    window.addEventListener('resize', () => {
-        if (localStorage.getItem(VIEW_STORAGE_KEY)) return;
+    window.addEventListener('resize', async () => {
+        if (await getUiPreference(VIEW_STORAGE_KEY)) return;
         const next = window.innerWidth <= 640 ? 'grid' : 'table';
         if (next === viewMode) return;
         viewMode = next;
@@ -123,7 +123,7 @@ function updateViewVisibility() {
 }
 
 // CRUD Operations
-function createArea(name, floorId) {
+async function createArea(name, floorId) {
     if (!floorId) {
         showAlert('Please select a floor for this area.');
         return null;
@@ -138,12 +138,12 @@ function createArea(name, floorId) {
     };
     allAreas.push(area);
     areas = allAreas.filter(item => item.homeId === selectedHomeId);
-    saveData(getAllData());
-    renderAreas();
+    await saveData(await getAllData());
+    await renderAreas();
     return area;
 }
 
-function updateArea(id, name, floorId) {
+async function updateArea(id, name, floorId) {
     if (!floorId) {
         showAlert('Please select a floor for this area.');
         return null;
@@ -153,16 +153,16 @@ function updateArea(id, name, floorId) {
     if (area) {
         area.name = name.trim();
         area.floor = floorId;
-        saveData(getAllData());
+        await saveData(await getAllData());
         areas = allAreas.filter(item => item.homeId === selectedHomeId);
-        renderAreas();
+        await renderAreas();
         return area;
     }
     return null;
 }
 
 async function deleteArea(id) {
-    const data = loadData();
+    const data = await loadData();
     const devicesAssigned = data.devices.filter(d => d.area === id && d.homeId === selectedHomeId);
     
     if (devicesAssigned.length > 0) {
@@ -181,14 +181,14 @@ async function deleteArea(id) {
     }
     allAreas = allAreas.filter(a => a.id !== id);
     areas = allAreas.filter(a => a.homeId === selectedHomeId);
-    saveData(getAllData());
-    renderAreas();
+    await saveData(await getAllData());
+    await renderAreas();
 }
 
 // Rendering
-function renderAreas() {
+async function renderAreas() {
     const areasList = document.getElementById('areas-list');
-    const data = loadData();
+    const data = await loadData();
     const devices = data.devices.filter(device => device.homeId === selectedHomeId);
     const countLabel = document.getElementById('areas-count');
     if (countLabel) {
@@ -405,7 +405,7 @@ function closeAreaForm() {
     document.getElementById('area-form').reset();
 }
 
-function handleAreaSubmit(e) {
+async function handleAreaSubmit(e) {
     e.preventDefault();
     
     const name = document.getElementById('area-name').value;
@@ -417,9 +417,9 @@ function handleAreaSubmit(e) {
     }
     
     if (editingAreaId) {
-        updateArea(editingAreaId, name, floorId);
+        await updateArea(editingAreaId, name, floorId);
     } else {
-        createArea(name, floorId);
+        await createArea(name, floorId);
     }
     
     closeAreaForm();
@@ -430,14 +430,14 @@ window.editArea = function(id) {
     openAreaForm(id);
 };
 
-window.deleteAreaHandler = function(id) {
-    deleteArea(id);
+window.deleteAreaHandler = async function(id) {
+    await deleteArea(id);
 };
 
 // Helper Functions
-function getAllData() {
+async function getAllData() {
     return {
-        ...loadData(),
+        ...(await loadData()),
         areas: allAreas
     };
 }
