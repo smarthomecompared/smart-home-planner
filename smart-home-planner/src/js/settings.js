@@ -288,27 +288,9 @@ function showMessage(message, type) {
 
 function renderVersionInfo() {
     const badgeEl = document.getElementById('settings-version-badge');
-    const dateEl = document.getElementById('settings-version-date');
-    const notesWrap = document.getElementById('settings-version-notes');
-    const notesEl = document.getElementById('settings-version-note');
-    if (!badgeEl || !dateEl) return;
+    if (!badgeEl) return;
     const version = typeof appVersion === 'string' && appVersion.trim() ? appVersion.trim() : '0.1.0';
-    const releaseDate = typeof appReleaseDate === 'string' && appReleaseDate.trim() ? appReleaseDate.trim() : 'Unknown';
-    const releaseNotes = Array.isArray(appReleaseNotes)
-        ? appReleaseNotes.map(note => String(note).trim()).filter(Boolean)
-        : (typeof appReleaseNotes === 'string' && appReleaseNotes.trim() ? [appReleaseNotes.trim()] : []);
     badgeEl.textContent = `v${version}`;
-    dateEl.textContent = releaseDate;
-    if (notesWrap && notesEl) {
-        if (releaseNotes.length) {
-            notesEl.innerHTML = releaseNotes
-                .map(note => `<li>${escapeHtml(note)}</li>`)
-                .join('');
-            notesWrap.classList.remove('is-hidden');
-        } else {
-            notesWrap.classList.add('is-hidden');
-        }
-    }
 }
 
 function renderRepoLink() {

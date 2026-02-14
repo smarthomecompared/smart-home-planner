@@ -1,8 +1,9 @@
-## [Unreleased]
+## 0.2.0 - 2026-02-14
 
-### Added
+### Changed
 
 - Migration to Home Assistant App.
+- All the data is now backed up with the Home Assistamt backup system
 
 ## 0.1.0 - 2026-02-09
 
