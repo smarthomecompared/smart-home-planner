@@ -53,9 +53,6 @@ sh sync-samba.sh
 ## Import/Export
 From **Settings** you can export a JSON with devices, areas, floors, settings, and map positions, or import a backup.
 
-## Demo mode
-Enable Demo mode from **Settings** to load the bundled sample dataset without losing your current data. When you turn it off, your previous data is restored.
-
 ## License
 MIT. See `LICENSE`.
 

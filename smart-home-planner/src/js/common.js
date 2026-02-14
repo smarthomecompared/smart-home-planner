@@ -20,11 +20,6 @@ function buildAppUrl(path) {
 const STORAGE_API_URL = buildAppUrl('api/storage');
 const HA_AREAS_API_URL = buildAppUrl('api/ha/areas');
 const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
-const SAMPLE_DATA_URL = buildAppUrl('json/sample.json');
-const DEFAULT_DEMO_STATE = {
-    enabled: false,
-    snapshot: null
-};
 
 function isIngressRuntime() {
     const pathname = window.location.pathname || '';
@@ -70,24 +65,20 @@ function buildDefaultStorage() {
         networks: [],
         settings: null,
         mapPositions: null,
-        demo: { ...DEFAULT_DEMO_STATE },
         ui: {}
     };
 }
 
 function mergeStorage(raw) {
     const base = buildDefaultStorage();
-    const merged = { ...base, ...(raw || {}) };
-    merged.demo = { ...base.demo, ...(raw && raw.demo ? raw.demo : {}) };
-    merged.ui = { ...base.ui, ...(raw && raw.ui ? raw.ui : {}) };
-    return merged;
-}
-
-function sanitizeStoragePayload(input) {
-    const payload = { ...(input || {}) };
-    delete payload.areas;
-    delete payload.floors;
-    return payload;
+    const source = raw && typeof raw === 'object' ? raw : {};
+    return {
+        devices: Array.isArray(source.devices) ? source.devices : base.devices,
+        networks: Array.isArray(source.networks) ? source.networks : base.networks,
+        settings: source.settings || base.settings,
+        mapPositions: source.mapPositions || base.mapPositions,
+        ui: source.ui && typeof source.ui === 'object' ? { ...base.ui, ...source.ui } : base.ui
+    };
 }
 
 async function loadHaRegistry(url) {
@@ -108,8 +99,9 @@ function normalizeFloors(rawFloors) {
     return (rawFloors || [])
         .filter(item => item && typeof item === 'object')
         .map((item, index) => {
-            const id = String(item.floor_id || item.id || '').trim() || `floor-${index}`;
-            const name = String(item.name || '').trim() || `Floor ${index + 1}`;
+            const id = String(item.floor_id || '').trim();
+            if (!id) return null;
+            const name = String(item.name || '').trim() || id;
             const parsedLevel = Number(item.level);
             const level = Number.isFinite(parsedLevel) ? parsedLevel : null;
             return {
@@ -117,22 +109,25 @@ function normalizeFloors(rawFloors) {
                 name,
                 level
             };
-        });
+        })
+        .filter(Boolean);
 }
 
 function normalizeAreas(rawAreas) {
     return (rawAreas || [])
         .filter(item => item && typeof item === 'object')
         .map((item, index) => {
-            const id = String(item.area_id || item.id || '').trim() || `area-${index}`;
-            const name = String(item.name || '').trim() || `Area ${index + 1}`;
-            const floor = String(item.floor_id || item.floor || '').trim();
+            const id = String(item.area_id || '').trim();
+            if (!id) return null;
+            const name = String(item.name || '').trim() || id;
+            const floor = String(item.floor_id || '').trim();
             return {
                 id,
                 name,
                 floor
             };
-        });
+        })
+        .filter(Boolean);
 }
 
 let storageCache = null;
@@ -170,7 +165,7 @@ async function loadStorage() {
 
 async function saveStorage(nextStorage) {
     return enqueueStorageWrite(async () => {
-        const payload = sanitizeStoragePayload(mergeStorage(nextStorage));
+        const payload = mergeStorage(nextStorage);
         storageCache = payload;
         const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
@@ -187,7 +182,7 @@ async function saveStorage(nextStorage) {
 async function patchStorage(patch) {
     return enqueueStorageWrite(async () => {
         const storage = await loadStorage();
-        const payload = sanitizeStoragePayload(mergeStorage({ ...storage, ...(patch || {}) }));
+        const payload = mergeStorage({ ...storage, ...(patch || {}) });
         storageCache = payload;
         const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
@@ -204,60 +199,17 @@ async function patchStorage(patch) {
 // Data Management Functions
 async function loadData() {
     const storage = await loadStorage();
-    let devices = Array.isArray(storage.devices) ? storage.devices : [];
+    const devices = Array.isArray(storage.devices) ? storage.devices : [];
     let networks = Array.isArray(storage.networks) ? storage.networks : [];
     const rawAreas = await loadHaRegistry(HA_AREAS_API_URL);
     const rawFloors = await loadHaRegistry(HA_FLOORS_API_URL);
     const areas = normalizeAreas(rawAreas);
     const floors = normalizeFloors(rawFloors);
     let didUpdate = false;
-    const hasDeprecatedAreaFloorFields = Object.prototype.hasOwnProperty.call(storage, 'areas') || Object.prototype.hasOwnProperty.call(storage, 'floors');
-    if (hasDeprecatedAreaFloorFields) {
-        didUpdate = true;
-    }
 
     if (!Array.isArray(networks) || networks.length === 0) {
         networks = [buildNetwork('vlan0')];
         didUpdate = true;
-    }
-
-    if (areas.length > 0) {
-        const validAreaIds = new Set(areas.map(area => area.id));
-        const areaNameToId = new Map(
-            areas
-                .filter(area => area.name)
-                .map(area => [area.name.toLowerCase(), area.id])
-        );
-        devices = devices.map((device) => {
-            if (!device || typeof device !== 'object') return device;
-            let changed = false;
-            let area = typeof device.area === 'string' ? device.area.trim() : '';
-            let controlledArea = typeof device.controlledArea === 'string' ? device.controlledArea.trim() : '';
-
-            if (area && !validAreaIds.has(area)) {
-                const mapped = areaNameToId.get(area.toLowerCase());
-                if (mapped) {
-                    area = mapped;
-                    changed = true;
-                }
-            }
-
-            if (controlledArea && !validAreaIds.has(controlledArea)) {
-                const mapped = areaNameToId.get(controlledArea.toLowerCase());
-                if (mapped) {
-                    controlledArea = mapped;
-                    changed = true;
-                }
-            }
-
-            if (!changed) return device;
-            didUpdate = true;
-            return {
-                ...device,
-                area,
-                controlledArea
-            };
-        });
     }
 
     if (didUpdate) {
@@ -277,13 +229,11 @@ async function loadData() {
 
 async function saveData(data) {
     const storage = await loadStorage();
-    const payload = {
+    const payload = mergeStorage({
         ...storage,
         ...data,
         settings: data.settings ? data.settings : storage.settings
-    };
-    delete payload.areas;
-    delete payload.floors;
+    });
     await saveStorage(payload);
 }
 
@@ -540,20 +490,7 @@ function getAreaById(areas, id) {
 
 function getAreaName(areas, id) {
     const area = getAreaById(areas, id);
-    if (area) {
-        return area.name;
-    }
-    if (typeof id === 'string') {
-        const trimmedId = id.trim();
-        if (!trimmedId) {
-            return 'Unknown';
-        }
-        const areaByName = areas.find(areaItem =>
-            (areaItem.name || '').toLowerCase() === trimmedId.toLowerCase()
-        );
-        return areaByName ? areaByName.name : 'Unknown';
-    }
-    return 'Unknown';
+    return area ? area.name : 'Unknown';
 }
 
 function getDeviceById(devices, id) {
@@ -675,132 +612,11 @@ async function clearMapPositions() {
     await patchStorage({ mapPositions: null });
 }
 
-async function isDemoModeEnabled() {
-    const storage = await loadStorage();
-    return Boolean(storage.demo && storage.demo.enabled);
-}
-
-function updateDemoBanner(enabled) {
-    const shouldShow = Boolean(enabled);
-    const existingBanner = document.getElementById('demo-mode-banner');
-    if (existingBanner) {
-        existingBanner.remove();
-    }
-    let badge = document.getElementById('demo-mode-badge');
-    if (!shouldShow) {
-        if (badge) {
-            badge.remove();
-        }
-        document.body.classList.remove('demo-mode');
-        return;
-    }
-    if (!badge) {
-        badge = document.createElement('span');
-        badge.id = 'demo-mode-badge';
-        badge.className = 'demo-mode-badge';
-        badge.textContent = 'Demo mode';
-        badge.setAttribute('data-tooltip', 'Sample mode data is loaded for demonstration purposes. Go to Settings to disable.');
-        badge.setAttribute('tabindex', '0');
-    }
-    const headerBrand = document.querySelector('header .header-brand');
-    if (headerBrand) {
-        headerBrand.appendChild(badge);
-    } else {
-        document.body.prepend(badge);
-    }
-    document.body.classList.add('demo-mode');
-}
-
-async function enableDemoMode() {
-    const storage = await loadStorage();
-    if (storage.demo && storage.demo.enabled) {
-        updateDemoBanner(true);
-        return true;
-    }
-    if (!storage.demo || !storage.demo.snapshot) {
-        const snapshot = {
-            ...(await loadData()),
-            settings: await loadSettings(),
-            mapPositions: storage.mapPositions || null
-        };
-        storage.demo = {
-            ...(storage.demo || {}),
-            snapshot
-        };
-        await saveStorage(storage);
-    }
-
-    const response = await fetch(SAMPLE_DATA_URL, { cache: 'no-store' });
-    if (!response.ok) {
-        showAlert('Unable to load demo data.');
-        return false;
-    }
-    const demoData = await response.json();
-
-    if (Array.isArray(demoData.devices)) {
-        demoData.devices = demoData.devices.map(device => ({
-            ...device,
-            brand: normalizeOptionValue(device.brand),
-            type: normalizeOptionValue(device.type),
-            connectivity: normalizeOptionValue(device.connectivity),
-            batteryType: normalizeOptionValue(device.batteryType)
-        }));
-    }
-
-    await saveData(demoData);
-    if (demoData.settings) {
-        await saveSettings(demoData.settings);
-    }
-
-    const nextStorage = await loadStorage();
-    nextStorage.mapPositions = demoData.mapPositions || null;
-    nextStorage.demo = {
-        ...(nextStorage.demo || {}),
-        enabled: true
-    };
-    await saveStorage(nextStorage);
-    updateDemoBanner(true);
-    return true;
-}
-
-async function disableDemoMode() {
-    const storage = await loadStorage();
-    const snapshot = storage.demo ? storage.demo.snapshot : null;
-    if (snapshot) {
-        await saveData(snapshot);
-        if (snapshot.settings) {
-            await saveSettings(snapshot.settings);
-        }
-        const nextStorage = await loadStorage();
-        nextStorage.mapPositions = snapshot.mapPositions || null;
-        nextStorage.demo = {
-            ...(nextStorage.demo || {}),
-            snapshot: null,
-            enabled: false
-        };
-        await saveStorage(nextStorage);
-    } else {
-        storage.demo = {
-            ...(storage.demo || {}),
-            enabled: false
-        };
-        await saveStorage(storage);
-    }
-    updateDemoBanner(false);
-    return true;
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     await initDebugSettingsNav();
     initMobileNav();
     initIconTooltips();
-    updateDemoBanner(await isDemoModeEnabled());
 });
-
-window.isDemoModeEnabled = isDemoModeEnabled;
-window.updateDemoBanner = updateDemoBanner;
-window.enableDemoMode = enableDemoMode;
-window.disableDemoMode = disableDemoMode;
 window.loadMapPositions = loadMapPositions;
 window.saveMapPositions = saveMapPositions;
 window.clearMapPositions = clearMapPositions;

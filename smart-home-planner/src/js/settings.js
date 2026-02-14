@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderRepoLink();
     await renderNetworksManagement();
     renderOptionsManagement();
-    await initializeDemoMode();
 });
 
 // Event Listeners
@@ -31,48 +30,6 @@ function initializeEventListeners() {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeNetworkModal();
-        }
-    });
-}
-
-async function initializeDemoMode() {
-    const toggle = document.getElementById('demo-mode-toggle');
-    if (!toggle) return;
-    toggle.checked = window.isDemoModeEnabled ? await window.isDemoModeEnabled() : false;
-    toggle.addEventListener('change', async (event) => {
-        const shouldEnable = event.target.checked;
-        if (shouldEnable) {
-            const confirmed = await showConfirm('Enable demo mode? This will load sample data until you turn it off.', {
-                title: 'Enable demo mode',
-                confirmText: 'Enable'
-            });
-            if (!confirmed) {
-                event.target.checked = false;
-                return;
-            }
-            const success = await window.enableDemoMode();
-            if (!success) {
-                event.target.checked = false;
-                return;
-            }
-            settings = await loadSettings();
-            await renderNetworksManagement();
-            renderOptionsManagement();
-            showMessage('Demo mode enabled.', 'success');
-        } else {
-            const confirmed = await showConfirm('Disable demo mode and restore your previous data?', {
-                title: 'Disable demo mode',
-                confirmText: 'Disable'
-            });
-            if (!confirmed) {
-                event.target.checked = true;
-                return;
-            }
-            await window.disableDemoMode();
-            settings = await loadSettings();
-            await renderNetworksManagement();
-            renderOptionsManagement();
-            showMessage('Demo mode disabled. Your data has been restored.', 'success');
         }
     });
 }
@@ -195,17 +152,6 @@ function importData() {
                 await saveMapPositions(importedData.mapPositions);
             } else {
                 await clearMapPositions();
-            }
-
-            if (window.isDemoModeEnabled && await window.isDemoModeEnabled()) {
-                await disableDemoMode();
-                if (window.updateDemoBanner) {
-                    window.updateDemoBanner(false);
-                }
-                const demoToggle = document.getElementById('demo-mode-toggle');
-                if (demoToggle) {
-                    demoToggle.checked = false;
-                }
             }
 
             settings = await loadSettings();
