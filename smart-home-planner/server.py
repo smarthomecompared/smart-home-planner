@@ -8,6 +8,8 @@ from urllib.parse import parse_qs, urlparse
 
 DATA_FILE = os.environ.get("SHP_DATA_FILE", "/data/data.json")
 DATA_DIR = os.path.dirname(DATA_FILE) or "/data"
+AREAS_FILE = os.path.join(DATA_DIR, "areas.json")
+FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
 WEB_ROOT = os.environ.get("SHP_WEB_ROOT", "/srv")
 HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
@@ -27,6 +29,17 @@ def _read_storage():
             return json.load(handle)
     except Exception:
         return {}
+
+
+def _read_registry(path):
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except Exception:
+        return []
+    return payload if isinstance(payload, list) else []
 
 
 def _write_storage(payload):
@@ -114,6 +127,18 @@ class AppHandler(SimpleHTTPRequestHandler):
                     "isAddonRuntime": not IS_LOCAL_RUNTIME,
                 },
             )
+            return
+
+        if path == "/api/ha/areas":
+            with _lock:
+                payload = _read_registry(AREAS_FILE)
+            self._send_json(200, payload)
+            return
+
+        if path == "/api/ha/floors":
+            with _lock:
+                payload = _read_registry(FLOORS_FILE)
+            self._send_json(200, payload)
             return
 
         if path == "/api/debug/files":

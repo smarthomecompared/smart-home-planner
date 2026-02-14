@@ -95,7 +95,7 @@ async function exportData() {
         const mapPositions = await loadMapPositions();
         
         const exportData = {
-            ...data,
+            networks: data.networks || [],
             devices: normalizedDevices,
             settings: settings,
             mapPositions: mapPositions
@@ -162,7 +162,7 @@ function importData() {
             }
 
             // Confirm before importing
-            const confirmMessage = `This will replace all existing data with ${importedData.devices?.length || 0} devices, ${importedData.areas?.length || 0} areas, and ${importedData.floors?.length || 0} floors. Are you sure?`;
+            const confirmMessage = `This will replace all existing data with ${importedData.devices?.length || 0} devices. Are you sure?`;
             
             const confirmed = await showConfirm(confirmMessage, {
                 title: 'Import data',
@@ -238,12 +238,10 @@ function validateDataStructure(data) {
         return false;
     }
 
-    // Check if it has the expected structure (devices, areas, floors arrays)
+    // Check if it has the expected structure
     const hasDevices = Array.isArray(data.devices);
-    const hasAreas = Array.isArray(data.areas);
-    const hasFloors = Array.isArray(data.floors);
 
-    return hasDevices && hasAreas && hasFloors;
+    return hasDevices;
 }
 
 

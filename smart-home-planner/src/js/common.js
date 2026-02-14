@@ -18,6 +18,8 @@ function buildAppUrl(path) {
 }
 
 const STORAGE_API_URL = buildAppUrl('api/storage');
+const HA_AREAS_API_URL = buildAppUrl('api/ha/areas');
+const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
 const SAMPLE_DATA_URL = buildAppUrl('json/sample.json');
 const DEFAULT_DEMO_STATE = {
     enabled: false,
@@ -65,8 +67,6 @@ function buildNetwork(name) {
 function buildDefaultStorage() {
     return {
         devices: [],
-        areas: [],
-        floors: [],
         networks: [],
         settings: null,
         mapPositions: null,
@@ -81,6 +81,58 @@ function mergeStorage(raw) {
     merged.demo = { ...base.demo, ...(raw && raw.demo ? raw.demo : {}) };
     merged.ui = { ...base.ui, ...(raw && raw.ui ? raw.ui : {}) };
     return merged;
+}
+
+function sanitizeStoragePayload(input) {
+    const payload = { ...(input || {}) };
+    delete payload.areas;
+    delete payload.floors;
+    return payload;
+}
+
+async function loadHaRegistry(url) {
+    try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Registry request failed: ${response.status}`);
+        }
+        const payload = await response.json();
+        return Array.isArray(payload) ? payload : [];
+    } catch (error) {
+        console.error(`Failed to load registry from ${url}:`, error);
+        return [];
+    }
+}
+
+function normalizeFloors(rawFloors) {
+    return (rawFloors || [])
+        .filter(item => item && typeof item === 'object')
+        .map((item, index) => {
+            const id = String(item.floor_id || item.id || '').trim() || `floor-${index}`;
+            const name = String(item.name || '').trim() || `Floor ${index + 1}`;
+            const parsedLevel = Number(item.level);
+            const level = Number.isFinite(parsedLevel) ? parsedLevel : null;
+            return {
+                id,
+                name,
+                level
+            };
+        });
+}
+
+function normalizeAreas(rawAreas) {
+    return (rawAreas || [])
+        .filter(item => item && typeof item === 'object')
+        .map((item, index) => {
+            const id = String(item.area_id || item.id || '').trim() || `area-${index}`;
+            const name = String(item.name || '').trim() || `Area ${index + 1}`;
+            const floor = String(item.floor_id || item.floor || '').trim();
+            return {
+                id,
+                name,
+                floor
+            };
+        });
 }
 
 let storageCache = null;
@@ -118,7 +170,7 @@ async function loadStorage() {
 
 async function saveStorage(nextStorage) {
     return enqueueStorageWrite(async () => {
-        const payload = mergeStorage(nextStorage);
+        const payload = sanitizeStoragePayload(mergeStorage(nextStorage));
         storageCache = payload;
         const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
@@ -135,7 +187,7 @@ async function saveStorage(nextStorage) {
 async function patchStorage(patch) {
     return enqueueStorageWrite(async () => {
         const storage = await loadStorage();
-        const payload = mergeStorage({ ...storage, ...(patch || {}) });
+        const payload = sanitizeStoragePayload(mergeStorage({ ...storage, ...(patch || {}) }));
         storageCache = payload;
         const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
@@ -153,21 +205,64 @@ async function patchStorage(patch) {
 async function loadData() {
     const storage = await loadStorage();
     let devices = Array.isArray(storage.devices) ? storage.devices : [];
-    let areas = Array.isArray(storage.areas) ? storage.areas : [];
-    let floors = Array.isArray(storage.floors) ? storage.floors : [];
     let networks = Array.isArray(storage.networks) ? storage.networks : [];
+    const rawAreas = await loadHaRegistry(HA_AREAS_API_URL);
+    const rawFloors = await loadHaRegistry(HA_FLOORS_API_URL);
+    const areas = normalizeAreas(rawAreas);
+    const floors = normalizeFloors(rawFloors);
     let didUpdate = false;
+    const hasDeprecatedAreaFloorFields = Object.prototype.hasOwnProperty.call(storage, 'areas') || Object.prototype.hasOwnProperty.call(storage, 'floors');
+    if (hasDeprecatedAreaFloorFields) {
+        didUpdate = true;
+    }
 
     if (!Array.isArray(networks) || networks.length === 0) {
         networks = [buildNetwork('vlan0')];
         didUpdate = true;
     }
 
+    if (areas.length > 0) {
+        const validAreaIds = new Set(areas.map(area => area.id));
+        const areaNameToId = new Map(
+            areas
+                .filter(area => area.name)
+                .map(area => [area.name.toLowerCase(), area.id])
+        );
+        devices = devices.map((device) => {
+            if (!device || typeof device !== 'object') return device;
+            let changed = false;
+            let area = typeof device.area === 'string' ? device.area.trim() : '';
+            let controlledArea = typeof device.controlledArea === 'string' ? device.controlledArea.trim() : '';
+
+            if (area && !validAreaIds.has(area)) {
+                const mapped = areaNameToId.get(area.toLowerCase());
+                if (mapped) {
+                    area = mapped;
+                    changed = true;
+                }
+            }
+
+            if (controlledArea && !validAreaIds.has(controlledArea)) {
+                const mapped = areaNameToId.get(controlledArea.toLowerCase());
+                if (mapped) {
+                    controlledArea = mapped;
+                    changed = true;
+                }
+            }
+
+            if (!changed) return device;
+            didUpdate = true;
+            return {
+                ...device,
+                area,
+                controlledArea
+            };
+        });
+    }
+
     if (didUpdate) {
         await patchStorage({
             devices,
-            areas,
-            floors,
             networks
         });
     }
@@ -182,11 +277,14 @@ async function loadData() {
 
 async function saveData(data) {
     const storage = await loadStorage();
-    await saveStorage({
+    const payload = {
         ...storage,
         ...data,
         settings: data.settings ? data.settings : storage.settings
-    });
+    };
+    delete payload.areas;
+    delete payload.floors;
+    await saveStorage(payload);
 }
 
 // Settings Management Functions
