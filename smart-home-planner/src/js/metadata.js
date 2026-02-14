@@ -1,6 +1,4 @@
 // App metadata
-var appVersion = "0.2.0"
-
 var appRepoUrl = "https://github.com/smarthomecompared/smart-home-planner";
 
 const DEFAULT_HOME_NAME = 'Default';

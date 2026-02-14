@@ -44,3 +44,8 @@ watchdog: "http://[HOST]:[PORT:80]/"        # Supervisor pings this URL → if f
 # No configuration options needed for now
 options: {}
 schema: {}
+
+network_mode: host
+hassio_api: true
+homeassistant_api: true
+hassio_role: default

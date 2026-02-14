@@ -1,0 +1,156 @@
+.debug-build-card {
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.debug-build-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.debug-build-value {
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 1rem;
+    margin-top: 0.25rem;
+}
+
+.debug-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 360px) 1fr;
+    gap: 1rem;
+}
+
+.debug-files-panel,
+.debug-viewer-panel {
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.debug-files-panel h3 {
+    margin-bottom: 0.75rem;
+}
+
+.debug-files-empty {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.debug-files-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 62vh;
+    overflow: auto;
+}
+
+.debug-file-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.debug-file-btn {
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-color);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    cursor: pointer;
+    transition: border-color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.debug-file-btn:hover {
+    background: #243247;
+    border-color: #4b5f78;
+}
+
+.debug-file-btn:focus-visible {
+    outline: 2px solid rgba(59, 130, 246, 0.7);
+    outline-offset: 2px;
+}
+
+.debug-file-item.is-active .debug-file-btn {
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.16);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.debug-download-btn {
+    white-space: nowrap;
+    align-self: center;
+}
+
+.debug-file-name {
+    font-weight: 600;
+    color: #f8fafc;
+    word-break: break-all;
+}
+
+.debug-file-info {
+    color: #cbd5e1;
+    font-size: 0.82rem;
+}
+
+.debug-file-meta {
+    color: var(--text-muted);
+    margin-bottom: 0.65rem;
+    font-size: 0.9rem;
+}
+
+.debug-meta-error {
+    color: #dc2626;
+}
+
+.debug-content {
+    margin: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: #0f172a;
+    color: #f1f5f9;
+    padding: 0.9rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    max-height: 70vh;
+    overflow: auto;
+    white-space: pre;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+@media (max-width: 900px) {
+    .debug-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .debug-files-list {
+        max-height: 34vh;
+    }
+
+    .debug-content {
+        max-height: 42vh;
+    }
+
+    .debug-file-item {
+        grid-template-columns: 1fr;
+    }
+
+    .debug-download-btn {
+        justify-self: end;
+    }
+}

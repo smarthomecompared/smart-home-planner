@@ -1,0 +1,15 @@
+{
+  "name": "smart-home-planner-registry-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Home Assistant registry sync worker for areas/floors",
+  "main": "registry-sync.js",
+  "scripts": {
+    "start:sync": "node /app/registry-sync.js"
+  },
+  "dependencies": {
+    "home-assistant-js-websocket": "9.5.0",
+    "ws": "8.18.0"
+  }
+}

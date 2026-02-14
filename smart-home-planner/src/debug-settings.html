@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Debug Settings - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/debug-settings.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="areas.html">Areas</a>
+                <a href="floors.html">Floors</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="section-header">
+                <h2>Debug Settings</h2>
+                <button class="btn btn-secondary" type="button" id="debug-refresh-btn">Refresh</button>
+            </div>
+
+            <div class="debug-build-card">
+                <div class="debug-build-label">Build DateTime</div>
+                <div class="debug-build-value" id="debug-build-stamp">Not available</div>
+            </div>
+
+            <div class="debug-layout">
+                <aside class="debug-files-panel">
+                    <h3>Files in /data</h3>
+                    <div class="debug-files-empty" id="debug-files-empty">No files found.</div>
+                    <ul class="debug-files-list" id="debug-file-list"></ul>
+                </aside>
+                <div class="debug-viewer-panel">
+                    <div class="debug-file-meta" id="debug-file-meta">Select a file to preview.</div>
+                    <pre class="debug-content" id="debug-file-content"></pre>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/metadata.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/debug-settings.js"></script>
+</body>
+</html>

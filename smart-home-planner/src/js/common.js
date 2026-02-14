@@ -11,12 +11,48 @@ function resolveAppBasePath() {
 }
 
 const APP_BASE_PATH = resolveAppBasePath();
-const STORAGE_API_URL = `${APP_BASE_PATH}/api/storage`;
-const SAMPLE_DATA_URL = `${APP_BASE_PATH}/json/sample.json`;
+
+function buildAppUrl(path) {
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+    return APP_BASE_PATH ? `${APP_BASE_PATH}/${cleanPath}` : `/${cleanPath}`;
+}
+
+const STORAGE_API_URL = buildAppUrl('api/storage');
+const SAMPLE_DATA_URL = buildAppUrl('json/sample.json');
 const DEFAULT_DEMO_STATE = {
     enabled: false,
     snapshot: null
 };
+
+function isIngressRuntime() {
+    const pathname = window.location.pathname || '';
+    return pathname.includes('/api/hassio_ingress/');
+}
+
+function isLocalAddonRuntime() {
+    if (isIngressRuntime()) return false;
+    const host = (window.location.hostname || '').toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1';
+}
+
+let runtimeInfoPromise = null;
+
+async function getRuntimeInfo() {
+    if (!runtimeInfoPromise) {
+        runtimeInfoPromise = fetch(buildAppUrl('api/runtime'), { cache: 'no-store' })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Runtime request failed: ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch(() => ({
+                isLocalRuntime: isLocalAddonRuntime(),
+                isAddonRuntime: !isLocalAddonRuntime()
+            }));
+    }
+    return runtimeInfoPromise;
+}
 
 function buildHome(name) {
     return {
@@ -531,6 +567,24 @@ function initMobileNav() {
     });
 }
 
+async function initDebugSettingsNav() {
+    const runtime = await getRuntimeInfo();
+    if (!runtime || !runtime.isLocalRuntime) return;
+
+    const nav = document.querySelector('.site-nav');
+    if (!nav) return;
+    if (nav.querySelector('a[href="debug-settings.html"]')) return;
+
+    const debugLink = document.createElement('a');
+    debugLink.href = 'debug-settings.html';
+    debugLink.textContent = 'Debug Settings';
+    if ((window.location.pathname || '').endsWith('/debug-settings.html')) {
+        nav.querySelectorAll('a.active').forEach(link => link.classList.remove('active'));
+        debugLink.classList.add('active');
+    }
+    nav.appendChild(debugLink);
+}
+
 function applyIconTooltip(el) {
     if (!el || !el.classList || !el.classList.contains('btn-icon')) return;
     if (el.classList.contains('no-tooltip')) return;
@@ -706,6 +760,7 @@ async function disableDemoMode() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await initDebugSettingsNav();
     initMobileNav();
     initIconTooltips();
     updateDemoBanner(await isDemoModeEnabled());
@@ -720,3 +775,8 @@ window.saveMapPositions = saveMapPositions;
 window.clearMapPositions = clearMapPositions;
 window.getUiPreference = getUiPreference;
 window.setUiPreference = setUiPreference;
+window.APP_BASE_PATH = APP_BASE_PATH;
+window.buildAppUrl = buildAppUrl;
+window.isIngressRuntime = isIngressRuntime;
+window.isLocalAddonRuntime = isLocalAddonRuntime;
+window.getRuntimeInfo = getRuntimeInfo;

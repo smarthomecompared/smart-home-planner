@@ -14,7 +14,6 @@ let networkModalTargetId = '';
 document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeEventListeners();
-    renderVersionInfo();
     renderRepoLink();
     await renderHomesManagement();
     await renderNetworksManagement();
@@ -284,13 +283,6 @@ function showMessage(message, type) {
             messageEl.remove();
         }
     }, 5000);
-}
-
-function renderVersionInfo() {
-    const badgeEl = document.getElementById('settings-version-badge');
-    if (!badgeEl) return;
-    const version = typeof appVersion === 'string' && appVersion.trim() ? appVersion.trim() : '0.1.0';
-    badgeEl.textContent = `v${version}`;
 }
 
 function renderRepoLink() {
