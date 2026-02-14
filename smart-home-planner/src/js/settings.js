@@ -2,11 +2,7 @@
 
 let selectedFile = null;
 let settings = {};
-let homes = [];
 let networks = [];
-let selectedHomeId = '';
-let homeModalMode = 'add';
-let homeModalTargetId = '';
 let networkModalMode = 'add';
 let networkModalTargetId = '';
 
@@ -15,7 +11,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeEventListeners();
     renderRepoLink();
-    await renderHomesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
     await initializeDemoMode();
@@ -29,17 +24,12 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
-    document.getElementById('home-add-btn').addEventListener('click', () => openHomeModal('add'));
-    document.getElementById('home-modal-cancel').addEventListener('click', closeHomeModal);
-    document.getElementById('home-modal-save').addEventListener('click', handleHomeModalSave);
-    document.getElementById('home-modal-overlay').addEventListener('click', closeHomeModal);
     document.getElementById('network-add-btn').addEventListener('click', () => openNetworkModal('add'));
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
     document.getElementById('network-modal-overlay').addEventListener('click', closeNetworkModal);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
-            closeHomeModal();
             closeNetworkModal();
         }
     });
@@ -66,7 +56,6 @@ async function initializeDemoMode() {
                 return;
             }
             settings = await loadSettings();
-            await renderHomesManagement();
             await renderNetworksManagement();
             renderOptionsManagement();
             showMessage('Demo mode enabled.', 'success');
@@ -81,7 +70,6 @@ async function initializeDemoMode() {
             }
             await window.disableDemoMode();
             settings = await loadSettings();
-            await renderHomesManagement();
             await renderNetworksManagement();
             renderOptionsManagement();
             showMessage('Demo mode disabled. Your data has been restored.', 'success');
@@ -174,7 +162,7 @@ function importData() {
             }
 
             // Confirm before importing
-            const confirmMessage = `This will replace all existing data with ${importedData.devices?.length || 0} devices, ${importedData.areas?.length || 0} areas, ${importedData.floors?.length || 0} floors, and ${importedData.homes?.length || 0} homes. Are you sure?`;
+            const confirmMessage = `This will replace all existing data with ${importedData.devices?.length || 0} devices, ${importedData.areas?.length || 0} areas, and ${importedData.floors?.length || 0} floors. Are you sure?`;
             
             const confirmed = await showConfirm(confirmMessage, {
                 title: 'Import data',
@@ -221,7 +209,6 @@ function importData() {
             }
 
             settings = await loadSettings();
-            await renderHomesManagement();
             await renderNetworksManagement();
             renderOptionsManagement();
             
@@ -299,65 +286,6 @@ function renderRepoLink() {
     textEl.textContent = label;
 }
 
-async function renderHomesManagement() {
-    const data = await loadData();
-    homes = data.homes || [];
-    selectedHomeId = data.selectedHomeId || '';
-
-    const list = document.getElementById('homes-list');
-    if (!list) return;
-
-    list.innerHTML = homes.map(home => {
-        const isCurrent = home.id === selectedHomeId;
-        return `
-            <div class="homes-item">
-                <div class="homes-item-info">
-                    <span>${escapeHtml(home.name)}</span>
-                </div>
-                <div class="homes-item-actions">
-                    <button class="btn btn-secondary btn-sm btn-icon" data-home-rename="${home.id}" aria-label="Rename home" title="Rename home">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
-                            <path d="M13.5 6.5l4 4"></path>
-                        </svg>
-                    </button>
-                    ${isCurrent ? '' : `<button class="btn btn-danger btn-sm btn-icon" data-home-delete="${home.id}" aria-label="Delete home" title="Delete home">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M3 6h18"></path>
-                            <path d="M8 6V4h8v2"></path>
-                            <path d="M6 6l1 14h10l1-14"></path>
-                            <path d="M10 11v6"></path>
-                            <path d="M14 11v6"></path>
-                        </svg>
-                    </button>`}
-                    ${isCurrent ? '<span class="current-home-badge">Current</span>' : `<button class="btn btn-secondary btn-sm" data-home-switch="${home.id}">Mark as current</button>`}
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    list.querySelectorAll('button[data-home-delete]').forEach(button => {
-        button.addEventListener('click', () => {
-            const homeId = button.getAttribute('data-home-delete');
-            handleDeleteHome(homeId);
-        });
-    });
-
-    list.querySelectorAll('button[data-home-switch]').forEach(button => {
-        button.addEventListener('click', () => {
-            const homeId = button.getAttribute('data-home-switch');
-            handleHomeSwitch(homeId);
-        });
-    });
-
-    list.querySelectorAll('button[data-home-rename]').forEach(button => {
-        button.addEventListener('click', () => {
-            const homeId = button.getAttribute('data-home-rename');
-            openHomeModal('rename', homeId);
-        });
-    });
-}
-
 async function renderNetworksManagement() {
     const data = await loadData();
     networks = data.networks || [];
@@ -404,69 +332,6 @@ async function renderNetworksManagement() {
             openNetworkModal('rename', networkId);
         });
     });
-}
-
-function openHomeModal(mode, homeId = '') {
-    const modal = document.getElementById('home-modal');
-    const title = document.getElementById('home-modal-title');
-    const input = document.getElementById('home-modal-input');
-    if (!modal || !title || !input) return;
-
-    homeModalMode = mode;
-    homeModalTargetId = homeId;
-    const currentHome = homes.find(home => home.id === homeId);
-
-    title.textContent = mode === 'rename' ? 'Rename Home' : 'Add Home';
-    input.value = mode === 'rename' && currentHome ? currentHome.name : '';
-
-    modal.classList.remove('is-hidden');
-    modal.setAttribute('aria-hidden', 'false');
-    input.focus();
-    input.select();
-}
-
-function closeHomeModal() {
-    const modal = document.getElementById('home-modal');
-    if (!modal || modal.classList.contains('is-hidden')) return;
-    modal.classList.add('is-hidden');
-    modal.setAttribute('aria-hidden', 'true');
-}
-
-async function handleHomeModalSave() {
-    const input = document.getElementById('home-modal-input');
-    if (!input) return;
-    const name = input.value.trim();
-    if (!name) {
-        showMessage('Home name cannot be empty.', 'error');
-        return;
-    }
-    if (homes.some(home => home.name.toLowerCase() === name.toLowerCase() && home.id !== homeModalTargetId)) {
-        showMessage('A home with this name already exists.', 'error');
-        return;
-    }
-
-    const data = await loadData();
-    if (homeModalMode === 'rename') {
-        const updatedHomes = (data.homes || []).map(home => (
-            home.id === homeModalTargetId ? { ...home, name: name } : home
-        ));
-        await saveData({
-            ...data,
-            homes: updatedHomes
-        });
-        showMessage('Home renamed successfully!', 'success');
-    } else {
-        const newHome = buildHome(name);
-        const updatedHomes = [...(data.homes || []), newHome];
-        await saveData({
-            ...data,
-            homes: updatedHomes
-        });
-        showMessage('Home created successfully!', 'success');
-    }
-
-    closeHomeModal();
-    await renderHomesManagement();
 }
 
 function openNetworkModal(mode, networkId = '') {
@@ -530,83 +395,6 @@ async function handleNetworkModalSave() {
 
     closeNetworkModal();
     await renderNetworksManagement();
-}
-
-async function handleHomeSwitch(nextHomeId) {
-    if (!nextHomeId || nextHomeId === selectedHomeId) {
-        return;
-    }
-    const data = await loadData();
-    await saveData({
-        ...data,
-        selectedHomeId: nextHomeId
-    });
-    await renderHomesManagement();
-    showMessage('Home switched successfully!', 'success');
-}
-
-async function handleDeleteHome(homeId) {
-    if (!homeId) return;
-    if (homes.length <= 1) {
-        showMessage('You must keep at least one home.', 'error');
-        return;
-    }
-    const targetHome = homes.find(home => home.id === homeId);
-    const name = targetHome ? targetHome.name : 'this home';
-    const confirmed = await showConfirm(`Delete "${name}"? Devices in this home will move to the selected home.`, {
-        title: 'Delete home',
-        confirmText: 'Delete'
-    });
-    if (!confirmed) {
-        return;
-    }
-
-    const data = await loadData();
-    const remainingHomes = (data.homes || []).filter(home => home.id !== homeId);
-    let nextSelectedHomeId = data.selectedHomeId;
-    if (nextSelectedHomeId === homeId || !remainingHomes.some(home => home.id === nextSelectedHomeId)) {
-        nextSelectedHomeId = remainingHomes[0].id;
-    }
-
-    const updatedDevices = (data.devices || []).map(device => {
-        if (device.homeId === homeId) {
-            return {
-                ...device,
-                homeId: nextSelectedHomeId
-            };
-        }
-        return device;
-    });
-    const updatedAreas = (data.areas || []).map(area => {
-        if (area.homeId === homeId) {
-            return {
-                ...area,
-                homeId: nextSelectedHomeId
-            };
-        }
-        return area;
-    });
-    const updatedFloors = (data.floors || []).map(floor => {
-        if (floor.homeId === homeId) {
-            return {
-                ...floor,
-                homeId: nextSelectedHomeId
-            };
-        }
-        return floor;
-    });
-
-    await saveData({
-        ...data,
-        homes: remainingHomes,
-        selectedHomeId: nextSelectedHomeId,
-        devices: updatedDevices,
-        areas: updatedAreas,
-        floors: updatedFloors
-    });
-
-    await renderHomesManagement();
-    showMessage('Home deleted successfully!', 'success');
 }
 
 async function handleDeleteNetwork(networkId) {

@@ -54,14 +54,6 @@ async function getRuntimeInfo() {
     return runtimeInfoPromise;
 }
 
-function buildHome(name) {
-    return {
-        id: `home-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: name,
-        createdAt: new Date().toISOString()
-    };
-}
-
 function buildNetwork(name) {
     return {
         id: `network-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -75,9 +67,7 @@ function buildDefaultStorage() {
         devices: [],
         areas: [],
         floors: [],
-        homes: [],
         networks: [],
-        selectedHomeId: '',
         settings: null,
         mapPositions: null,
         demo: { ...DEFAULT_DEMO_STATE },
@@ -162,73 +152,23 @@ async function patchStorage(patch) {
 // Data Management Functions
 async function loadData() {
     const storage = await loadStorage();
-    let devices = storage.devices || [];
-    let areas = storage.areas || [];
-    let floors = storage.floors || [];
-    let homes = storage.homes || [];
-    let networks = storage.networks || [];
-    let selectedHomeId = storage.selectedHomeId || '';
+    let devices = Array.isArray(storage.devices) ? storage.devices : [];
+    let areas = Array.isArray(storage.areas) ? storage.areas : [];
+    let floors = Array.isArray(storage.floors) ? storage.floors : [];
+    let networks = Array.isArray(storage.networks) ? storage.networks : [];
     let didUpdate = false;
-
-    if (!Array.isArray(homes) || homes.length === 0) {
-        homes = [buildHome(DEFAULT_HOME_NAME)];
-        selectedHomeId = homes[0].id;
-        didUpdate = true;
-    }
-
-    if (!selectedHomeId || !homes.some(home => home.id === selectedHomeId)) {
-        selectedHomeId = homes[0].id;
-        didUpdate = true;
-    }
-
-    const homeIds = new Set(homes.map(home => home.id));
 
     if (!Array.isArray(networks) || networks.length === 0) {
         networks = [buildNetwork('vlan0')];
         didUpdate = true;
     }
 
-    devices = (devices || []).map(device => {
-        if (!device.homeId || !homeIds.has(device.homeId)) {
-            didUpdate = true;
-            return {
-                ...device,
-                homeId: selectedHomeId
-            };
-        }
-        return device;
-    });
-
-    areas = (areas || []).map(area => {
-        if (!area.homeId || !homeIds.has(area.homeId)) {
-            didUpdate = true;
-            return {
-                ...area,
-                homeId: selectedHomeId
-            };
-        }
-        return area;
-    });
-
-    floors = (floors || []).map(floor => {
-        if (!floor.homeId || !homeIds.has(floor.homeId)) {
-            didUpdate = true;
-            return {
-                ...floor,
-                homeId: selectedHomeId
-            };
-        }
-        return floor;
-    });
-
     if (didUpdate) {
         await patchStorage({
             devices,
             areas,
             floors,
-            homes,
-            networks,
-            selectedHomeId
+            networks
         });
     }
 
@@ -236,9 +176,7 @@ async function loadData() {
         devices: devices,
         areas: areas,
         floors: floors,
-        homes: homes,
-        networks: networks,
-        selectedHomeId: selectedHomeId
+        networks: networks
     };
 }
 
@@ -291,11 +229,6 @@ async function saveSettings(settings) {
         ...storage,
         settings
     });
-}
-
-async function getSelectedHomeId() {
-    const data = await loadData();
-    return data.selectedHomeId;
 }
 
 // Utility Functions

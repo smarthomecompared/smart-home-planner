@@ -100,19 +100,6 @@
                 </div>
 
                 <div class="settings-section">
-                    <h3 class="settings-section-title">Homes</h3>
-                    <p class="settings-description">Create homes, switch between them, and keep devices organized by home.</p>
-
-                    <div class="homes-grid">
-                        <div class="form-group homes-actions">
-                            <button class="btn btn-primary" id="home-add-btn">Add Home</button>
-                        </div>
-                    </div>
-
-                    <div class="homes-list" id="homes-list"></div>
-                </div>
-
-                <div class="settings-section">
                     <h3 class="settings-section-title">Networks</h3>
                     <p class="settings-description">Create VLANs to organize devices by network.</p>
 
@@ -136,23 +123,6 @@
 
             </div>
         </section>
-    </div>
-
-    <div class="modal is-hidden" id="home-modal" aria-hidden="true">
-        <div class="modal-overlay" id="home-modal-overlay"></div>
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="home-modal-title">
-            <div class="modal-header">
-                <div class="modal-title" id="home-modal-title">Add Home</div>
-            </div>
-            <div class="form-group">
-                <label for="home-modal-input">Home Name</label>
-                <input type="text" id="home-modal-input" placeholder="e.g., Default">
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" type="button" id="home-modal-cancel">Cancel</button>
-                <button class="btn btn-primary" type="button" id="home-modal-save">Save</button>
-            </div>
-        </div>
     </div>
 
     <div class="modal is-hidden" id="network-modal" aria-hidden="true">

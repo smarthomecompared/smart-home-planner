@@ -6,7 +6,6 @@ let areas = [];
 let floors = [];
 let networks = [];
 let settings = {};
-let selectedHomeId = '';
 
 // Pagination and Sorting
 let currentPage = 1;
@@ -36,13 +35,12 @@ let deviceFilters = null;
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
-    selectedHomeId = data.selectedHomeId;
     allDevices = data.devices;
     settings = await loadSettings();
-    areas = data.areas.filter(area => area.homeId === selectedHomeId);
-    floors = data.floors.filter(floor => floor.homeId === selectedHomeId);
+    areas = data.areas;
+    floors = data.floors;
     networks = data.networks || [];
-    devices = allDevices.filter(device => device.homeId === selectedHomeId);
+    devices = allDevices;
     
     // Initialize filters
     deviceFilters = new DeviceFilters();
@@ -206,11 +204,10 @@ async function createDevice(deviceData) {
         batteryType: normalizeOptionValue(deviceData.batteryType),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         area: deviceData.area || '',
-        homeId: deviceData.homeId || selectedHomeId,
         createdAt: new Date().toISOString()
     };
     allDevices.push(device);
-    devices = allDevices.filter(item => item.homeId === selectedHomeId);
+    devices = allDevices;
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings);
     if (diagramReady && window.DeviceDiagram) {
@@ -247,9 +244,8 @@ async function updateDevice(id, deviceData) {
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.area = deviceData.area || '';
         device.updatedAt = new Date().toISOString();
-        device.homeId = deviceData.homeId || device.homeId || selectedHomeId;
         await saveData(await getAllData());
-        devices = allDevices.filter(item => item.homeId === selectedHomeId);
+        devices = allDevices;
         deviceFilters.updateData(devices, areas, floors, networks, settings);
         if (diagramReady && window.DeviceDiagram) {
             window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
@@ -270,7 +266,7 @@ async function deleteDevice(id) {
     }
     // Remove the device
     allDevices = allDevices.filter(d => d.id !== id);
-    devices = allDevices.filter(d => d.homeId === selectedHomeId);
+    devices = allDevices;
     
     // Clean up port references in other devices
     allDevices.forEach(device => {

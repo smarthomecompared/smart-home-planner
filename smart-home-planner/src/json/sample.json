@@ -22,7 +22,6 @@
       "storageSize": 512,
       "storageUnit": "GB",
       "notes": "Main automation hub.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-network",
       "threadBorderRouter": false,
@@ -74,7 +73,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Primary Zigbee controller.",
-      "homeId": "home-main",
       "connectivity": "zigbee",
       "area": "area-network",
       "threadBorderRouter": false,
@@ -113,7 +111,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Primary gateway.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-network",
       "threadBorderRouter": false,
@@ -164,7 +161,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Feeds critical wired devices.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-network",
       "threadBorderRouter": false,
@@ -237,7 +233,6 @@
       "storageSize": 8,
       "storageUnit": "TB",
       "notes": "Backups + media.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-office",
       "threadBorderRouter": false,
@@ -282,7 +277,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Main floor Wi-Fi coverage.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-living",
       "threadBorderRouter": false,
@@ -327,7 +321,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Waiting to mount.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-patio",
       "threadBorderRouter": false,
@@ -372,7 +365,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Needs battery replacement.",
-      "homeId": "home-main",
       "connectivity": "z-wave",
       "area": "area-entry",
       "threadBorderRouter": false,
@@ -411,7 +403,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Automations for evening lights.",
-      "homeId": "home-main",
       "connectivity": "zigbee",
       "area": "area-living",
       "threadBorderRouter": false,
@@ -450,7 +441,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Covers core network.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-network",
       "threadBorderRouter": false,
@@ -503,7 +493,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Coffee station automation.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-kitchen",
       "threadBorderRouter": false,
@@ -543,7 +532,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Schedules synced with weather.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-living",
       "threadBorderRouter": false,
@@ -583,7 +571,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Evening scenes.",
-      "homeId": "home-main",
       "connectivity": "zigbee",
       "area": "area-patio",
       "threadBorderRouter": false,
@@ -622,7 +609,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Wishlist item.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "",
       "threadBorderRouter": false,
@@ -662,7 +648,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Awaiting installation.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-hall",
       "threadBorderRouter": false,
@@ -702,7 +687,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Laundry protection.",
-      "homeId": "home-main",
       "connectivity": "zigbee",
       "area": "area-laundry",
       "threadBorderRouter": false,
@@ -741,7 +725,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Kitchen dashboard.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-kitchen",
       "threadBorderRouter": false,
@@ -781,7 +764,6 @@
       "storageSize": 128,
       "storageUnit": "GB",
       "notes": "Home theater hub.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-living",
       "threadBorderRouter": true,
@@ -821,7 +803,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Offline after router swap.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "area-garage",
       "threadBorderRouter": false,
@@ -861,7 +842,6 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Wishlist upgrade.",
-      "homeId": "home-main",
       "connectivity": "wifi",
       "area": "",
       "threadBorderRouter": false,
@@ -885,70 +865,60 @@
       "id": "area-network",
       "name": "Network Closet",
       "floor": "floor-basement",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:20:00.000Z"
     },
     {
       "id": "area-living",
       "name": "Living Room",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:21:00.000Z"
     },
     {
       "id": "area-kitchen",
       "name": "Kitchen",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:22:00.000Z"
     },
     {
       "id": "area-entry",
       "name": "Entryway",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:23:00.000Z"
     },
     {
       "id": "area-garage",
       "name": "Garage",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:24:00.000Z"
     },
     {
       "id": "area-patio",
       "name": "Patio",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:25:00.000Z"
     },
     {
       "id": "area-hall",
       "name": "Hallway",
       "floor": "floor-ground",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:26:00.000Z"
     },
     {
       "id": "area-laundry",
       "name": "Laundry Room",
       "floor": "floor-basement",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:27:00.000Z"
     },
     {
       "id": "area-office",
       "name": "Office",
       "floor": "floor-upper",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:28:00.000Z"
     },
     {
       "id": "area-bedroom",
       "name": "Primary Bedroom",
       "floor": "floor-upper",
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:29:00.000Z"
     }
   ],
@@ -957,21 +927,18 @@
       "id": "floor-basement",
       "name": "Basement",
       "level": -1,
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:10:00.000Z"
     },
     {
       "id": "floor-ground",
       "name": "Ground Floor",
       "level": 0,
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:11:00.000Z"
     },
     {
       "id": "floor-upper",
       "name": "Second Floor",
       "level": 1,
-      "homeId": "home-main",
       "createdAt": "2025-06-01T10:12:00.000Z"
     }
   ],
@@ -987,19 +954,6 @@
       "createdAt": "2025-06-01T10:07:00.000Z"
     }
   ],
-  "homes": [
-    {
-      "id": "home-main",
-      "name": "Main Home",
-      "createdAt": "2025-06-01T10:00:00.000Z"
-    },
-    {
-      "id": "home-cabin",
-      "name": "Lake Cabin",
-      "createdAt": "2025-07-01T10:00:00.000Z"
-    }
-  ],
-  "selectedHomeId": "home-main",
   "settings": {
     "brands": [
       "Aqara",

@@ -774,10 +774,9 @@
             const data = await loadData();
             const settings = await loadSettings();
             const dashboard = document.getElementById('dashboard');
-            const selectedHomeId = data.selectedHomeId;
-            const devices = (data.devices || []).filter(device => device.homeId === selectedHomeId);
-            const floors = (data.floors || []).filter(floor => floor.homeId === selectedHomeId);
-            const areas = (data.areas || []).filter(area => area.homeId === selectedHomeId);
+            const devices = data.devices || [];
+            const floors = data.floors || [];
+            const areas = data.areas || [];
             
             const floorsCount = floors.length;
             const areasCount = areas.length;

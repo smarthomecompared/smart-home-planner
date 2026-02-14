@@ -1,8 +1,12 @@
 ## 0.3.0
 
-### Changed
+### Added
 
-- 
+- Integration with Home Assistant floors and areas
+
+### Removed
+
+- Given that Home Assistant doesnn't support it, the support for multiple homes was removed
 
 ## 0.2.0 - 2026-02-14
 

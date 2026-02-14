@@ -50,12 +50,11 @@ window.DeviceDiagram = (() => {
 
     async function initWithStoredData(options = {}) {
         const data = await loadData();
-        const selectedHomeId = data.selectedHomeId;
         init({
             ...options,
-            devices: data.devices.filter(device => device.homeId === selectedHomeId),
-            areas: data.areas.filter(area => area.homeId === selectedHomeId),
-            floors: data.floors.filter(floor => floor.homeId === selectedHomeId),
+            devices: data.devices || [],
+            areas: data.areas || [],
+            floors: data.floors || [],
             networks: data.networks || [],
             settings: await loadSettings()
         });

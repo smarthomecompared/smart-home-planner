@@ -5,15 +5,12 @@ let devices = [];
 let allAreas = [];
 let areas = [];
 let editingDeviceId = null;
-let editingDeviceHomeId = null;
 let settings = {};
 let networks = [];
 let lastBrandValue = '';
 let lastTypeValue = '';
 let lastBatteryTypeValue = '';
 let lastConnectivityValue = '';
-let selectedHomeId = '';
-let availableHomes = [];
 let autoSyncAreasEnabled = false;
 
 // Initialize
@@ -23,9 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     allAreas = data.areas;
     settings = await loadSettings();
     networks = data.networks || [];
-    selectedHomeId = data.selectedHomeId;
-    availableHomes = data.homes || [];
-    devices = allDevices.filter(device => device.homeId === selectedHomeId);
+    devices = allDevices;
     
     // Check if we're editing (device-edit.html)
     const urlParams = new URLSearchParams(window.location.search);
@@ -37,11 +32,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateConnectivity();
     populateNetworks();
     populateBatteryTypes();
-    setAreasForHome(selectedHomeId);
+    setAreas();
     handleBrandChange();
     handleConnectivityChange();
     handleStatusChange();
-    setupHomeSelector();
     
     if (editingDeviceId) {
         loadDeviceForEdit(editingDeviceId);
@@ -72,10 +66,6 @@ function initializeEventListeners() {
     const deleteButton = document.getElementById('delete-device-btn');
     if (deleteButton) {
         deleteButton.addEventListener('click', handleDeleteDevice);
-    }
-    const homeSelect = document.getElementById('device-home-select');
-    if (homeSelect) {
-        homeSelect.addEventListener('change', handleHomeSelectChange);
     }
     
     // Port buttons
@@ -257,8 +247,8 @@ function populateAreas() {
     }
 }
 
-function setAreasForHome(homeId) {
-    areas = allAreas.filter(area => area.homeId === homeId);
+function setAreas() {
+    areas = allAreas;
     populateAreas();
     updateAreaAutoSyncState();
 }
@@ -315,8 +305,7 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
-    editingDeviceHomeId = device.homeId || selectedHomeId;
-    setAreasForHome(editingDeviceHomeId);
+    setAreas();
     document.getElementById('device-name').value = device.name || '';
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
@@ -348,7 +337,6 @@ function loadDeviceData(device) {
         controlledAreaInput.value = device.controlledArea || '';
     }
     updateAreaAutoSyncState();
-    populateHomeSelector(editingDeviceHomeId);
     
     // Load checkbox values
     document.getElementById('device-thread-border-router').checked = device.threadBorderRouter || false;
@@ -367,7 +355,6 @@ function loadDeviceData(device) {
     handleBatteryTypeChange();
     handleBrandChange();
     handleStatusChange();
-    handleHomeVisibility();
     lastTypeValue = document.getElementById('device-type').value;
     lastBatteryTypeValue = document.getElementById('device-battery-type').value;
     lastConnectivityValue = document.getElementById('device-connectivity').value;
@@ -435,11 +422,8 @@ async function handleDeviceSubmit(e) {
         return;
     }
 
-    const deviceHomeSelect = document.getElementById('device-home-select');
-    const nextHomeId = deviceHomeSelect ? deviceHomeSelect.value : '';
     const statusValue = document.getElementById('device-status').value;
     const isPendingStatus = statusValue === 'pending';
-    const fallbackHomeId = editingDeviceId ? (nextHomeId || editingDeviceHomeId) : await getSelectedHomeId();
     const deviceData = {
         name: document.getElementById('device-name').value,
         brand: brandValue,
@@ -475,8 +459,7 @@ async function handleDeviceSubmit(e) {
         appleHomeKit: document.getElementById('device-apple-home-kit').checked,
         samsungSmartThings: document.getElementById('device-samsung-smartthings').checked,
         localOnly: document.getElementById('device-local-only').checked,
-        ports: getPortsData(),
-        homeId: fallbackHomeId
+        ports: getPortsData()
     };
     
     if (editingDeviceId) {
@@ -595,55 +578,6 @@ function handleStatusChange() {
             batteryChangeGroup.classList.remove('is-hidden');
         }
     }
-}
-
-function setupHomeSelector() {
-    const homeSection = document.getElementById('device-home-section');
-    const homeSelect = document.getElementById('device-home-select');
-    if (!homeSection || !homeSelect) return;
-    if (availableHomes.length <= 1) {
-        homeSection.classList.add('is-hidden');
-        return;
-    }
-    homeSection.classList.remove('is-hidden');
-    populateHomeSelector(editingDeviceHomeId || selectedHomeId);
-}
-
-function populateHomeSelector(currentHomeId) {
-    const homeSelect = document.getElementById('device-home-select');
-    if (!homeSelect) return;
-    homeSelect.innerHTML = availableHomes
-        .map(home => `<option value="${home.id}">${escapeHtml(home.name)}</option>`)
-        .join('');
-    if (currentHomeId) {
-        homeSelect.value = currentHomeId;
-    }
-}
-
-function handleHomeVisibility() {
-    const homeSection = document.getElementById('device-home-section');
-    if (!homeSection) return;
-    if (availableHomes.length <= 1) {
-        homeSection.classList.add('is-hidden');
-        return;
-    }
-    homeSection.classList.remove('is-hidden');
-}
-
-function handleHomeSelectChange(event) {
-    const nextHomeId = event.target.value;
-    if (!nextHomeId) return;
-    editingDeviceHomeId = nextHomeId;
-    setAreasForHome(nextHomeId);
-    const areaSelect = document.getElementById('device-area');
-    if (areaSelect) {
-        areaSelect.value = '';
-    }
-    const controlledSelect = document.getElementById('device-controlled-area');
-    if (controlledSelect) {
-        controlledSelect.value = '';
-    }
-    updateAreaAutoSyncState();
 }
 
 function handleBatteryTypeChange() {
@@ -1459,7 +1393,6 @@ async function createDevice(deviceData) {
         storageSize: deviceData.storageSize ? parseFloat(deviceData.storageSize) : null,
         storageUnit: deviceData.storageUnit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
-        homeId: deviceData.homeId || await getSelectedHomeId(),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
         area: deviceData.area,
@@ -1479,7 +1412,7 @@ async function createDevice(deviceData) {
     };
     
     allDevices.push(device);
-    devices = allDevices.filter(item => item.homeId === selectedHomeId);
+    devices = allDevices;
     await saveData({
         ...(await loadData()),
         devices: allDevices
@@ -1526,7 +1459,6 @@ async function updateDevice(id, deviceData) {
         device.storageSize = deviceData.storageSize ? parseFloat(deviceData.storageSize) : null;
         device.storageUnit = deviceData.storageUnit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
-        device.homeId = deviceData.homeId || device.homeId || await getSelectedHomeId();
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.networkId = deviceData.networkId || '';
         device.area = deviceData.area;
@@ -1551,7 +1483,7 @@ async function updateDevice(id, deviceData) {
         
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
-        devices = allDevices.filter(item => item.homeId === selectedHomeId);
+        devices = allDevices;
         
         window.location.href = 'devices.html';
     }

@@ -5,7 +5,6 @@ let floors = [];
 let editingFloorId = null;
 let sortColumn = 'level';
 let sortDirection = 'asc';
-let selectedHomeId = '';
 let viewMode = 'table';
 
 const VIEW_STORAGE_KEY = 'smartHomeFloorsView';
@@ -14,8 +13,7 @@ const VIEW_STORAGE_KEY = 'smartHomeFloorsView';
 document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
     allFloors = data.floors;
-    selectedHomeId = data.selectedHomeId;
-    floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
+    floors = allFloors;
     
     initializeEventListeners();
     await initializeViewToggle();
@@ -123,11 +121,10 @@ async function createFloor(name, level) {
         id: Date.now().toString(),
         name: name.trim(),
         level: level ? parseInt(level) : null,
-        homeId: selectedHomeId,
         createdAt: new Date().toISOString()
     };
     allFloors.push(floor);
-    floors = allFloors.filter(item => item.homeId === selectedHomeId);
+    floors = allFloors;
     await saveData(await getAllData());
     await renderFloors();
     return floor;
@@ -139,7 +136,7 @@ async function updateFloor(id, name, level) {
         floor.name = name.trim();
         floor.level = level ? parseInt(level) : null;
         await saveData(await getAllData());
-        floors = allFloors.filter(item => item.homeId === selectedHomeId);
+        floors = allFloors;
         await renderFloors();
         return floor;
     }
@@ -148,7 +145,7 @@ async function updateFloor(id, name, level) {
 
 async function deleteFloor(id) {
     const data = await loadData();
-    const areasAssigned = data.areas.filter(a => a.floor === id && a.homeId === selectedHomeId);
+    const areasAssigned = data.areas.filter(a => a.floor === id);
     
     if (areasAssigned.length > 0) {
         showAlert(`Cannot delete this floor. It has ${areasAssigned.length} area${areasAssigned.length !== 1 ? 's' : ''} assigned. Please remove or reassign the areas first.`, {
@@ -165,7 +162,7 @@ async function deleteFloor(id) {
         return;
     }
     allFloors = allFloors.filter(f => f.id !== id);
-    floors = allFloors.filter(f => f.homeId === selectedHomeId);
+    floors = allFloors;
     await saveData(await getAllData());
     await renderFloors();
 }
@@ -196,8 +193,8 @@ async function renderFloors() {
     }
     
     const data = await loadData();
-    const areas = data.areas.filter(area => area.homeId === selectedHomeId);
-    const devices = data.devices.filter(device => device.homeId === selectedHomeId);
+    const areas = data.areas;
+    const devices = data.devices;
     
     const areaCounts = new Map();
     const devicesByArea = new Map();

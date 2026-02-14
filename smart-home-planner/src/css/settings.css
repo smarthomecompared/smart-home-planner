@@ -149,7 +149,6 @@
     fill: currentColor;
 }
 
-.homes-grid,
 .networks-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -157,19 +156,16 @@
     margin-bottom: 1.5rem;
 }
 
-.homes-actions,
 .networks-actions {
     display: flex;
     align-items: flex-end;
 }
 
-.homes-list,
 .networks-list {
     display: grid;
     gap: 0.75rem;
 }
 
-.homes-item,
 .networks-item {
     display: flex;
     align-items: center;
@@ -181,35 +177,17 @@
     border-radius: 8px;
 }
 
-.homes-item-info,
 .networks-item-info {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.homes-item span,
 .networks-item span {
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
-.homes-item .current-home-badge {
-    background: #2563eb;
-    color: #f8fafc;
-    border: 1px solid #1d4ed8;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 28px;
-}
-
-.homes-item-actions,
 .networks-item-actions {
     display: flex;
     gap: 0.5rem;
@@ -456,17 +434,14 @@
         width: 100%;
     }
 
-    .homes-actions .btn,
     .networks-actions .btn {
         width: 100%;
     }
 
-    .homes-item-actions .btn,
     .networks-item-actions .btn {
         width: auto;
     }
 
-    .homes-item-actions .btn:not(.btn-icon),
     .networks-item-actions .btn:not(.btn-icon) {
         padding: 0.35rem 0.6rem;
     }

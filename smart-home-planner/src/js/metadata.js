@@ -1,8 +1,6 @@
 // App metadata
 var appRepoUrl = "https://github.com/smarthomecompared/smart-home-planner";
 
-const DEFAULT_HOME_NAME = 'Default';
-
 const DEFAULT_BRANDS = [
     'Aeotec', 'AirGradient', 'Airthings', 'Amazon', 'Apollo Automation',
     'Apple', 'Aqara', 'Aranet', 'Arlo', 'Arre', 'Asus', 'August',

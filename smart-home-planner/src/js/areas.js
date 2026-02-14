@@ -7,7 +7,6 @@ let floors = [];
 let editingAreaId = null;
 let sortColumn = 'floor';
 let sortDirection = 'asc';
-let selectedHomeId = '';
 let viewMode = 'table';
 
 const VIEW_STORAGE_KEY = 'smartHomeAreasView';
@@ -17,9 +16,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
     allAreas = data.areas;
     allFloors = data.floors;
-    selectedHomeId = data.selectedHomeId;
-    areas = allAreas.filter(area => area.homeId === selectedHomeId);
-    floors = allFloors.filter(floor => floor.homeId === selectedHomeId);
+    areas = allAreas;
+    floors = allFloors;
     
     initializeEventListeners();
     await initializeViewToggle();
@@ -133,11 +131,10 @@ async function createArea(name, floorId) {
         id: Date.now().toString(),
         name: name.trim(),
         floor: floorId,
-        homeId: selectedHomeId,
         createdAt: new Date().toISOString()
     };
     allAreas.push(area);
-    areas = allAreas.filter(item => item.homeId === selectedHomeId);
+    areas = allAreas;
     await saveData(await getAllData());
     await renderAreas();
     return area;
@@ -154,7 +151,7 @@ async function updateArea(id, name, floorId) {
         area.name = name.trim();
         area.floor = floorId;
         await saveData(await getAllData());
-        areas = allAreas.filter(item => item.homeId === selectedHomeId);
+        areas = allAreas;
         await renderAreas();
         return area;
     }
@@ -163,7 +160,7 @@ async function updateArea(id, name, floorId) {
 
 async function deleteArea(id) {
     const data = await loadData();
-    const devicesAssigned = data.devices.filter(d => d.area === id && d.homeId === selectedHomeId);
+    const devicesAssigned = data.devices.filter(d => d.area === id);
     
     if (devicesAssigned.length > 0) {
         showAlert(`Cannot delete this area. It has ${devicesAssigned.length} device${devicesAssigned.length !== 1 ? 's' : ''} assigned. Please remove or reassign the devices first.`, {
@@ -180,7 +177,7 @@ async function deleteArea(id) {
         return;
     }
     allAreas = allAreas.filter(a => a.id !== id);
-    areas = allAreas.filter(a => a.homeId === selectedHomeId);
+    areas = allAreas;
     await saveData(await getAllData());
     await renderAreas();
 }
@@ -189,7 +186,7 @@ async function deleteArea(id) {
 async function renderAreas() {
     const areasList = document.getElementById('areas-list');
     const data = await loadData();
-    const devices = data.devices.filter(device => device.homeId === selectedHomeId);
+    const devices = data.devices;
     const countLabel = document.getElementById('areas-count');
     if (countLabel) {
         const count = areas.length;

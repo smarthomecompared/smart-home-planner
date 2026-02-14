@@ -8,7 +8,6 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 - Simple forms to keep device details, notes, and dates in one place.
 - Organize everything by floors and areas.
 - Visual map to see how devices are connected.
-- Support for multiple homes.
 - Automatic Backup of the data using Home Assisteant Backup system.
 
 ## Installation
@@ -52,7 +51,7 @@ sh sync-samba.sh
 3. Restart the app in Home Assistant to load the updated files.
 
 ## Import/Export
-From **Settings** you can export a JSON with devices, areas, floors, homes, settings, and map positions, or import a backup.
+From **Settings** you can export a JSON with devices, areas, floors, settings, and map positions, or import a backup.
 
 ## Demo mode
 Enable Demo mode from **Settings** to load the bundled sample dataset without losing your current data. When you turn it off, your previous data is restored.
