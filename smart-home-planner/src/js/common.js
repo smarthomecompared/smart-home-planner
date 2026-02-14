@@ -1,6 +1,18 @@
 // Common JavaScript for Smart Home Manager
 
-const STORAGE_API_URL = '/api/storage';
+function resolveAppBasePath() {
+    const path = window.location.pathname || '';
+    if (!path || path === '/') return '';
+    if (path.endsWith('.html')) {
+        const slashIndex = path.lastIndexOf('/');
+        return slashIndex > 0 ? path.slice(0, slashIndex) : '';
+    }
+    return path.endsWith('/') ? path.slice(0, -1) : path;
+}
+
+const APP_BASE_PATH = resolveAppBasePath();
+const STORAGE_API_URL = `${APP_BASE_PATH}/api/storage`;
+const SAMPLE_DATA_URL = `${APP_BASE_PATH}/json/sample.json`;
 const DEFAULT_DEMO_STATE = {
     enabled: false,
     snapshot: null
@@ -82,11 +94,14 @@ async function saveStorage(nextStorage) {
     return enqueueStorageWrite(async () => {
         const payload = mergeStorage(nextStorage);
         storageCache = payload;
-        await fetch(STORAGE_API_URL, {
+        const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        if (!response.ok) {
+            throw new Error(`Storage write failed: ${response.status}`);
+        }
         return payload;
     });
 }
@@ -96,11 +111,14 @@ async function patchStorage(patch) {
         const storage = await loadStorage();
         const payload = mergeStorage({ ...storage, ...(patch || {}) });
         storageCache = payload;
-        await fetch(STORAGE_API_URL, {
+        const response = await fetch(STORAGE_API_URL, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        if (!response.ok) {
+            throw new Error(`Storage write failed: ${response.status}`);
+        }
         return payload;
     });
 }
@@ -627,7 +645,7 @@ async function enableDemoMode() {
         await saveStorage(storage);
     }
 
-    const response = await fetch('json/sample.json', { cache: 'no-store' });
+    const response = await fetch(SAMPLE_DATA_URL, { cache: 'no-store' });
     if (!response.ok) {
         showAlert('Unable to load demo data.');
         return false;

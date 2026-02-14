@@ -54,4 +54,21 @@ rsync -a --delete \
   --exclude="*/.*" \
   "${SRC_DIR}/" "${DEST_DIR}/"
 
+DEST_METADATA_FILE="${DEST_DIR}/src/js/metadata.js"
+DEPLOY_TIMESTAMP="$(date +"%Y.%m.%d.%H.%M.%S")"
+
+if [[ -f "$DEST_METADATA_FILE" ]]; then
+  CURRENT_VERSION="$(sed -nE 's/^var appVersion = "([^"]+)".*/\1/p' "$DEST_METADATA_FILE" | head -n 1)"
+  if [[ -n "$CURRENT_VERSION" ]]; then
+    BASE_VERSION="$(echo "$CURRENT_VERSION" | sed -E 's/-[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.?$//')"
+    NEW_VERSION="${BASE_VERSION}-${DEPLOY_TIMESTAMP}"
+    sed -E -i '' "s|^var appVersion = \".*\"$|var appVersion = \"${NEW_VERSION}\"|" "$DEST_METADATA_FILE"
+    echo "Stamped destination version: ${NEW_VERSION}"
+  else
+    echo "Could not read appVersion from ${DEST_METADATA_FILE}" >&2
+  fi
+else
+  echo "metadata.js not found in destination: ${DEST_METADATA_FILE}" >&2
+fi
+
 echo "Done."
