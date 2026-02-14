@@ -21,19 +21,6 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 * Start the app by going to **Info** and click **Start**
 * Wait a few seconds and press **OPEN WEB UI**, you will now see the onboarding page.
 
-## Deploy for Testing in Home Assistant
-
-Use this deploy flow to push local changes to a Home Assistant **testing** instance.
-
-1. From the repository root, run:
-
-```bash
-sh sync-samba.sh
-```
-
-2. The script copies `smart-home-planner/` to the mounted add-ons folder (`/Volumes/addons`).
-3. Restart the app in Home Assistant to load the updated files.
-
 ![Supports aarch64 Architecture][aarch64-shield]
 ![Supports amd64 Architecture][amd64-shield]
 ![Supports armhf Architecture][armhf-shield]

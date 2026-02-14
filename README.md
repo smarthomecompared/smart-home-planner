@@ -38,6 +38,19 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 - `website/js/`: data logic, filters, forms, and map.
 - `website/css/`: styles.
 
+## Deploy for Testing in Home Assistant
+
+Use this deploy flow to push local changes to a Home Assistant **testing** instance.
+
+1. From the repository root, run:
+
+```bash
+sh sync-samba.sh
+```
+
+2. The script copies `smart-home-planner/` to the mounted add-ons folder (`/Volumes/addons`).
+3. Restart the app in Home Assistant to load the updated files.
+
 ## Import/Export
 From **Settings** you can export a JSON with devices, areas, floors, homes, settings, and map positions, or import a backup.
 
