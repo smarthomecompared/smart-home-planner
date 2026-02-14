@@ -1,6 +1,6 @@
 # Smart Home Planner (Home Assistant App)
 
-Home Assistant App to plan, document, and visualize your smart home ecosystem. Everything is stored in the browser (localStorage) and the UI includes dashboards, advanced filters, and a device connection map. The app is served via Home Assistant **ingress** for a clean, built-in experience.
+Home Assistant App to plan, document, and visualize your smart home ecosystem. All data is stored in the app `/data` volume (so it is included in Home Assistant backups), and the UI includes dashboards, advanced filters, and a device connection map. The app is served via Home Assistant **ingress** for a clean, built-in experience.
 
 ## Features
 - A quick dashboard that highlights what matters most in your smart home.
@@ -22,15 +22,24 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. E
 * Wait a few seconds and press **OPEN WEB UI**, you will now see the onboarding page.
 
 ## Tech Stack
-- Home Assistant App with ingress (served by Caddy).
+- Home Assistant App with ingress (Python server serves UI + storage API).
 - Vanilla HTML/CSS/JS (no build step).
 - Cytoscape.js (CDN) for the map.
-- localStorage for persistence.
+- `/data` volume for persistence.
 
 ## Data and privacy
-- All data is stored inside Home Assistant file system.
+- All data is stored in the user's browser (localStorage), inside Home Assistant.
 - No backend and no tracking.
 - The map loads Cytoscape from `unpkg.com`; for 100% offline usage, download the library and update the script tag.
+
+## Structure
+- `config.yaml`: Home Assistant App definition.
+- `website/`: UI served by the app.
+- `website/js/`: data logic, filters, forms, and map.
+- `website/css/`: styles.
+
+## Import/Export
+From **Settings** you can export a JSON with devices, areas, floors, homes, settings, and map positions, or import a backup.
 
 ## Demo mode
 Enable Demo mode from **Settings** to load the bundled sample dataset without losing your current data. When you turn it off, your previous data is restored.
