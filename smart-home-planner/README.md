@@ -9,7 +9,7 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 - Organize everything by floors and areas.
 - Visual map to see how devices are connected.
 - Support for multiple homes.
-- Backup and restore your data from Settings.
+- Automatic Backup of the data using Home Assisteant Backup system.
 
 ## Installation
 
