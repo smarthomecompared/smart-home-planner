@@ -20,6 +20,7 @@ function buildAppUrl(path) {
 const STORAGE_API_URL = buildAppUrl('api/storage');
 const HA_AREAS_API_URL = buildAppUrl('api/ha/areas');
 const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
+const HA_DEVICES_API_URL = buildAppUrl('api/ha/devices');
 
 function isIngressRuntime() {
     const pathname = window.location.pathname || '';
@@ -63,6 +64,7 @@ function buildDefaultStorage() {
     return {
         devices: [],
         networks: [],
+        excluded_devices: [],
         settings: null,
         mapPositions: null,
         ui: {}
@@ -72,9 +74,15 @@ function buildDefaultStorage() {
 function mergeStorage(raw) {
     const base = buildDefaultStorage();
     const source = raw && typeof raw === 'object' ? raw : {};
+    const excludedDevices = Array.isArray(source.excluded_devices)
+        ? source.excluded_devices
+        : (Array.isArray(source.excludedDevices) ? source.excludedDevices : base.excluded_devices);
     return {
         devices: Array.isArray(source.devices) ? source.devices : base.devices,
         networks: Array.isArray(source.networks) ? source.networks : base.networks,
+        excluded_devices: excludedDevices
+            .map((value) => String(value || '').trim())
+            .filter(Boolean),
         settings: source.settings || base.settings,
         mapPositions: source.mapPositions || base.mapPositions,
         ui: source.ui && typeof source.ui === 'object' ? { ...base.ui, ...source.ui } : base.ui
@@ -93,6 +101,34 @@ async function loadHaRegistry(url) {
         console.error(`Failed to load registry from ${url}:`, error);
         return [];
     }
+}
+
+function normalizeDeviceId(value) {
+    return String(value || '').trim();
+}
+
+async function addDeviceToExcludedListIfInHa(deviceId) {
+    const normalizedId = normalizeDeviceId(deviceId);
+    if (!normalizedId) return false;
+
+    const haDevices = await loadHaRegistry(HA_DEVICES_API_URL);
+    const existsInHaRegistry = haDevices.some((device) => normalizeDeviceId(device && device.id) === normalizedId);
+    if (!existsInHaRegistry) {
+        return false;
+    }
+
+    const storage = await loadStorage();
+    const currentExcluded = Array.isArray(storage.excluded_devices)
+        ? storage.excluded_devices.map(normalizeDeviceId).filter(Boolean)
+        : [];
+    if (currentExcluded.includes(normalizedId)) {
+        return true;
+    }
+
+    await patchStorage({
+        excluded_devices: [...currentExcluded, normalizedId]
+    });
+    return true;
 }
 
 function normalizeFloors(rawFloors) {

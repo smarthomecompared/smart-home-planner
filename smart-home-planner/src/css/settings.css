@@ -216,8 +216,46 @@
     line-height: 1.5;
 }
 
-#ha-area-sync-target {
-    width: min(100%, 280px);
+.ha-area-mapping-options {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.ha-area-mapping-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg);
+    cursor: pointer;
+}
+
+.ha-area-mapping-option:hover {
+    border-color: var(--border-hover);
+}
+
+.ha-area-mapping-option input[type="radio"] {
+    margin-top: 0.2rem;
+    width: auto;
+}
+
+.ha-area-mapping-content {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.ha-area-mapping-title {
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.ha-area-mapping-description {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
 }
 
 .import-wrapper {

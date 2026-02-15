@@ -264,6 +264,13 @@ async function deleteDevice(id) {
     if (!confirmed) {
         return;
     }
+
+    try {
+        await addDeviceToExcludedListIfInHa(id);
+    } catch (error) {
+        console.error('Failed to add device to excluded_devices:', error);
+    }
+
     // Remove the device
     allDevices = allDevices.filter(d => d.id !== id);
     devices = allDevices;

@@ -150,6 +150,15 @@ function getHaAreaSyncTarget(settings) {
   return "installed";
 }
 
+function getExcludedDeviceIds(storage) {
+  const source = Array.isArray(storage?.excluded_devices)
+    ? storage.excluded_devices
+    : Array.isArray(storage?.excludedDevices)
+      ? storage.excludedDevices
+      : [];
+  return new Set(source.map((value) => normalizeString(value)).filter(Boolean));
+}
+
 function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
   const id = normalizeString(haDevice?.id);
   const areaId = normalizeString(haDevice?.area_id);
@@ -184,6 +193,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
 async function syncStorageDevicesFromRegistry(haDevices) {
   const storage = await readStorageJson();
   const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
+  const excludedDeviceIds = getExcludedDeviceIds(storage);
   const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
   const existingById = new Map(
     existingDevices
@@ -195,8 +205,12 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   const sourceDevices = (haDevices || []).filter((device) => device && typeof device === "object");
   const filteredSourceDevices = sourceDevices.filter((device) => !shouldSkipDevice(device));
   const ignoredDevicesCount = sourceDevices.length - filteredSourceDevices.length;
+  const sourceDevicesAfterExclusions = filteredSourceDevices.filter(
+    (device) => !excludedDeviceIds.has(normalizeString(device.id))
+  );
+  const excludedDevicesCount = filteredSourceDevices.length - sourceDevicesAfterExclusions.length;
 
-  const nextDevices = filteredSourceDevices
+  const nextDevices = sourceDevicesAfterExclusions
     .map((device) => {
       const id = normalizeString(device.id);
       if (!id) return null;
@@ -214,6 +228,9 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   log(`Home Assistant area sync target: ${haAreaSyncTarget}`);
   if (ignoredDevicesCount > 0) {
     log(`Ignored ${ignoredDevicesCount} device(s) by sync filters.`);
+  }
+  if (excludedDevicesCount > 0) {
+    log(`Ignored ${excludedDevicesCount} device(s) by excluded_devices.`);
   }
 }
 

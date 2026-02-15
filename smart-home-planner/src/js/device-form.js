@@ -1517,6 +1517,12 @@ async function handleDeleteDevice() {
         return;
     }
 
+    try {
+        await addDeviceToExcludedListIfInHa(editingDeviceId);
+    } catch (error) {
+        console.error('Failed to add device to excluded_devices:', error);
+    }
+
     allDevices = allDevices.filter(device => device.id !== editingDeviceId);
     allDevices.forEach(device => {
         if (device.ports && Array.isArray(device.ports)) {

@@ -10,6 +10,7 @@ DATA_FILE = os.environ.get("SHP_DATA_FILE", "/data/data.json")
 DATA_DIR = os.path.dirname(DATA_FILE) or "/data"
 AREAS_FILE = os.path.join(DATA_DIR, "areas.json")
 FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
+DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 WEB_ROOT = os.environ.get("SHP_WEB_ROOT", "/srv")
 HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
@@ -138,6 +139,12 @@ class AppHandler(SimpleHTTPRequestHandler):
         if path == "/api/ha/floors":
             with _lock:
                 payload = _read_registry(FLOORS_FILE)
+            self._send_json(200, payload)
+            return
+
+        if path == "/api/ha/devices":
+            with _lock:
+                payload = _read_registry(DEVICES_FILE)
             self._send_json(200, payload)
             return
 

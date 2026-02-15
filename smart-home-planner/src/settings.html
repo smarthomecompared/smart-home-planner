@@ -82,17 +82,25 @@
 
                 <div class="settings-section">
                     <h3 class="settings-section-title">Home Assistant Integration</h3>
-                    <p class="settings-description">Choose which device area field should be updated from Home Assistant when an existing device is synchronized.</p>
                     <div class="settings-actions">
                         <div class="settings-action-group">
-                            <h4>Area Mapping Target</h4>
-                            <p>New devices always set both Installed and Controlled Area. Existing devices update only the selected field.</p>
-                            <div class="form-group">
-                                <label for="ha-area-sync-target">Update this field on sync</label>
-                                <select id="ha-area-sync-target">
-                                    <option value="installed">Installed Area</option>
-                                    <option value="controlled">Controlled Area</option>
-                                </select>
+                            <h4>Areas</h4>
+                            <p>The device area from Home Assistant will be mapped to the option selected below.</p>
+                            <div class="ha-area-mapping-options" role="radiogroup" aria-label="Home Assistant area mapping target">
+                                <label class="ha-area-mapping-option" for="ha-area-sync-target-installed">
+                                    <input type="radio" id="ha-area-sync-target-installed" name="ha-area-sync-target" value="installed">
+                                    <span class="ha-area-mapping-content">
+                                        <span class="ha-area-mapping-title">Installed Area</span>
+                                        <span class="ha-area-mapping-description">Installed area is where the device is physically located.</span>
+                                    </span>
+                                </label>
+                                <label class="ha-area-mapping-option" for="ha-area-sync-target-controlled">
+                                    <input type="radio" id="ha-area-sync-target-controlled" name="ha-area-sync-target" value="controlled">
+                                    <span class="ha-area-mapping-content">
+                                        <span class="ha-area-mapping-title">Controlled Area</span>
+                                        <span class="ha-area-mapping-description">Controlled area is the space this device controls, even if it is installed elsewhere.</span>
+                                    </span>
+                                </label>
                             </div>
                         </div>
                     </div>

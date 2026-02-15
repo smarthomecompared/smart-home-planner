@@ -24,10 +24,9 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
-    const haAreaSyncTargetSelect = document.getElementById('ha-area-sync-target');
-    if (haAreaSyncTargetSelect) {
-        haAreaSyncTargetSelect.addEventListener('change', saveHaIntegrationSettings);
-    }
+    document.querySelectorAll('input[name="ha-area-sync-target"]').forEach((radio) => {
+        radio.addEventListener('change', saveHaIntegrationSettings);
+    });
     document.getElementById('network-add-btn').addEventListener('click', () => openNetworkModal('add'));
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
@@ -40,16 +39,17 @@ function initializeEventListeners() {
 }
 
 function renderHaIntegrationSettings() {
-    const select = document.getElementById('ha-area-sync-target');
-    if (!select) return;
     const value = settings.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed';
-    select.value = value;
+    const targetInput = document.querySelector(`input[name="ha-area-sync-target"][value="${value}"]`);
+    if (targetInput) {
+        targetInput.checked = true;
+    }
 }
 
 async function saveHaIntegrationSettings() {
-    const select = document.getElementById('ha-area-sync-target');
-    if (!select) return;
-    const target = select.value === 'controlled' ? 'controlled' : 'installed';
+    const selected = document.querySelector('input[name="ha-area-sync-target"]:checked');
+    if (!selected) return;
+    const target = selected.value === 'controlled' ? 'controlled' : 'installed';
     if (settings.haAreaSyncTarget === target) {
         return;
     }
