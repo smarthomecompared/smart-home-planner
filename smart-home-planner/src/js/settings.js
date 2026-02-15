@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeEventListeners();
     renderHaIntegrationSettings();
+    await renderExcludedDevicesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
 });
@@ -59,6 +60,175 @@ async function saveHaIntegrationSettings() {
     await saveSettings(nextSettings);
     settings = nextSettings;
     showMessage('Home Assistant integration settings saved.', 'success');
+}
+
+function getHaDevicesApiUrl() {
+    if (typeof window.buildAppUrl === 'function') {
+        return window.buildAppUrl('api/ha/devices');
+    }
+    return '/api/ha/devices';
+}
+
+function normalizeExcludedDeviceId(value) {
+    return String(value || '').trim();
+}
+
+function getExcludedDeviceIds(storage) {
+    const source = Array.isArray(storage?.excluded_devices)
+        ? storage.excluded_devices
+        : (Array.isArray(storage?.excludedDevices) ? storage.excludedDevices : []);
+    return source.map(normalizeExcludedDeviceId).filter(Boolean);
+}
+
+function normalizeHaBrandName(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return raw === 'Google Inc.' ? 'Google' : raw;
+}
+
+function pickHaDeviceName(device) {
+    const userName = String(device?.name_by_user || '').trim();
+    if (userName) return userName;
+    const name = String(device?.name || '').trim();
+    if (name) return name;
+    return normalizeExcludedDeviceId(device?.id);
+}
+
+function buildRestoredDeviceFromHa(haDevice) {
+    const id = normalizeExcludedDeviceId(haDevice?.id);
+    const areaId = normalizeExcludedDeviceId(haDevice?.area_id);
+    return {
+        id: id,
+        name: pickHaDeviceName(haDevice) || id,
+        brand: normalizeHaBrandName(haDevice?.manufacturer),
+        model: String(haDevice?.model || '').trim(),
+        homeAssistant: true,
+        status: 'working',
+        area: areaId,
+        controlledArea: areaId
+    };
+}
+
+async function renderExcludedDevicesManagement() {
+    const listEl = document.getElementById('excluded-devices-list');
+    const emptyEl = document.getElementById('excluded-devices-empty');
+    if (!listEl || !emptyEl) return;
+
+    listEl.innerHTML = '';
+
+    let excludedIds = [];
+    let haDevices = [];
+
+    try {
+        const storage = await loadStorage();
+        excludedIds = getExcludedDeviceIds(storage);
+        haDevices = await loadHaRegistry(getHaDevicesApiUrl());
+    } catch (error) {
+        console.error('Failed to load excluded devices:', error);
+        emptyEl.textContent = 'Failed to load excluded devices.';
+        emptyEl.classList.remove('is-hidden');
+        return;
+    }
+
+    if (!excludedIds.length) {
+        emptyEl.textContent = 'No excluded devices.';
+        emptyEl.classList.remove('is-hidden');
+        return;
+    }
+
+    const haById = new Map(
+        haDevices
+            .filter(device => device && typeof device === 'object')
+            .map(device => [normalizeExcludedDeviceId(device.id), device])
+            .filter(([id]) => Boolean(id))
+    );
+
+    excludedIds.forEach((deviceId) => {
+        const haDevice = haById.get(deviceId);
+        const item = document.createElement('div');
+        item.className = 'excluded-device-item';
+
+        const info = document.createElement('div');
+        info.className = 'excluded-device-info';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'excluded-device-name';
+        nameEl.textContent = haDevice ? (pickHaDeviceName(haDevice) || deviceId) : 'Device not found in Home Assistant';
+
+        const metaEl = document.createElement('div');
+        metaEl.className = 'excluded-device-meta';
+        metaEl.textContent = `ID: ${deviceId}`;
+
+        const statusEl = document.createElement('div');
+        statusEl.className = `excluded-device-status ${haDevice ? 'is-available' : 'is-missing'}`;
+        statusEl.textContent = haDevice ? 'Available in Home Assistant' : 'Missing from Home Assistant';
+
+        info.appendChild(nameEl);
+        info.appendChild(metaEl);
+        info.appendChild(statusEl);
+
+        const restoreBtn = document.createElement('button');
+        restoreBtn.type = 'button';
+        restoreBtn.className = 'btn btn-primary btn-sm';
+        restoreBtn.textContent = 'Restore';
+        restoreBtn.disabled = !haDevice;
+        restoreBtn.addEventListener('click', async () => {
+            restoreBtn.disabled = true;
+            try {
+                await restoreExcludedDevice(deviceId);
+            } finally {
+                restoreBtn.disabled = false;
+            }
+        });
+
+        item.appendChild(info);
+        item.appendChild(restoreBtn);
+        listEl.appendChild(item);
+    });
+
+    emptyEl.classList.add('is-hidden');
+}
+
+async function restoreExcludedDevice(deviceId) {
+    const normalizedId = normalizeExcludedDeviceId(deviceId);
+    if (!normalizedId) return;
+
+    try {
+        const storage = await loadStorage();
+        const excludedIds = getExcludedDeviceIds(storage);
+        if (!excludedIds.includes(normalizedId)) {
+            await renderExcludedDevicesManagement();
+            return;
+        }
+
+        const haDevices = await loadHaRegistry(getHaDevicesApiUrl());
+        const haDevice = haDevices.find(device => normalizeExcludedDeviceId(device?.id) === normalizedId);
+        if (!haDevice) {
+            showMessage('Device not found in Home Assistant registry.', 'error');
+            await renderExcludedDevicesManagement();
+            return;
+        }
+
+        const data = await loadData();
+        const nextDevices = Array.isArray(data.devices) ? [...data.devices] : [];
+        const alreadyExists = nextDevices.some(device => normalizeExcludedDeviceId(device?.id) === normalizedId);
+        if (!alreadyExists) {
+            nextDevices.push(buildRestoredDeviceFromHa(haDevice));
+        }
+
+        const nextExcluded = excludedIds.filter(id => id !== normalizedId);
+        await saveData({
+            ...data,
+            devices: nextDevices,
+            excluded_devices: nextExcluded
+        });
+
+        await renderExcludedDevicesManagement();
+        showMessage('Device restored successfully.', 'success');
+    } catch (error) {
+        console.error('Failed to restore excluded device:', error);
+        showMessage(error?.message || 'Failed to restore device.', 'error');
+    }
 }
 
 // Export Data
@@ -183,6 +353,7 @@ function importData() {
 
             settings = await loadSettings();
             renderHaIntegrationSettings();
+            await renderExcludedDevicesManagement();
             await renderNetworksManagement();
             renderOptionsManagement();
             

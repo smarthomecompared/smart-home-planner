@@ -269,6 +269,62 @@
     line-height: 1.4;
 }
 
+.excluded-devices-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.excluded-devices-empty {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.excluded-devices-empty.is-hidden {
+    display: none;
+}
+
+.excluded-device-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    padding: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.excluded-device-info {
+    min-width: 0;
+    display: grid;
+    gap: 0.2rem;
+}
+
+.excluded-device-name {
+    color: var(--text-color);
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.excluded-device-meta {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    word-break: break-all;
+}
+
+.excluded-device-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.excluded-device-status.is-available {
+    color: var(--success-color);
+}
+
+.excluded-device-status.is-missing {
+    color: #f59e0b;
+}
+
 .import-wrapper {
     display: flex;
     align-items: center;
@@ -406,5 +462,10 @@
 
     .networks-item-actions .btn:not(.btn-icon) {
         padding: 0.35rem 0.6rem;
+    }
+
+    .excluded-device-item {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

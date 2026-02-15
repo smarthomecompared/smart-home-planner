@@ -32,6 +32,7 @@
     background: var(--card-bg);
     border-radius: 12px;
     padding: 1rem;
+    min-width: 0;
 }
 
 .debug-files-panel h3 {
@@ -129,7 +130,9 @@
     line-height: 1.45;
     max-height: 70vh;
     overflow: auto;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 

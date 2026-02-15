@@ -38,8 +38,19 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "homeassistant",
   "homeassistantcommunityapps",
   "localaddons",
+  "tailscaleinc",
+  "proxmoxve",
 ]);
 const BLOCKED_DEVICE_NAMES = new Set(["sun"]);
+const BLOCKED_DEVICE_MODELS = new Set([
+  "plugin",
+  "integration",
+  "alarmo",
+  "forecast",
+  "homeassistantapp",
+  "jukeboxcontroller",
+  "watchman",
+]);
 
 function log(message) {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -115,6 +126,10 @@ function normalizeManufacturerKey(value) {
   return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function normalizeModelKey(value) {
+  return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function normalizeBrand(value) {
   const raw = normalizeString(value);
   if (!raw) return "";
@@ -128,6 +143,10 @@ function normalizeBrand(value) {
 function shouldSkipDevice(haDevice) {
   const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
   if (BLOCKED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
+    return true;
+  }
+  const modelKey = normalizeModelKey(haDevice?.model);
+  if (BLOCKED_DEVICE_MODELS.has(modelKey)) {
     return true;
   }
   const rawName = normalizeString(haDevice?.name_by_user) || normalizeString(haDevice?.name);

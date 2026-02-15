@@ -1,8 +1,8 @@
 ## 0.4.0 - 
 
 ### Added
-- 
-
+- New Excluded Devices section on Settings
+- More automatic devices exclusions when syncing with HA
 
 ## 0.3.0 - 2026-02-15
 
