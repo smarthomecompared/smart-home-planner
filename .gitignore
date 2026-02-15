@@ -71,3 +71,4 @@ node_modules/
 .env
 
 .idea
+/local.properties
