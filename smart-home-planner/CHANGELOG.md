@@ -1,4 +1,4 @@
-## 0.3.0
+## 0.3.0 - 2026-02-15
 
 ### Added
 
@@ -7,6 +7,7 @@
 ### Removed
 
 - Given that Home Assistant doesnn't support it, the support for multiple homes was removed
+- Removed demo mode support
 
 ## 0.2.0 - 2026-02-14
 
