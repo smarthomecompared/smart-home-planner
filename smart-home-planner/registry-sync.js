@@ -40,7 +40,6 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "localaddons",
   "tailscaleinc",
   "proxmoxve",
-  "frigate",
   "hacsxyz",
   "ping",
   "uptimekuma",
@@ -64,9 +63,7 @@ const BLOCKED_DEVICE_MODELS = new Set([
 ]);
 const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
   "music_assistant",
-  "google_weather",
-  "cast",
-  "fully_kiosk"
+  "google_weather"
 ]);
 const REGISTRY_FIELDS_TO_OMIT = {
   devices: new Set([
@@ -251,7 +248,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
     ...base,
     id,
     name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
-    brand: manufacturer || normalizeString(base.brand),
+    brand: hasExistingDevice ? normalizeString(base.brand) : manufacturer,
     model: model || normalizeString(base.model),
     homeAssistant: true,
   };

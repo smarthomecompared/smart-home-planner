@@ -6,6 +6,10 @@
     box-sizing: border-box;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 :root {
     /* Dark Theme Colors */
     --primary-color: #3b82f6;
