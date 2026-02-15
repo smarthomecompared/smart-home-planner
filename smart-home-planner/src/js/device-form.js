@@ -15,6 +15,12 @@ let autoSyncAreasEnabled = false;
 const HA_DEVICE_NAME_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
 
+function isHomeAssistantLinked(value) {
+    if (value === true) return true;
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
@@ -263,7 +269,7 @@ function buildHaDeviceDetailsUrl(deviceId) {
 
 function updateViewOnHaButton(device) {
     const viewOnHaButton = document.getElementById('view-on-ha-btn');
-    const isHaDevice = Boolean(device && device.homeAssistant);
+    const isHaDevice = isHomeAssistantLinked(device && device.homeAssistant);
     const nameHaNote = document.getElementById('device-name-ha-note');
     if (nameHaNote) {
         nameHaNote.hidden = !isHaDevice;
@@ -409,7 +415,7 @@ function loadDeviceData(device) {
     document.getElementById('device-matter-hub').checked = device.matterHub || false;
     document.getElementById('device-zigbee-controller').checked = device.zigbeeController || false;
     document.getElementById('device-zigbee-repeater').checked = device.zigbeeRepeater || false;
-    document.getElementById('device-home-assistant').checked = device.homeAssistant || false;
+    document.getElementById('device-home-assistant').checked = isHomeAssistantLinked(device.homeAssistant);
     document.getElementById('device-google-home').checked = device.googleHome || false;
     document.getElementById('device-alexa').checked = device.alexa || false;
     document.getElementById('device-apple-home-kit').checked = device.appleHomeKit || false;
@@ -519,7 +525,6 @@ async function handleDeviceSubmit(e) {
         matterHub: document.getElementById('device-matter-hub').checked,
         zigbeeController: document.getElementById('device-zigbee-controller').checked,
         zigbeeRepeater: document.getElementById('device-zigbee-repeater').checked,
-        homeAssistant: document.getElementById('device-home-assistant').checked,
         googleHome: document.getElementById('device-google-home').checked,
         alexa: document.getElementById('device-alexa').checked,
         appleHomeKit: document.getElementById('device-apple-home-kit').checked,
@@ -1485,7 +1490,7 @@ async function createDevice(deviceData) {
         matterHub: deviceData.matterHub || false,
         zigbeeController: deviceData.zigbeeController || false,
         zigbeeRepeater: deviceData.zigbeeRepeater || false,
-        homeAssistant: deviceData.homeAssistant || false,
+        homeAssistant: false,
         googleHome: deviceData.googleHome || false,
         alexa: deviceData.alexa || false,
         appleHomeKit: deviceData.appleHomeKit || false,
@@ -1551,7 +1556,6 @@ async function updateDevice(id, deviceData) {
         device.matterHub = deviceData.matterHub || false;
         device.zigbeeController = deviceData.zigbeeController || false;
         device.zigbeeRepeater = deviceData.zigbeeRepeater || false;
-        device.homeAssistant = deviceData.homeAssistant || false;
         device.googleHome = deviceData.googleHome || false;
         device.alexa = deviceData.alexa || false;
         device.appleHomeKit = deviceData.appleHomeKit || false;
@@ -1567,7 +1571,7 @@ async function updateDevice(id, deviceData) {
         
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
-        if (device.homeAssistant) {
+        if (isHomeAssistantLinked(device.homeAssistant)) {
             try {
                 await syncDeviceNameToHa(device.id, device.name);
             } catch (error) {

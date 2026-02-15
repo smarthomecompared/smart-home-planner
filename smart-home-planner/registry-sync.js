@@ -289,14 +289,51 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     (device) => !excludedDeviceIds.has(normalizeString(device.id))
   );
   const excludedDevicesCount = filteredSourceDevices.length - sourceDevicesAfterExclusions.length;
+  const sourceById = new Map(
+    sourceDevicesAfterExclusions
+      .map((device) => [normalizeString(device?.id), device])
+      .filter(([id, device]) => Boolean(id) && Boolean(device))
+  );
 
-  const nextDevices = sourceDevicesAfterExclusions
-    .map((device) => {
-      const id = normalizeString(device.id);
-      if (!id) return null;
-      return buildSyncedDevice(device, existingById.get(id), haAreaSyncTarget);
-    })
-    .filter(Boolean);
+  const syncedIds = new Set();
+  const nextDevices = [];
+  let unlinkedDevicesCount = 0;
+  let createdDevicesCount = 0;
+
+  for (const existingDevice of existingDevices) {
+    if (!existingDevice || typeof existingDevice !== "object") {
+      continue;
+    }
+    const id = normalizeString(existingDevice.id);
+    if (!id) {
+      nextDevices.push(existingDevice);
+      continue;
+    }
+
+    const sourceDevice = sourceById.get(id);
+    if (sourceDevice) {
+      nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget));
+      syncedIds.add(id);
+      continue;
+    }
+
+    const wasLinkedToHa = Boolean(existingDevice.homeAssistant);
+    const retainedDevice = {
+      ...existingDevice,
+      homeAssistant: false,
+    };
+    nextDevices.push(retainedDevice);
+    if (wasLinkedToHa) {
+      unlinkedDevicesCount += 1;
+    }
+  }
+
+  for (const sourceDevice of sourceDevicesAfterExclusions) {
+    const id = normalizeString(sourceDevice?.id);
+    if (!id || syncedIds.has(id)) continue;
+    nextDevices.push(buildSyncedDevice(sourceDevice, existingById.get(id), haAreaSyncTarget));
+    createdDevicesCount += 1;
+  }
 
   const nextStorage = {
     ...storage,
@@ -311,6 +348,14 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   }
   if (excludedDevicesCount > 0) {
     log(`Ignored ${excludedDevicesCount} device(s) by excluded_devices.`);
+  }
+  if (unlinkedDevicesCount > 0) {
+    log(
+      `Marked ${unlinkedDevicesCount} device(s) as unlinked from Home Assistant (homeAssistant=false).`
+    );
+  }
+  if (createdDevicesCount > 0) {
+    log(`Created ${createdDevicesCount} new device(s) from Home Assistant.`);
   }
 }
 
