@@ -10,7 +10,6 @@ let networkModalTargetId = '';
 document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeEventListeners();
-    renderRepoLink();
     renderHaIntegrationSettings();
     await renderNetworksManagement();
     renderOptionsManagement();
@@ -243,20 +242,6 @@ function showMessage(message, type) {
             messageEl.remove();
         }
     }, 5000);
-}
-
-function renderRepoLink() {
-    const linkEl = document.getElementById('github-repo-link');
-    const textEl = document.getElementById('github-repo-text');
-    if (!linkEl || !textEl) return;
-    if (typeof appRepoUrl !== 'string' || !appRepoUrl.trim()) {
-        linkEl.closest('.settings-section')?.classList.add('is-hidden');
-        return;
-    }
-    const url = appRepoUrl.trim();
-    linkEl.href = url;
-    const label = url.replace(/^https?:\/\//, '');
-    textEl.textContent = label;
 }
 
 async function renderNetworksManagement() {

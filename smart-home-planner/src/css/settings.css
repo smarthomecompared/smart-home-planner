@@ -123,30 +123,41 @@
     gap: 2rem;
 }
 
-.github-link {
+.social-links-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.social-link-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 999px;
     border: 1px solid var(--border-color);
     background: var(--bg-secondary);
     color: var(--text-color);
     text-decoration: none;
+    font-size: 0.85rem;
     font-weight: 600;
     transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
 
-.github-link:hover {
+.social-link-btn:hover {
     border-color: var(--border-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
-.github-icon {
-    width: 20px;
-    height: 20px;
+.social-link-icon {
+    width: 18px;
+    height: 18px;
     fill: currentColor;
+    flex-shrink: 0;
 }
 
 .networks-grid {
