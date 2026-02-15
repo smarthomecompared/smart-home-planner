@@ -1,7 +1,7 @@
 # Add-on metadata
 name: "Smart Home Planner"
 description: "Plan, document, and visualize your smart home ecosystem"
-version: "0.3.0"
+version: "0.4.0"
 slug: "smart-home-planner"
 url: "https://github.com/smarthomecompared/smart-home-planner"
 
