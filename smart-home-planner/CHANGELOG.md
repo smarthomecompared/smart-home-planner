@@ -2,7 +2,7 @@
 
 ### Added
 
-- Integration with Home Assistant floors and areas
+- Integration with Home Assistant devices, floors and areas
 
 ### Removed
 

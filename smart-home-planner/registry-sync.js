@@ -8,6 +8,7 @@ globalThis.WebSocket = WebSocket;
 
 const SUPERVISOR_WS_URL = "ws://supervisor/core/websocket";
 const DATA_DIR = "/data";
+const STORAGE_FILE = path.join(DATA_DIR, "data.json");
 const SUPERVISOR_TOKEN = process.env.SUPERVISOR_TOKEN;
 
 const registries = [
@@ -22,6 +23,12 @@ const registries = [
     command: "config/floor_registry/list",
     event: "floor_registry_updated",
     file: "floors.json",
+  },
+  {
+    name: "devices",
+    command: "config/device_registry/list",
+    event: "device_registry_updated",
+    file: "devices.json",
   },
 ];
 
@@ -72,6 +79,89 @@ async function saveToData(file, data) {
   await fs.rename(temp, target);
 }
 
+async function readStorageJson() {
+  try {
+    const raw = await fs.readFile(STORAGE_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return {};
+    }
+    throw error;
+  }
+}
+
+async function writeStorageJson(payload) {
+  await fs.mkdir(DATA_DIR, { recursive: true });
+  const temp = `${STORAGE_FILE}.tmp`;
+  await fs.writeFile(temp, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await fs.rename(temp, STORAGE_FILE);
+}
+
+function normalizeString(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+}
+
+function pickDeviceName(device) {
+  return (
+    normalizeString(device?.name_by_user) ||
+    normalizeString(device?.name) ||
+    normalizeString(device?.id)
+  );
+}
+
+function buildSyncedDevice(haDevice, existingDevice) {
+  const id = normalizeString(haDevice?.id);
+  const areaId = normalizeString(haDevice?.area_id);
+  const manufacturer = normalizeString(haDevice?.manufacturer);
+  const model = normalizeString(haDevice?.model);
+  const base = existingDevice && typeof existingDevice === "object" ? { ...existingDevice } : {};
+
+  const synced = {
+    ...base,
+    id,
+    name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
+    brand: manufacturer || normalizeString(base.brand),
+    model: model || normalizeString(base.model),
+    area: areaId,
+    controlledArea: areaId,
+    homeAssistant: true,
+  };
+
+  delete synced.createdAt;
+  return synced;
+}
+
+async function syncStorageDevicesFromRegistry(haDevices) {
+  const storage = await readStorageJson();
+  const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
+  const existingById = new Map(
+    existingDevices
+      .filter((device) => device && typeof device === "object")
+      .map((device) => [normalizeString(device.id), device])
+      .filter(([id]) => Boolean(id))
+  );
+
+  const nextDevices = (haDevices || [])
+    .filter((device) => device && typeof device === "object")
+    .map((device) => {
+      const id = normalizeString(device.id);
+      if (!id) return null;
+      return buildSyncedDevice(device, existingById.get(id));
+    })
+    .filter(Boolean);
+
+  const nextStorage = {
+    ...storage,
+    devices: nextDevices,
+  };
+
+  await writeStorageJson(nextStorage);
+  log(`data.json devices synced (${nextDevices.length})`);
+}
+
 async function fetchRegistry(conn, registry) {
   const data = await conn.sendMessagePromise({ type: registry.command });
   if (!Array.isArray(data)) {
@@ -83,11 +173,16 @@ async function fetchRegistry(conn, registry) {
 async function syncRegistry(conn, registry, reason = "manual") {
   const data = await fetchRegistry(conn, registry);
   await saveToData(registry.file, data);
+  if (registry.name === "devices") {
+    await syncStorageDevicesFromRegistry(data);
+  }
 
   if (registry.name === "areas") {
     log(`Areas synced (${data.length})`);
   } else if (registry.name === "floors") {
     log(`Floors synced (${data.length})`);
+  } else if (registry.name === "devices") {
+    log(`Devices synced (${data.length})`);
   } else {
     log(`${registry.name} synced (${data.length})`);
   }
@@ -123,6 +218,9 @@ async function subscribeToUpdates(conn) {
           }
           if (eventType === "floor_registry_updated") {
             log("Floor Registry updated -> re-syncing");
+          }
+          if (eventType === "device_registry_updated") {
+            log("Device Registry updated -> re-syncing");
           }
           enqueueRegistrySync(conn, registry, `event ${eventType}`);
         }, registry.event);
