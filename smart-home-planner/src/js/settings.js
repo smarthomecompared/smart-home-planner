@@ -39,7 +39,7 @@ function initializeEventListeners() {
 }
 
 function renderHaIntegrationSettings() {
-    const value = settings.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed';
+    const value = settings.haAreaSyncTarget === 'installed' ? 'installed' : 'controlled';
     const targetInput = document.querySelector(`input[name="ha-area-sync-target"][value="${value}"]`);
     if (targetInput) {
         targetInput.checked = true;
@@ -605,7 +605,7 @@ function renderOptionsManagement() {
 async function saveOptions() {
     const optionsConfig = ['brands', 'types', 'connectivity', 'batteryTypes'];
     const newSettings = {
-        haAreaSyncTarget: settings.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed'
+        haAreaSyncTarget: settings.haAreaSyncTarget === 'installed' ? 'installed' : 'controlled'
     };
     
     optionsConfig.forEach(key => {

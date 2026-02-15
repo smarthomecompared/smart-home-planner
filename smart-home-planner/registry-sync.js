@@ -40,6 +40,14 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "localaddons",
   "tailscaleinc",
   "proxmoxve",
+  "frigate",
+  "hacsxyz",
+  "ping",
+  "uptimekuma",
+  "systemmonitor",
+  "googlecastgroup",
+  "googledrive",
+  "musicassistant",
 ]);
 const BLOCKED_DEVICE_NAMES = new Set(["sun"]);
 const BLOCKED_DEVICE_MODELS = new Set([
@@ -51,6 +59,17 @@ const BLOCKED_DEVICE_MODELS = new Set([
   "jukeboxcontroller",
   "watchman",
 ]);
+const REGISTRY_FIELDS_TO_OMIT = {
+  devices: new Set([
+    "config_entries",
+    "config_entries_subentries",
+    "created_at",
+    "hw_version",
+    "serial_number",
+    "sw_version",
+  ]),
+  areas: new Set(["temperature_entity_id", "humidity_entity_id"]),
+};
 
 function log(message) {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -97,6 +116,23 @@ async function saveToData(file, data) {
   await fs.rename(temp, target);
 }
 
+function omitFieldsFromObject(source, fieldsToOmit) {
+  if (!source || typeof source !== "object") return source;
+  if (!fieldsToOmit || fieldsToOmit.size === 0) return source;
+  const next = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (fieldsToOmit.has(key)) continue;
+    next[key] = value;
+  }
+  return next;
+}
+
+function sanitizeRegistryDataForFile(registryName, data) {
+  const fieldsToOmit = REGISTRY_FIELDS_TO_OMIT[registryName];
+  if (!fieldsToOmit || !Array.isArray(data)) return data;
+  return data.map((item) => omitFieldsFromObject(item, fieldsToOmit));
+}
+
 async function readStorageJson() {
   try {
     const raw = await fs.readFile(STORAGE_FILE, "utf8");
@@ -134,13 +170,27 @@ function normalizeBrand(value) {
   const raw = normalizeString(value);
   if (!raw) return "";
   const key = normalizeManufacturerKey(raw);
-  if (key === "googleinc") {
+  if (key === "googleinc" || key === "googlenest") {
     return "Google";
+  }
+  if (key === "raspberrypitradingltd") {
+    return "Raspberry Pi";
   }
   return raw;
 }
 
 function shouldSkipDevice(haDevice) {
+  const disabledBy = normalizeString(haDevice?.disabled_by).toLowerCase();
+  if (disabledBy === "user") {
+    return true;
+  }
+  const identifiers = Array.isArray(haDevice?.identifiers) ? haDevice.identifiers : [];
+  const hasMusicAssistantIdentifier = identifiers.some(
+    (entry) => Array.isArray(entry) && normalizeString(entry[0]).toLowerCase() === "music_assistant"
+  );
+  if (hasMusicAssistantIdentifier) {
+    return true;
+  }
   const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
   if (BLOCKED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
     return true;
@@ -163,10 +213,10 @@ function pickDeviceName(device) {
 }
 
 function getHaAreaSyncTarget(settings) {
-  if (settings && settings.haAreaSyncTarget === "controlled") {
-    return "controlled";
+  if (settings && settings.haAreaSyncTarget === "installed") {
+    return "installed";
   }
-  return "installed";
+  return "controlled";
 }
 
 function getExcludedDeviceIds(storage) {
@@ -263,7 +313,8 @@ async function fetchRegistry(conn, registry) {
 
 async function syncRegistry(conn, registry, reason = "manual") {
   const data = await fetchRegistry(conn, registry);
-  await saveToData(registry.file, data);
+  const sanitizedData = sanitizeRegistryDataForFile(registry.name, data);
+  await saveToData(registry.file, sanitizedData);
   if (registry.name === "devices") {
     await syncStorageDevicesFromRegistry(data);
   }

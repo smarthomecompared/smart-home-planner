@@ -288,12 +288,12 @@ function getDefaultSettings() {
         types: (DEFAULT_TYPES || []).map(mapType),
         connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
         batteryTypes: [...(DEFAULT_BATTERY_TYPES || [])],
-        haAreaSyncTarget: 'installed'
+        haAreaSyncTarget: 'controlled'
     };
 }
 
 function normalizeHaAreaSyncTarget(value) {
-    return value === 'controlled' ? 'controlled' : 'installed';
+    return value === 'installed' ? 'installed' : 'controlled';
 }
 
 async function loadSettings() {
