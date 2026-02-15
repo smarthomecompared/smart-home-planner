@@ -58,7 +58,11 @@ const BLOCKED_DEVICE_MODELS = new Set([
   "homeassistantapp",
   "jukeboxcontroller",
   "watchman",
+  "googlecastgroup",
+  "googledrive",
+  "cloud",
 ]);
+const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set(["music_assistant", "google_weather"]);
 const REGISTRY_FIELDS_TO_OMIT = {
   devices: new Set([
     "config_entries",
@@ -185,10 +189,12 @@ function shouldSkipDevice(haDevice) {
     return true;
   }
   const identifiers = Array.isArray(haDevice?.identifiers) ? haDevice.identifiers : [];
-  const hasMusicAssistantIdentifier = identifiers.some(
-    (entry) => Array.isArray(entry) && normalizeString(entry[0]).toLowerCase() === "music_assistant"
+  const hasBlockedIdentifier = identifiers.some(
+    (entry) =>
+      Array.isArray(entry) &&
+      BLOCKED_DEVICE_IDENTIFIER_NAMESPACES.has(normalizeString(entry[0]).toLowerCase())
   );
-  if (hasMusicAssistantIdentifier) {
+  if (hasBlockedIdentifier) {
     return true;
   }
   const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
