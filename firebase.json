@@ -1,7 +1,7 @@
 {
     "hosting": [
       {
-        "site": "planner.smarthomecompared.com",
+        "site": "sh-planner",
         "public": "website",
         "ignore": [
           "firebase.json",
