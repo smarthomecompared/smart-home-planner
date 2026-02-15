@@ -39,8 +39,18 @@
         </header>
 
         <section class="form-page">
-            <div class="section-header">
-                <h2>Edit Device</h2>
+            <div class="section-header section-header-inline">
+                <div class="section-title-group">
+                    <h2>Edit Device</h2>
+                </div>
+                <a id="view-on-ha-btn" class="btn btn-ha" href="#" target="_blank" rel="noopener noreferrer" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M14 4h6v6"></path>
+                        <path d="M10 14 20 4"></path>
+                        <path d="M20 13v5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h5"></path>
+                    </svg>
+                    <span>View on HA</span>
+                </a>
             </div>
 
             <div class="form-card">
@@ -50,8 +60,17 @@
                         <h3 class="form-section-title">Basic Information</h3>
                         <div class="form-row">
                             <div class="form-group">
+                                <label>Device ID</label>
+                                <code id="device-id-readonly" class="form-field-code form-field-code-block">-</code>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label for="device-name">Name *</label>
                                 <input type="text" id="device-name" required placeholder="Unique device name">
+                                <div id="device-name-ha-note" class="form-field-note" hidden>
+                                    This device is linked to Home Assistant. Renaming it here will also rename it in Home Assistant.
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="device-brand">Brand</label>

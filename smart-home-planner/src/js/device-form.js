@@ -12,6 +12,8 @@ let lastTypeValue = '';
 let lastBatteryTypeValue = '';
 let lastConnectivityValue = '';
 let autoSyncAreasEnabled = false;
+const HA_DEVICE_NAME_SYNC_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -253,6 +255,33 @@ function setAreas() {
     updateAreaAutoSyncState();
 }
 
+function buildHaDeviceDetailsUrl(deviceId) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) return '';
+    return `${window.location.origin}/config/devices/device/${encodeURIComponent(normalizedId)}`;
+}
+
+function updateViewOnHaButton(device) {
+    const viewOnHaButton = document.getElementById('view-on-ha-btn');
+    const isHaDevice = Boolean(device && device.homeAssistant);
+    const nameHaNote = document.getElementById('device-name-ha-note');
+    if (nameHaNote) {
+        nameHaNote.hidden = !isHaDevice;
+    }
+    if (!viewOnHaButton) return;
+
+    const deviceId = device && device.id ? String(device.id).trim() : '';
+    const haUrl = isHaDevice ? buildHaDeviceDetailsUrl(deviceId) : '';
+    const showButton = Boolean(haUrl);
+
+    viewOnHaButton.hidden = !showButton;
+    if (showButton) {
+        viewOnHaButton.href = haUrl;
+    } else {
+        viewOnHaButton.removeAttribute('href');
+    }
+}
+
 function updateAreaAutoSyncState() {
     const installed = document.getElementById('device-area')?.value || '';
     const controlled = document.getElementById('device-controlled-area')?.value || '';
@@ -282,6 +311,38 @@ async function loadDeviceForEdit(deviceId) {
     loadDeviceData(device);
 }
 
+async function syncDeviceNameToHa(deviceId, name) {
+    const normalizedId = String(deviceId || '').trim();
+    const normalizedName = String(name || '').trim();
+    if (!normalizedId || !normalizedName) {
+        return;
+    }
+
+    const response = await fetch(HA_DEVICE_NAME_SYNC_API_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: normalizedId,
+            name: normalizedName
+        })
+    });
+
+    if (!response.ok) {
+        let errorMessage = `Failed to update Home Assistant device name (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+                errorMessage = payload.error;
+            }
+        } catch (error) {
+            // Ignore JSON parsing errors and keep the default message.
+        }
+        throw new Error(errorMessage);
+    }
+}
+
 async function loadDuplicateDeviceFromStorage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('duplicate') !== 'true') {
@@ -305,7 +366,12 @@ async function loadDuplicateDeviceFromStorage() {
 }
 
 function loadDeviceData(device) {
+    updateViewOnHaButton(device);
     setAreas();
+    const deviceIdReadonly = document.getElementById('device-id-readonly');
+    if (deviceIdReadonly) {
+        deviceIdReadonly.textContent = device && device.id ? String(device.id) : '-';
+    }
     document.getElementById('device-name').value = device.name || '';
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
@@ -1501,6 +1567,17 @@ async function updateDevice(id, deviceData) {
         
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
+        if (device.homeAssistant) {
+            try {
+                await syncDeviceNameToHa(device.id, device.name);
+            } catch (error) {
+                console.error('Failed to sync device name to Home Assistant:', error);
+                await showAlert(`Device was saved locally, but Home Assistant name update failed: ${error?.message || error}`, {
+                    title: 'Home Assistant Sync Failed'
+                });
+                return;
+            }
+        }
         devices = allDevices;
         
         window.location.href = 'devices.html';

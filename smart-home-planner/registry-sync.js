@@ -62,7 +62,12 @@ const BLOCKED_DEVICE_MODELS = new Set([
   "googledrive",
   "cloud",
 ]);
-const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set(["music_assistant", "google_weather"]);
+const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
+  "music_assistant",
+  "google_weather",
+  "cast",
+  "fully_kiosk"
+]);
 const REGISTRY_FIELDS_TO_OMIT = {
   devices: new Set([
     "config_entries",
@@ -185,7 +190,7 @@ function normalizeBrand(value) {
 
 function shouldSkipDevice(haDevice) {
   const disabledBy = normalizeString(haDevice?.disabled_by).toLowerCase();
-  if (disabledBy === "user") {
+  if (disabledBy === "user" || disabledBy === "config_entry") {
     return true;
   }
   const identifiers = Array.isArray(haDevice?.identifiers) ? haDevice.identifiers : [];

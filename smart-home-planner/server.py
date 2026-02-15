@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import subprocess
 import threading
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -14,6 +15,8 @@ DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 WEB_ROOT = os.environ.get("SHP_WEB_ROOT", "/srv")
 HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
+NODE_BIN = os.environ.get("SHP_NODE_BIN", "node")
+HA_DEVICE_UPDATE_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ha-device-update.js")
 HOSTNAME = os.environ.get("HOSTNAME", "unknown")
 HOSTNAME_NORMALIZED = HOSTNAME.strip().lower()
 IS_LOCAL_RUNTIME = HOSTNAME_NORMALIZED.startswith("local_") or HOSTNAME_NORMALIZED.startswith("local-")
@@ -96,6 +99,50 @@ def _resolve_data_file(name):
     if not os.path.isfile(full_path):
         raise FileNotFoundError(normalized)
     return full_path, normalized
+
+
+def _update_ha_device_name(device_id, device_name):
+    normalized_id = str(device_id or "").strip()
+    normalized_name = str(device_name or "").strip()
+    if not normalized_id:
+        raise ValueError("Missing device id")
+    if not normalized_name:
+        raise ValueError("Missing device name")
+    if not os.path.isfile(HA_DEVICE_UPDATE_SCRIPT):
+        raise RuntimeError("Home Assistant device update script is missing")
+
+    command = [
+        NODE_BIN,
+        HA_DEVICE_UPDATE_SCRIPT,
+        "--id",
+        normalized_id,
+        "--name",
+        normalized_name,
+    ]
+
+    try:
+        completed = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError("Timed out while updating Home Assistant device name") from error
+    except subprocess.CalledProcessError as error:
+        stderr = (error.stderr or "").strip()
+        stdout = (error.stdout or "").strip()
+        detail = stderr or stdout or str(error)
+        raise RuntimeError(detail) from error
+
+    output = (completed.stdout or "").strip()
+    if not output:
+        return {}
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        return {"raw": output}
 
 
 class AppHandler(SimpleHTTPRequestHandler):
@@ -199,6 +246,38 @@ class AppHandler(SimpleHTTPRequestHandler):
 
     def do_PUT(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/api/ha/device-name":
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if length else b"{}"
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+            except json.JSONDecodeError:
+                self.send_error(400, "Invalid JSON")
+                return
+
+            device_id = str(payload.get("id") or "").strip()
+            device_name = str(payload.get("name") or "").strip()
+            if not device_id:
+                self._send_json(400, {"error": "Missing required field: id"})
+                return
+            if not device_name:
+                self._send_json(400, {"error": "Missing required field: name"})
+                return
+
+            try:
+                result = _update_ha_device_name(device_id, device_name)
+            except ValueError as error:
+                self._send_json(400, {"error": str(error)})
+                return
+            except RuntimeError as error:
+                message = str(error)
+                status = 503 if "SUPERVISOR_TOKEN" in message else 502
+                self._send_json(status, {"error": message})
+                return
+
+            self._send_json(200, {"ok": True, "result": result})
+            return
+
         if parsed.path != "/api/storage":
             self.send_error(404)
             return

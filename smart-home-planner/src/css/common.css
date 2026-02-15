@@ -335,6 +335,32 @@ nav a.active::before {
     border-color: rgba(239, 68, 68, 0.5);
 }
 
+.btn-ha {
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: #ecfeff;
+    border: 1px solid rgba(56, 189, 248, 0.5);
+    box-shadow: 0 8px 20px rgba(2, 132, 199, 0.28);
+}
+
+.btn-ha svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+.btn-ha:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(2, 132, 199, 0.35);
+    border-color: rgba(125, 211, 252, 0.9);
+}
+
+.btn-ha:focus-visible {
+    outline: 2px solid rgba(125, 211, 252, 0.9);
+    outline-offset: 2px;
+}
+
 .btn-sm {
     padding: 0.375rem 0.75rem;
     font-size: 0.75rem;
@@ -516,6 +542,44 @@ nav a.active::before {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
+}
+
+.form-field-note {
+    margin-top: 0.45rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--text-secondary);
+}
+
+.form-field-meta {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-field-meta-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.form-field-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.78rem;
+    color: var(--text-color);
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(51, 65, 85, 0.9);
+    border-radius: 6px;
+    padding: 0.18rem 0.45rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.form-field-code-block {
+    display: inline-block;
+    margin-top: 0.4rem;
 }
 
 .form-label-row {

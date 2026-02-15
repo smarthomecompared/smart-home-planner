@@ -3,6 +3,8 @@
 ### Added
 - New Excluded Devices section on Settings
 - More automatic devices exclusions when syncing with HA
+- Support to open a device in HA
+- Now editing the name of a device in the app also edits it in HA
 
 ## 0.3.0 - 2026-02-15
 
