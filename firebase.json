@@ -1,0 +1,44 @@
+{
+    "hosting": [
+      {
+        "site": "planner.smarthomecompared.com",
+        "public": "website",
+        "ignore": [
+          "firebase.json",
+          "**/.*",
+          "**/node_modules/**"
+        ],
+        "cleanUrls": true,
+        "trailingSlash": false,
+        "headers": [
+          {
+            "source": "**/*.@(html)",
+            "headers": [
+              {
+                "key": "Cache-Control",
+                "value": "public, max-age=0, must-revalidate"
+              }
+            ]
+          },
+          {
+            "source": "**/*.@(webp|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
+            "headers": [
+              {
+                "key": "Cache-Control",
+                "value": "public, max-age=3600, must-revalidate"
+              }
+            ]
+          },
+          {
+            "source": "**/*.@(js|css)",
+            "headers": [
+              {
+                "key": "Cache-Control",
+                "value": "public, max-age=3600, must-revalidate"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
