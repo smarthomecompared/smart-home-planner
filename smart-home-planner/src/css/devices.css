@@ -184,7 +184,7 @@
     bottom: calc(100% + 8px);
     transform: translateX(-50%);
     background: rgba(15, 23, 42, 0.9);
-    color: var(--text-color);
+    color: #f8fafc;
     border: 1px solid rgba(148, 163, 184, 0.35);
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
@@ -195,10 +195,11 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast);
-    z-index: 2;
+    z-index: 30;
 }
 
-.device-card-status:hover::after {
+.device-card-status:hover::after,
+.device-card-status:focus-visible::after {
     opacity: 1;
 }
 

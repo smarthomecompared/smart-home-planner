@@ -251,8 +251,13 @@ function getDefaultSettings() {
         brands: [...(DEFAULT_BRANDS || [])],
         types: (DEFAULT_TYPES || []).map(mapType),
         connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
-        batteryTypes: [...(DEFAULT_BATTERY_TYPES || [])]
+        batteryTypes: [...(DEFAULT_BATTERY_TYPES || [])],
+        haAreaSyncTarget: 'installed'
     };
+}
+
+function normalizeHaAreaSyncTarget(value) {
+    return value === 'controlled' ? 'controlled' : 'installed';
 }
 
 async function loadSettings() {
@@ -263,7 +268,8 @@ async function loadSettings() {
         brands: settings.brands || defaults.brands,
         types: settings.types || defaults.types,
         connectivity: settings.connectivity || defaults.connectivity,
-        batteryTypes: settings.batteryTypes || defaults.batteryTypes
+        batteryTypes: settings.batteryTypes || defaults.batteryTypes,
+        haAreaSyncTarget: settings.haAreaSyncTarget || defaults.haAreaSyncTarget
     });
     if (!storage.settings) {
         await saveStorage({ ...storage, settings });
@@ -326,7 +332,8 @@ function ensureFriendlySettings(settings) {
         brands: ensureFriendlyList(settings.brands, formatDeviceType),
         types: ensureFriendlyList(settings.types, formatDeviceType),
         connectivity: ensureFriendlyList(settings.connectivity, formatConnectivity),
-        batteryTypes: ensureFriendlyList(settings.batteryTypes, formatDeviceType)
+        batteryTypes: ensureFriendlyList(settings.batteryTypes, formatDeviceType),
+        haAreaSyncTarget: normalizeHaAreaSyncTarget(settings.haAreaSyncTarget)
     };
 }
 

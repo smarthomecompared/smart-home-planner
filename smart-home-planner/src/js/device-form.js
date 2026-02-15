@@ -313,7 +313,7 @@ function loadDeviceData(device) {
     document.getElementById('device-ip').value = device.ip || '';
     document.getElementById('device-mac').value = device.mac || '';
     document.getElementById('device-status').value = device.status || 'working';
-    document.getElementById('device-power').value = device.power || 'wired';
+    document.getElementById('device-power').value = device.power || '';
     document.getElementById('device-battery-type').value = device.batteryType ? normalizeOptionValue(device.batteryType) : '';
     document.getElementById('device-battery-count').value = device.batteryCount || '';
     document.getElementById('device-last-battery-change').value = device.lastBatteryChange || '';
@@ -494,7 +494,25 @@ function handlePowerTypeChange() {
         group.classList.remove('is-hidden');
     };
     
-    if (powerType === 'battery') {
+    if (!powerType) {
+        hideGroup(batteryTypeGroup);
+        hideGroup(batteryCountGroup);
+        hideGroup(batteryChangeGroup);
+        hideGroup(batteryDurationGroup);
+        hideGroup(upsProtectedGroup);
+        hideGroup(idleConsumptionGroup);
+        hideGroup(meanConsumptionGroup);
+        hideGroup(maxConsumptionGroup);
+        hideGroup(powerPortsSection);
+        document.getElementById('device-battery-type').value = '';
+        document.getElementById('device-battery-count').value = '';
+        document.getElementById('device-last-battery-change').value = '';
+        document.getElementById('device-battery-duration').value = '';
+        document.getElementById('device-idle-consumption').value = '';
+        document.getElementById('device-mean-consumption').value = '';
+        document.getElementById('device-max-consumption').value = '';
+        document.getElementById('device-ups-protected').checked = false;
+    } else if (powerType === 'battery') {
         showGroup(batteryTypeGroup);
         showGroup(batteryCountGroup);
         if (isWishlist) {

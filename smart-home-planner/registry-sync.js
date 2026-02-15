@@ -33,6 +33,13 @@ const registries = [
 ];
 
 const registryQueue = new Map(registries.map((registry) => [registry.name, Promise.resolve()]));
+const BLOCKED_DEVICE_MANUFACTURERS = new Set([
+  "officialaddons",
+  "homeassistant",
+  "homeassistantcommunityapps",
+  "localaddons",
+]);
+const BLOCKED_DEVICE_NAMES = new Set(["sun"]);
 
 function log(message) {
   console.log(`[${new Date().toISOString()}] ${message}`);
@@ -104,6 +111,30 @@ function normalizeString(value) {
   return String(value).trim();
 }
 
+function normalizeManufacturerKey(value) {
+  return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function normalizeBrand(value) {
+  const raw = normalizeString(value);
+  if (!raw) return "";
+  const key = normalizeManufacturerKey(raw);
+  if (key === "googleinc") {
+    return "Google";
+  }
+  return raw;
+}
+
+function shouldSkipDevice(haDevice) {
+  const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
+  if (BLOCKED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
+    return true;
+  }
+  const rawName = normalizeString(haDevice?.name_by_user) || normalizeString(haDevice?.name);
+  const nameKey = rawName.toLowerCase();
+  return BLOCKED_DEVICE_NAMES.has(nameKey);
+}
+
 function pickDeviceName(device) {
   return (
     normalizeString(device?.name_by_user) ||
@@ -112,12 +143,20 @@ function pickDeviceName(device) {
   );
 }
 
-function buildSyncedDevice(haDevice, existingDevice) {
+function getHaAreaSyncTarget(settings) {
+  if (settings && settings.haAreaSyncTarget === "controlled") {
+    return "controlled";
+  }
+  return "installed";
+}
+
+function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
   const id = normalizeString(haDevice?.id);
   const areaId = normalizeString(haDevice?.area_id);
-  const manufacturer = normalizeString(haDevice?.manufacturer);
+  const manufacturer = normalizeBrand(haDevice?.manufacturer);
   const model = normalizeString(haDevice?.model);
-  const base = existingDevice && typeof existingDevice === "object" ? { ...existingDevice } : {};
+  const hasExistingDevice = Boolean(existingDevice && typeof existingDevice === "object");
+  const base = hasExistingDevice ? { ...existingDevice } : {};
 
   const synced = {
     ...base,
@@ -125,10 +164,18 @@ function buildSyncedDevice(haDevice, existingDevice) {
     name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
     brand: manufacturer || normalizeString(base.brand),
     model: model || normalizeString(base.model),
-    area: areaId,
-    controlledArea: areaId,
     homeAssistant: true,
   };
+
+  if (!hasExistingDevice) {
+    synced.status = "working";
+    synced.area = areaId;
+    synced.controlledArea = areaId;
+  } else if (haAreaSyncTarget === "controlled") {
+    synced.controlledArea = areaId;
+  } else {
+    synced.area = areaId;
+  }
 
   delete synced.createdAt;
   return synced;
@@ -136,6 +183,7 @@ function buildSyncedDevice(haDevice, existingDevice) {
 
 async function syncStorageDevicesFromRegistry(haDevices) {
   const storage = await readStorageJson();
+  const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
   const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
   const existingById = new Map(
     existingDevices
@@ -144,12 +192,15 @@ async function syncStorageDevicesFromRegistry(haDevices) {
       .filter(([id]) => Boolean(id))
   );
 
-  const nextDevices = (haDevices || [])
-    .filter((device) => device && typeof device === "object")
+  const sourceDevices = (haDevices || []).filter((device) => device && typeof device === "object");
+  const filteredSourceDevices = sourceDevices.filter((device) => !shouldSkipDevice(device));
+  const ignoredDevicesCount = sourceDevices.length - filteredSourceDevices.length;
+
+  const nextDevices = filteredSourceDevices
     .map((device) => {
       const id = normalizeString(device.id);
       if (!id) return null;
-      return buildSyncedDevice(device, existingById.get(id));
+      return buildSyncedDevice(device, existingById.get(id), haAreaSyncTarget);
     })
     .filter(Boolean);
 
@@ -160,6 +211,10 @@ async function syncStorageDevicesFromRegistry(haDevices) {
 
   await writeStorageJson(nextStorage);
   log(`data.json devices synced (${nextDevices.length})`);
+  log(`Home Assistant area sync target: ${haAreaSyncTarget}`);
+  if (ignoredDevicesCount > 0) {
+    log(`Ignored ${ignoredDevicesCount} device(s) by sync filters.`);
+  }
 }
 
 async function fetchRegistry(conn, registry) {

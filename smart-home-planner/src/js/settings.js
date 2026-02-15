@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeEventListeners();
     renderRepoLink();
+    renderHaIntegrationSettings();
     await renderNetworksManagement();
     renderOptionsManagement();
 });
@@ -23,6 +24,10 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
+    const haAreaSyncTargetSelect = document.getElementById('ha-area-sync-target');
+    if (haAreaSyncTargetSelect) {
+        haAreaSyncTargetSelect.addEventListener('change', saveHaIntegrationSettings);
+    }
     document.getElementById('network-add-btn').addEventListener('click', () => openNetworkModal('add'));
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
@@ -32,6 +37,29 @@ function initializeEventListeners() {
             closeNetworkModal();
         }
     });
+}
+
+function renderHaIntegrationSettings() {
+    const select = document.getElementById('ha-area-sync-target');
+    if (!select) return;
+    const value = settings.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed';
+    select.value = value;
+}
+
+async function saveHaIntegrationSettings() {
+    const select = document.getElementById('ha-area-sync-target');
+    if (!select) return;
+    const target = select.value === 'controlled' ? 'controlled' : 'installed';
+    if (settings.haAreaSyncTarget === target) {
+        return;
+    }
+    const nextSettings = {
+        ...settings,
+        haAreaSyncTarget: target
+    };
+    await saveSettings(nextSettings);
+    settings = nextSettings;
+    showMessage('Home Assistant integration settings saved.', 'success');
 }
 
 // Export Data
@@ -155,6 +183,7 @@ function importData() {
             }
 
             settings = await loadSettings();
+            renderHaIntegrationSettings();
             await renderNetworksManagement();
             renderOptionsManagement();
             
@@ -419,7 +448,9 @@ function renderOptionsManagement() {
 
 async function saveOptions() {
     const optionsConfig = ['brands', 'types', 'connectivity', 'batteryTypes'];
-    const newSettings = {};
+    const newSettings = {
+        haAreaSyncTarget: settings.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed'
+    };
     
     optionsConfig.forEach(key => {
         const textarea = document.getElementById(`option-${key}`);
@@ -445,6 +476,7 @@ async function resetOptions() {
         
         await saveSettings(defaultSettings);
         settings = defaultSettings;
+        renderHaIntegrationSettings();
         renderOptionsManagement();
         showMessage('Options reset to defaults successfully!', 'success');
     }

@@ -227,7 +227,8 @@ class DeviceFilters {
             const deviceTypes = [...new Set(this.devices.map(d => d.type).filter(Boolean))];
             const typeOptions = this.buildFriendlyOptions(configuredTypes, deviceTypes, this.formatDeviceType);
             typeFilter.innerHTML = '<option value="">All</option>' +
-                typeOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
+                typeOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
+                '<option value="__none__">-</option>';
             typeFilter.value = currentTypeValue ? normalizeOptionValue(currentTypeValue) : currentTypeValue;
         }
         
@@ -398,7 +399,11 @@ class DeviceFilters {
         }
         
         if (typeFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.type) === typeFilter);
+            if (typeFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.type);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.type) === typeFilter);
+            }
         }
         
         if (connectivityFilter) {
@@ -418,7 +423,11 @@ class DeviceFilters {
         }
 
         if (powerFilter) {
-            this.filteredDevices = this.filteredDevices.filter(d => d.power === powerFilter);
+            if (powerFilter === '__none__') {
+                this.filteredDevices = this.filteredDevices.filter(d => !d.power);
+            } else {
+                this.filteredDevices = this.filteredDevices.filter(d => d.power === powerFilter);
+            }
         }
 
         if (upsProtectedFilter) {

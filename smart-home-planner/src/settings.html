@@ -81,6 +81,24 @@
                 </div>
 
                 <div class="settings-section">
+                    <h3 class="settings-section-title">Home Assistant Integration</h3>
+                    <p class="settings-description">Choose which device area field should be updated from Home Assistant when an existing device is synchronized.</p>
+                    <div class="settings-actions">
+                        <div class="settings-action-group">
+                            <h4>Area Mapping Target</h4>
+                            <p>New devices always set both Installed and Controlled Area. Existing devices update only the selected field.</p>
+                            <div class="form-group">
+                                <label for="ha-area-sync-target">Update this field on sync</label>
+                                <select id="ha-area-sync-target">
+                                    <option value="installed">Installed Area</option>
+                                    <option value="controlled">Controlled Area</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
                     <h3 class="settings-section-title">Networks</h3>
                     <p class="settings-description">Create VLANs to organize devices by network.</p>
 

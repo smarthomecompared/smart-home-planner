@@ -361,7 +361,8 @@ function renderDevices() {
             const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
             const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
             const modelDisplay = device.model ? device.model.trim() : '-';
-            const statusLabel = formatStatusLabel(device.status);
+            const normalizedStatus = normalizeStatusValue(device.status);
+            const statusLabel = formatStatusLabel(normalizedStatus);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
@@ -369,7 +370,7 @@ function renderDevices() {
                     <td>${escapeHtml(brandDisplay)}</td>
                     <td>${escapeHtml(modelDisplay)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
-                    <td><span class="status-badge status-${device.status}">${escapeHtml(statusLabel)}</span></td>
+                    <td><span class="status-badge status-${normalizedStatus}">${escapeHtml(statusLabel)}</span></td>
                     <td class="actions-cell">
                         <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -427,7 +428,8 @@ function renderDevicesGrid(devicesToRender) {
         const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
         const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
         const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
-        const statusLabel = formatStatusLabel(device.status);
+        const normalizedStatus = normalizeStatusValue(device.status);
+        const statusLabel = formatStatusLabel(normalizedStatus);
         return `
             <div class="device-card">
                 <div class="device-card-header">
@@ -456,7 +458,7 @@ function renderDevicesGrid(devicesToRender) {
                     </div>
                 </div>
                 <div class="device-card-actions">
-                    <span class="device-card-status status-${device.status}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}" title="${escapeHtml(statusLabel)}"></span>
+                    <span class="device-card-status status-${normalizedStatus}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}"></span>
                     <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
@@ -485,11 +487,24 @@ function renderDevicesGrid(devicesToRender) {
 }
 
 function formatStatusLabel(status) {
-    if (!status) return '';
-    return status
+    const normalizedStatus = normalizeStatusValue(status);
+    return normalizedStatus
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+}
+
+function normalizeStatusValue(status) {
+    const normalized = String(status || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '-');
+
+    if (['working', 'pending', 'wishlist', 'not-working'].includes(normalized)) {
+        return normalized;
+    }
+
+    return 'pending';
 }
 
 function updatePaginationControls(totalPages, startIndex, endIndex, totalItems) {

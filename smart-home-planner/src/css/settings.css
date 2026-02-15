@@ -216,6 +216,10 @@
     line-height: 1.5;
 }
 
+#ha-area-sync-target {
+    width: min(100%, 280px);
+}
+
 .import-wrapper {
     display: flex;
     align-items: center;
