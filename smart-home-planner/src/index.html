@@ -15,18 +15,22 @@
     <title>Smart Home Planner</title>
     <link rel="stylesheet" href="css/common.css">
     <style>
-        .dashboard {
+        .home-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
             gap: 2rem;
             margin-top: 2rem;
         }
 
+        .dashboard {
+            display: contents;
+        }
+
         .dashboard-card {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 1.5rem;
-            box-shadow: var(--shadow);
+            box-shadow: var(--shadow-lg);
             border: 1px solid var(--border-color);
             text-align: left;
             transition: all var(--transition-base);
@@ -41,34 +45,18 @@
             gap: 0.75rem;
         }
 
-        .dashboard-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--success-color), #0ea5e9);
-            opacity: 0;
-            transition: opacity var(--transition-base);
-        }
-
-
         .dashboard-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
+            font-size: 1.05rem;
+            margin: 0;
             color: var(--text-color);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.01em;
+            font-weight: 650;
         }
 
         .dashboard-card .count {
-            font-size: 2.5rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-color), var(--success-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: var(--text-color);
             margin-bottom: 0.5rem;
             letter-spacing: -0.02em;
         }
@@ -78,18 +66,85 @@
             margin-bottom: 0;
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+        .overview-head {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
         }
 
-        .stats-cards {
+        .overview-metrics {
             display: grid;
-            grid-template-columns: repeat(3, minmax(280px, 1fr));
-            gap: 2rem;
-            margin-top: 2rem;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.8rem;
+            margin-bottom: 0.95rem;
+        }
+
+        .overview-metric {
+            padding: 0.85rem 0.9rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.45);
+            display: grid;
+            gap: 0.3rem;
+        }
+
+        .overview-metric-label {
+            font-size: 0.78rem;
+            letter-spacing: 0.03em;
+            color: var(--text-secondary);
+            font-weight: 550;
+            text-transform: none;
+        }
+
+        .overview-metric-value {
+            font-size: 1.75rem;
+            font-weight: 750;
+            color: var(--text-color);
+            line-height: 1;
+        }
+
+        .overview-foot {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .overview-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            border: 1px solid transparent;
+            background: rgba(15, 23, 42, 0.58);
+            color: var(--text-secondary);
+        }
+
+        .overview-chip::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            opacity: 0.9;
+        }
+
+        .overview-chip.working {
+            color: #4ade80;
+            border-color: rgba(74, 222, 128, 0.35);
+        }
+
+        .overview-chip.pending {
+            color: #fbbf24;
+            border-color: rgba(251, 191, 36, 0.35);
+        }
+
+        .overview-chip.not-working {
+            color: #f87171;
+            border-color: rgba(248, 113, 113, 0.35);
         }
 
         .chart-card {
@@ -430,23 +485,11 @@
             overflow: visible;
         }
 
-        @media (max-width: 1200px) {
-            .stats-grid {
-                grid-template-columns: repeat(2, minmax(260px, 1fr));
-            }
-            .stats-cards {
-                grid-template-columns: repeat(2, minmax(260px, 1fr));
-            }
-        }
-
         @media (max-width: 768px) {
-            .dashboard {
+            .home-cards {
                 grid-template-columns: 1fr;
             }
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            .stats-cards {
+            .overview-metrics {
                 grid-template-columns: 1fr;
             }
             .pie-wrap {
@@ -510,14 +553,10 @@
             </nav>
         </header>
 
-        <section>
+        <section class="home-cards">
             <div class="dashboard" id="dashboard">
                 <!-- Dashboard cards will be rendered here -->
             </div>
-        </section>
-
-        <section>
-            <div class="stats-cards">
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Pending Devices</div>
@@ -685,8 +724,6 @@
                     </div>
                     <div class="pie-wrap" id="ups-chart"></div>
                 </div>
-            </div>
-            <div class="stats-grid">
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Devices by Type</div>
@@ -741,7 +778,6 @@
                     </div>
                     <div class="pie-wrap" id="chart-brands"></div>
                 </div>
-            </div>
         </section>
     </div>
 
@@ -782,37 +818,34 @@
             const workingDevices = devices.filter(d => d.status === 'working').length;
             const pendingDevices = devices.filter(d => d.status === 'pending').length;
             const notWorkingDevices = devices.filter(d => d.status === 'not-working').length;
-            const wishlistDevices = devices.filter(d => d.status === 'wishlist').length;
-            
-            dashboard.innerHTML = `
+
+            const hasOverviewData = devicesCount > 0 || areasCount > 0 || floorsCount > 0;
+            dashboard.innerHTML = hasOverviewData ? `
                 <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>Devices</h3>
-                        <a href="device-add.html" class="btn btn-secondary btn-sm btn-icon card-add" aria-label="Add device" title="Add device">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 5v14"></path>
-                                <path d="M5 12h14"></path>
-                            </svg>
-                        </a>
+                    <div class="overview-head">
+                        <h3>Overview</h3>
                     </div>
-                    <div class="count">${devicesCount}</div>
-                    <div class="description">${workingDevices} working, ${pendingDevices} pending, ${notWorkingDevices} not working</div>
-                </div>
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>Areas</h3>
+                    <div class="overview-metrics">
+                        <div class="overview-metric">
+                            <span class="overview-metric-value">${devicesCount}</span>
+                            <span class="overview-metric-label">Devices</span>
+                        </div>
+                        <div class="overview-metric">
+                            <span class="overview-metric-value">${areasCount}</span>
+                            <span class="overview-metric-label">Areas</span>
+                        </div>
+                        <div class="overview-metric">
+                            <span class="overview-metric-value">${floorsCount}</span>
+                            <span class="overview-metric-label">Floors</span>
+                        </div>
                     </div>
-                    <div class="count">${areasCount}</div>
-                    <div class="description">Areas across all floors</div>
-                </div>
-                <div class="dashboard-card">
-                    <div class="card-header">
-                        <h3>Floors</h3>
+                    <div class="overview-foot">
+                        <span class="overview-chip working">${workingDevices} working</span>
+                        <span class="overview-chip pending">${pendingDevices} pending</span>
+                        <span class="overview-chip not-working">${notWorkingDevices} not working</span>
                     </div>
-                    <div class="count">${floorsCount}</div>
-                    <div class="description">Total floors in your home</div>
                 </div>
-            `;
+            ` : '';
             renderPieChart('chart-types', buildStats(devices, 'type', value => getFriendlyOption(settings.types, value, formatDeviceType)), 'type');
             renderPieChart('chart-connectivity', buildStats(devices, 'connectivity', value => getFriendlyOption(settings.connectivity, value, formatConnectivity)), 'connectivity');
             renderPieChart('chart-brands', buildStats(devices, 'brand', value => getFriendlyOption(settings.brands, value, formatDeviceType)), 'brand');
@@ -877,13 +910,15 @@
             target.classList.remove('legend', 'power-usage-list');
             if (rows.length === 0) {
                 updateExpandButton(targetId, false);
-                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
 
             const countFormatter = options.countFormatter;
             const linkBuilder = options.linkBuilder;
             updateExpandButton(targetId, true);
+            updateCardVisibilityByTargetId(targetId, true);
             const shouldStore = options.store !== false;
             const maxLegendItems = options.maxItems === undefined ? 6 : options.maxItems;
             const includeOthers = options.includeOthers !== false;
@@ -1026,6 +1061,15 @@
             button.style.display = hasData ? 'inline-flex' : 'none';
         }
 
+        function updateCardVisibilityByTargetId(targetId, hasData) {
+            if (targetId === 'chart-modal-body') return;
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const card = target.closest('.chart-card');
+            if (!card) return;
+            card.style.display = hasData ? '' : 'none';
+        }
+
         function openChartModal(chartId, title) {
             const modal = document.getElementById('chart-modal');
             const modalTitle = document.getElementById('chart-modal-title');
@@ -1104,9 +1148,11 @@
             const target = document.getElementById(targetId);
             if (!target) return;
             if (rows.length === 0) {
-                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
+            updateCardVisibilityByTargetId(targetId, true);
 
             target.innerHTML = rows.map(row => `
                 <a class="legend-item" href="devices.html?batteryType=${encodeURIComponent(row.value)}">
@@ -1124,7 +1170,8 @@
             target.classList.add('legend');
             if (!rows.length) {
                 updateExpandButton(targetId, false);
-                target.innerHTML = `<div class="battery-alert-item">${options.emptyMessage || 'No data yet'}</div>`;
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
 
@@ -1153,6 +1200,7 @@
                 emptyMessage: options.emptyMessage
             };
             updateExpandButton(targetId, rows.length > 0);
+            updateCardVisibilityByTargetId(targetId, rows.length > 0);
         }
 
         function renderPendingDevices(targetId, devices) {
@@ -1242,9 +1290,11 @@
             const target = document.getElementById(targetId);
             if (!target) return;
             if (!rows.length) {
-                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
+            updateCardVisibilityByTargetId(targetId, true);
 
             const maxValue = Math.max(...rows.map(row => row.value)) || 1;
             target.innerHTML = `
@@ -1390,9 +1440,11 @@
             const target = document.getElementById(targetId);
             if (!target) return;
             if (!rows.length) {
-                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
+            updateCardVisibilityByTargetId(targetId, true);
 
             target.innerHTML = rows.map(row => `
                 <a class="legend-item" href="devices.html?integration=${encodeURIComponent(row.value)}">
@@ -1426,9 +1478,11 @@
             target.classList.add('legend', 'power-usage-list');
             if (!rows.length) {
                 updateExpandButton(targetId, false);
-                target.innerHTML = '<div class="battery-alert-item">No data yet</div>';
+                updateCardVisibilityByTargetId(targetId, false);
+                target.innerHTML = '';
                 return;
             }
+            updateCardVisibilityByTargetId(targetId, true);
 
             const maxRows = options.maxRows === undefined ? 6 : options.maxRows;
             const showMore = options.showMore !== false;
