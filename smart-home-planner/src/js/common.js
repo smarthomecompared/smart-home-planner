@@ -601,6 +601,48 @@ function formatDeviceType(type) {
     ).join(' ');
 }
 
+function getSiteNavIconMarkup(href) {
+    const cleanHref = String(href || '').split('?')[0];
+    if (cleanHref.endsWith('index.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-7 9 7"></path><path d="M6 9.5v10.5h12v-10.5"></path><path d="M10 20v-5h4v5"></path></svg>';
+    }
+    if (cleanHref.endsWith('devices.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M7 7v10"></path><path d="M17 7v10"></path><path d="M4 17h16"></path></svg>';
+    }
+    if (cleanHref.endsWith('settings.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>';
+    }
+    if (cleanHref.endsWith('debug-settings.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6"></path><path d="M10 3v3"></path><path d="M14 3v3"></path><rect x="6" y="6" width="12" height="10" rx="2"></rect><path d="M10 16v3"></path><path d="M14 16v3"></path><path d="M9 10h6"></path><path d="M9 13h6"></path></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle></svg>';
+}
+
+function initPrimaryNavIcons() {
+    const nav = document.querySelector('.site-nav');
+    if (!nav) return;
+
+    nav.querySelectorAll('a').forEach((link) => {
+        if (link.querySelector('.site-nav-icon')) return;
+
+        const labelText = String(link.textContent || '').trim();
+        if (!labelText) return;
+
+        const iconWrapper = document.createElement('span');
+        iconWrapper.className = 'site-nav-icon';
+        iconWrapper.setAttribute('aria-hidden', 'true');
+        iconWrapper.innerHTML = getSiteNavIconMarkup(link.getAttribute('href'));
+
+        const labelWrapper = document.createElement('span');
+        labelWrapper.className = 'site-nav-label';
+        labelWrapper.textContent = labelText;
+
+        link.textContent = '';
+        link.appendChild(iconWrapper);
+        link.appendChild(labelWrapper);
+    });
+}
+
 function initMobileNav() {
     const toggle = document.querySelector('.nav-toggle');
     const nav = document.querySelector('.site-nav');
@@ -710,6 +752,7 @@ async function clearMapPositions() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initDebugSettingsNav();
+    initPrimaryNavIcons();
     initMobileNav();
     initIconTooltips();
 });

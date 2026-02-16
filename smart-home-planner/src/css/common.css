@@ -79,6 +79,7 @@ header {
     border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     transition: all var(--transition-base);
+    display: block;
 }
 
 header:hover {
@@ -90,7 +91,7 @@ header:hover {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .header-home-link {
@@ -157,30 +158,41 @@ header:hover {
     fill: none;
 }
 
-nav {
+nav.site-nav {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.55rem;
     flex-wrap: wrap;
-    background: var(--bg-secondary);
-    padding: 0.5rem;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    align-items: center;
 }
 
-nav a {
-    padding: 0.625rem 1.25rem;
+nav.site-nav a {
+    appearance: none;
+    padding: 0.48rem 0.68rem;
     text-decoration: none;
     color: var(--text-secondary);
-    font-weight: 500;
-    border-radius: 8px;
-    transition: all var(--transition-base);
+    font-weight: 600;
+    border-radius: 10px;
+    transition: transform var(--transition-base), box-shadow var(--transition-base), color var(--transition-base), background var(--transition-base);
     position: relative;
     overflow: hidden;
     font-size: 0.875rem;
     white-space: nowrap;
+    border: 1px solid transparent;
+    background:
+        linear-gradient(155deg, rgba(15, 23, 42, 0.74), rgba(30, 41, 59, 0.64)) padding-box,
+        linear-gradient(155deg, rgba(148, 163, 184, 0.28), rgba(148, 163, 184, 0.12)) border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 42px;
 }
 
-nav a::before {
+nav.site-nav a::before {
     content: '';
     position: absolute;
     top: 0;
@@ -193,23 +205,68 @@ nav a::before {
     border-radius: 8px;
 }
 
-nav a:hover {
-    color: var(--primary-color);
+nav.site-nav a:hover {
+    transform: translateY(-1px);
+    color: #e2e8f0;
+    background:
+        linear-gradient(150deg, rgba(30, 41, 59, 0.9), rgba(51, 65, 85, 0.72)) padding-box,
+        linear-gradient(155deg, rgba(148, 163, 184, 0.45), rgba(96, 165, 250, 0.3)) border-box;
+    box-shadow: 0 8px 16px rgba(2, 6, 23, 0.2);
 }
 
-nav a:hover::before {
+nav.site-nav a:hover::before {
     opacity: 1;
 }
 
-nav a.active {
-    color: var(--primary-color);
-    background: var(--primary-light);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
+nav.site-nav a.active {
+    color: #dbeafe;
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.5), rgba(30, 64, 175, 0.34)) padding-box,
+        linear-gradient(135deg, rgba(125, 211, 252, 0.85), rgba(96, 165, 250, 0.45)) border-box;
+    box-shadow: 0 10px 18px rgba(29, 78, 216, 0.24);
 }
 
-nav a.active::before {
+nav.site-nav a.active::before {
     opacity: 1;
+}
+
+nav.site-nav a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.34), 0 10px 20px rgba(29, 78, 216, 0.24);
+}
+
+.site-nav-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.38);
+    background: rgba(15, 23, 42, 0.88);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(226, 232, 240, 0.95);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    flex: 0 0 auto;
+}
+
+.site-nav-icon svg {
+    width: 13px;
+    height: 13px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.site-nav-label {
+    line-height: 1;
+}
+
+nav.site-nav a.active .site-nav-icon {
+    border-color: rgba(125, 211, 252, 0.84);
+    background: rgba(30, 64, 175, 0.44);
+    color: #dbeafe;
 }
 
 .section-header {
@@ -219,6 +276,36 @@ nav a.active::before {
     margin-bottom: 2rem;
     flex-wrap: wrap;
     gap: 1rem;
+}
+
+@media (min-width: 1160px) {
+    header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.25rem;
+    }
+
+    .header-brand {
+        margin-bottom: 0;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .header-home-link {
+        min-width: 0;
+    }
+
+    .header-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    nav.site-nav {
+        margin-top: 0;
+        flex: 0 0 auto;
+    }
 }
 
 .section-header h2 {
@@ -1677,6 +1764,7 @@ nav a.active::before {
     nav.site-nav a {
         width: 100%;
         text-align: center;
+        justify-content: center;
     }
 
     .section-header {
