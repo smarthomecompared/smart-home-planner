@@ -164,8 +164,10 @@ class DeviceFilters {
         // Update area filter
         const areaFilter = document.getElementById('filter-area');
         const currentAreaValue = areaFilter ? areaFilter.value : '';
+        const sortedAreas = [...this.areas].sort((a, b) =>
+            (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+        );
         if (areaFilter) {
-            const sortedAreas = [...this.areas].sort((a, b) => a.name.localeCompare(b.name));
             areaFilter.innerHTML = '<option value="">All</option>' +
                 sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
                 '<option value="__none__">-</option>';
@@ -176,7 +178,6 @@ class DeviceFilters {
         const controlledAreaFilter = document.getElementById('filter-controlled-area');
         const currentControlledValue = controlledAreaFilter ? controlledAreaFilter.value : '';
         if (controlledAreaFilter) {
-            const sortedAreas = [...this.areas].sort((a, b) => a.name.localeCompare(b.name));
             controlledAreaFilter.innerHTML = '<option value="">All</option>' +
                 sortedAreas.map(area => `<option value="${area.id}">${this.escapeHtml(area.name)}</option>`).join('') +
                 '<option value="__none__">-</option>';

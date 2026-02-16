@@ -234,27 +234,13 @@ async function restoreExcludedDevice(deviceId) {
 // Export Data
 async function exportData() {
     try {
-        const data = await loadData();
-        const settings = await loadSettings();
-
-        const normalizedDevices = (data.devices || []).map(device => ({
-            ...device,
-            brand: normalizeOptionValue(device.brand),
-            type: normalizeOptionValue(device.type),
-            connectivity: normalizeOptionValue(device.connectivity),
-            batteryType: normalizeOptionValue(device.batteryType)
-        }));
-        
-        // Include map positions
-        const mapPositions = await loadMapPositions();
-        
-        const exportData = {
-            networks: data.networks || [],
-            devices: normalizedDevices,
-            settings: settings,
-            mapPositions: mapPositions
-        };
-        const jsonString = JSON.stringify(exportData, null, 2);
+        const storageUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/storage') : '/api/storage';
+        const response = await fetch(storageUrl, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Storage request failed: ${response.status}`);
+        }
+        const rawStorage = await response.json();
+        const jsonString = JSON.stringify(rawStorage, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -298,95 +284,51 @@ function handleFileSelect(e) {
 }
 
 // Import Data
-function importData() {
+async function importData() {
     if (!selectedFile) {
         showMessage('Please select a file first.', 'error');
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const importedData = JSON.parse(e.target.result);
-            
-            // Validate data structure
-            if (!validateDataStructure(importedData)) {
-                showMessage('Invalid data format. Please check your JSON file.', 'error');
-                return;
-            }
-
-            // Confirm before importing
-            const confirmMessage = `This will replace all existing data with ${importedData.devices?.length || 0} devices. Are you sure?`;
-            
-            const confirmed = await showConfirm(confirmMessage, {
-                title: 'Import data',
-                confirmText: 'Import'
-            });
-            if (!confirmed) {
-                return;
-            }
-
-            if (Array.isArray(importedData.devices)) {
-                importedData.devices = importedData.devices.map(device => ({
-                    ...device,
-                    brand: normalizeOptionValue(device.brand),
-                    type: normalizeOptionValue(device.type),
-                    connectivity: normalizeOptionValue(device.connectivity),
-                    batteryType: normalizeOptionValue(device.batteryType)
-                }));
-            }
-
-            // Save imported data using the same method as saveData
-            await saveData(importedData);
-            
-            // Import settings if present
-            if (importedData.settings) {
-                await saveSettings(importedData.settings);
-            }
-            
-            // Import map positions if present
-            if (importedData.mapPositions) {
-                await saveMapPositions(importedData.mapPositions);
-            } else {
-                await clearMapPositions();
-            }
-
-            settings = await loadSettings();
-            renderHaIntegrationSettings();
-            await renderExcludedDevicesManagement();
-            await renderNetworksManagement();
-            renderOptionsManagement();
-            
-            // Reset file input
-            document.getElementById('import-file').value = '';
-            document.getElementById('import-file-name').textContent = '';
-            document.getElementById('import-confirm-btn').style.display = 'none';
-            selectedFile = null;
-            
-            showMessage('Data imported successfully!', 'success');
-        } catch (error) {
-            console.error('Import error:', error);
-            showMessage('Error importing data: ' + error.message, 'error');
+    try {
+        const rawText = await selectedFile.text();
+        const importedData = JSON.parse(rawText);
+        if (!importedData || typeof importedData !== 'object' || Array.isArray(importedData)) {
+            showMessage('Invalid data format. Expected a JSON object.', 'error');
+            return;
         }
-    };
-    
-    reader.onerror = function() {
-        showMessage('Error reading file.', 'error');
-    };
-    
-    reader.readAsText(selectedFile);
-}
 
-// Validate Data Structure
-function validateDataStructure(data) {
-    if (!data || typeof data !== 'object') {
-        return false;
+        const devicesToImport = Array.isArray(importedData.devices) ? importedData.devices.length : 0;
+        const confirmMessage =
+            `This will replace all existing data with ${devicesToImport} devices. Are you sure?`;
+        const confirmed = await showConfirm(confirmMessage, {
+            title: 'Import data',
+            confirmText: 'Import'
+        });
+        if (!confirmed) {
+            return;
+        }
+
+        const storageUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/storage') : '/api/storage';
+        const response = await fetch(storageUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(importedData)
+        });
+        if (!response.ok) {
+            throw new Error(`Storage write failed: ${response.status}`);
+        }
+
+        showMessage('Data imported successfully! Reloading...', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
+    } catch (error) {
+        console.error('Import error:', error);
+        showMessage('Error importing data: ' + error.message, 'error');
     }
-
-    // Check if it has the expected structure
-    const hasDevices = Array.isArray(data.devices);
-
-    return hasDevices;
 }
 
 

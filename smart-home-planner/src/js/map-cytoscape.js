@@ -289,6 +289,28 @@ function resizeCytoscape() {
     });
 }
 
+async function navigateToDeviceEdit(deviceId) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) return;
+
+    hideDeviceTooltip();
+    hidePowerConnectionDialog();
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+        try {
+            await document.exitFullscreen();
+        } catch (error) {
+            // Continue navigation even if fullscreen exit fails.
+        }
+    }
+
+    if (document.body.classList.contains('map-fullscreen')) {
+        setMapFullscreen(false);
+    }
+
+    window.location.href = `device-edit.html?id=${encodeURIComponent(normalizedId)}`;
+}
+
 // Initialize Cytoscape
 function initializeCytoscape() {
     const container = document.getElementById('network-map');
@@ -477,7 +499,7 @@ function initializeCytoscape() {
     cy.on('dbltap', 'node[type="device"]', function(evt) {
         const node = evt.target;
         const deviceId = node.id();
-        window.location.href = `device-edit.html?id=${deviceId}`;
+        void navigateToDeviceEdit(deviceId);
     });
 
     cy.on('tap', 'edge[connectionType="power"]', function(evt) {
@@ -588,7 +610,7 @@ function showDeviceTooltip(node) {
             </div>
         </div>
         <div class="tooltip-footer">
-            <button class="tooltip-edit-btn" onclick="window.location.href='device-edit.html?id=${device.id}'">
+            <button class="tooltip-edit-btn" data-device-id="${escapeHtml(device.id)}">
                 Edit Device
             </button>
             <span class="tooltip-hint">Double-click to edit</span>
@@ -597,6 +619,13 @@ function showDeviceTooltip(node) {
     
     const tooltipRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
     tooltipRoot.appendChild(tooltip);
+    const editButton = tooltip.querySelector('.tooltip-edit-btn');
+    if (editButton) {
+        editButton.addEventListener('click', () => {
+            const targetDeviceId = editButton.getAttribute('data-device-id') || device.id;
+            void navigateToDeviceEdit(targetDeviceId);
+        });
+    }
     
     // Position tooltip
     if (window.innerWidth <= 640) {

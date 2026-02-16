@@ -21,6 +21,26 @@ function isHomeAssistantLinked(value) {
     return normalized === 'true' || normalized === '1' || normalized === 'yes';
 }
 
+function showFormMessage(message, type = 'success') {
+    const form = document.getElementById('device-form');
+    if (!form) return;
+    const existing = form.querySelector('.device-form-message');
+    if (existing) {
+        existing.remove();
+    }
+
+    const messageEl = document.createElement('div');
+    messageEl.className = `device-form-message device-form-message-${type}`;
+    messageEl.textContent = message;
+    form.insertBefore(messageEl, form.firstChild);
+
+    setTimeout(() => {
+        if (messageEl.parentNode) {
+            messageEl.remove();
+        }
+    }, 3000);
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
@@ -74,6 +94,10 @@ function initializeEventListeners() {
     const deleteButton = document.getElementById('delete-device-btn');
     if (deleteButton) {
         deleteButton.addEventListener('click', handleDeleteDevice);
+    }
+    const applyButton = document.getElementById('apply-device-btn');
+    if (applyButton) {
+        applyButton.addEventListener('click', handleApplyDevice);
     }
     
     // Port buttons
@@ -238,7 +262,12 @@ function populateAreas() {
     const controlledSelect = document.getElementById('device-controlled-area');
     const installedValue = areaSelect ? areaSelect.value : '';
     const controlledValue = controlledSelect ? controlledSelect.value : '';
-    const optionsHtml = areas.map(area => `<option value="${area.id}">${escapeHtml(area.name)}</option>`).join('');
+    const sortedAreas = [...areas].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
+    const optionsHtml = sortedAreas
+        .map(area => `<option value="${area.id}">${escapeHtml(area.name)}</option>`)
+        .join('');
 
     if (areaSelect) {
         areaSelect.innerHTML = '<option value="">Select an area</option>' + optionsHtml;
@@ -440,6 +469,11 @@ function loadDeviceData(device) {
 // Form Handlers
 async function handleDeviceSubmit(e) {
     e.preventDefault();
+    const form = e.currentTarget;
+    const shouldStayOnPage = form?.dataset?.submitMode === 'apply';
+    if (form && form.dataset) {
+        form.dataset.submitMode = 'save';
+    }
 
     let connectivity = document.getElementById('device-connectivity').value;
     if (connectivity === '__new__') {
@@ -534,10 +568,21 @@ async function handleDeviceSubmit(e) {
     };
     
     if (editingDeviceId) {
-        await updateDevice(editingDeviceId, deviceData);
+        await updateDevice(editingDeviceId, deviceData, { stayOnPage: shouldStayOnPage });
     } else {
         await createDevice(deviceData);
     }
+}
+
+function handleApplyDevice() {
+    const form = document.getElementById('device-form');
+    if (!form || !editingDeviceId) return;
+    form.dataset.submitMode = 'apply';
+    if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+        return;
+    }
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 }
 
 function handlePowerTypeChange() {
@@ -1513,7 +1558,7 @@ async function createDevice(deviceData) {
     window.location.href = 'devices.html';
 }
 
-async function updateDevice(id, deviceData) {
+async function updateDevice(id, deviceData, options = {}) {
     // Validate unique name
     const name = deviceData.name.trim();
     if (!name) {
@@ -1584,7 +1629,14 @@ async function updateDevice(id, deviceData) {
         }
         devices = allDevices;
         
-        window.location.href = 'devices.html';
+        if (options.stayOnPage) {
+            showFormMessage('Device saved successfully.', 'success');
+            return;
+        }
+
+        if (!options.stayOnPage) {
+            window.location.href = 'devices.html';
+        }
     }
 }
 

@@ -641,6 +641,21 @@ nav a.active::before {
     margin-bottom: 1.5rem;
 }
 
+.device-form-message {
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.device-form-message-success {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #a7f3d0;
+}
+
 .form-section:last-of-type {
     margin-bottom: 0;
 }
