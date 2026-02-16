@@ -406,6 +406,59 @@ function isWifiConnectivity(value) {
     return normalized === 'wifi' || normalized === 'ethernet';
 }
 
+function ensureToastContainer() {
+    let container = document.getElementById('app-toast-container');
+    if (container) return container;
+    if (!document.body) {
+        document.addEventListener('DOMContentLoaded', ensureToastContainer, { once: true });
+        return null;
+    }
+
+    container = document.createElement('div');
+    container.id = 'app-toast-container';
+    container.className = 'app-toast-container';
+    container.setAttribute('aria-live', 'polite');
+    container.setAttribute('aria-atomic', 'true');
+    document.body.appendChild(container);
+    return container;
+}
+
+function dismissToast(toastEl) {
+    if (!toastEl || !toastEl.parentNode) return;
+    toastEl.classList.remove('is-visible');
+    setTimeout(() => {
+        if (toastEl.parentNode) {
+            toastEl.parentNode.removeChild(toastEl);
+        }
+    }, 180);
+}
+
+function showToast(message, type = 'success', options = {}) {
+    const text = String(message || '').trim();
+    if (!text) return;
+
+    const container = ensureToastContainer();
+    if (!container) return;
+
+    const normalizedType = type === 'error' ? 'error' : 'success';
+    container.querySelectorAll('.app-toast').forEach((toast) => dismissToast(toast));
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `app-toast app-toast-${normalizedType}`;
+    toastEl.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
+    toastEl.textContent = text;
+    container.appendChild(toastEl);
+
+    requestAnimationFrame(() => {
+        toastEl.classList.add('is-visible');
+    });
+
+    const duration = Number.isFinite(options.duration) ? Number(options.duration) : 3200;
+    if (duration > 0) {
+        setTimeout(() => dismissToast(toastEl), duration);
+    }
+}
+
 function ensureDialogModal() {
     if (document.getElementById('app-dialog-modal')) {
         return;
@@ -670,3 +723,4 @@ window.buildAppUrl = buildAppUrl;
 window.isIngressRuntime = isIngressRuntime;
 window.isLocalAddonRuntime = isLocalAddonRuntime;
 window.getRuntimeInfo = getRuntimeInfo;
+window.showToast = showToast;

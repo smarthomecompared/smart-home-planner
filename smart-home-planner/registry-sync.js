@@ -47,6 +47,7 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "googlecastgroup",
   "googledrive",
   "musicassistant",
+  "Zigbee2mqtt"
 ]);
 const BLOCKED_DEVICE_NAMES = new Set(["sun"]);
 const BLOCKED_DEVICE_MODELS = new Set([

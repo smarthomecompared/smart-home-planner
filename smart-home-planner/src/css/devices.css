@@ -15,8 +15,8 @@
 .devices-table th:first-child,
 .devices-table td:first-child {
     white-space: normal;
-    min-width: 240px;
-    width: 30%;
+    min-width: 220px;
+    width: 24%;
 }
 
 .devices-table .actions-cell {
@@ -91,6 +91,51 @@
     margin-right: 0;
 }
 
+.devices-table .table-col-ha {
+    width: 54px;
+    min-width: 54px;
+    text-align: center;
+}
+
+.ha-enabled-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #e0f2fe;
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    border: 1px solid rgba(56, 189, 248, 0.7);
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+}
+
+.ha-enabled-icon img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+    display: block;
+}
+
+.devices-table .ha-enabled-icon-table {
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: inherit;
+}
+
+.devices-table .ha-enabled-icon-table img {
+    width: 16px;
+    height: 16px;
+}
+
+.table-empty-value {
+    color: var(--text-muted);
+}
+
 .devices-header {
     display: grid;
     grid-template-columns: auto 1fr auto;
@@ -149,6 +194,17 @@
     letter-spacing: -0.01em;
     width: 100%;
     padding-right: 0;
+}
+
+.device-card.has-ha .device-card-title {
+    padding-right: 2rem;
+}
+
+.device-card-ha-icon {
+    position: absolute;
+    top: 0.8rem;
+    right: 0.8rem;
+    z-index: 2;
 }
 
 .device-card-status {
@@ -399,5 +455,25 @@
 
     .pagination-size .filter-select {
         width: 100%;
+    }
+}
+
+@media (max-width: 1520px) {
+    .devices-table .col-optional-lg {
+        display: none;
+    }
+}
+
+@media (max-width: 1280px) {
+    .devices-table .col-optional-md {
+        display: none;
+    }
+
+    .table-container.area-target-installed .col-area-controlled {
+        display: none;
+    }
+
+    .table-container.area-target-controlled .col-area-installed {
+        display: none;
     }
 }

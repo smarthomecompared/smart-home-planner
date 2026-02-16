@@ -73,7 +73,14 @@
                         <div class="filters-row filters-secondary">
                             <div class="filter-field filter-field-wide">
                                 <label for="filter-name">Device name</label>
-                                <input type="text" id="filter-name" class="filter-input" placeholder="Search by device name">
+                                <div class="filter-input-with-clear">
+                                    <input type="text" id="filter-name" class="filter-input" placeholder="Search by device name">
+                                    <button type="button" id="clear-filter-name" class="filter-clear-btn" aria-label="Clear device name filter" hidden>
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M4 4l8 8M12 4l-8 8"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="filter-field">
                                 <label for="filter-brand">Brand</label>
@@ -227,8 +234,20 @@
                             <th class="sortable" data-sort="name">
                                 Name <span class="sort-icon"></span>
                             </th>
-                            <th class="sortable" data-sort="area">
+                            <th class="sortable table-col-ha col-optional-md" data-sort="homeAssistant">
+                                HA <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable col-area-installed" data-sort="area">
                                 Installed Area <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable col-area-controlled" data-sort="controlledArea">
+                                Controlled Area <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable col-optional-lg" data-sort="power">
+                                Power <span class="sort-icon"></span>
+                            </th>
+                            <th class="sortable col-optional-lg" data-sort="connectivity">
+                                Connectivity <span class="sort-icon"></span>
                             </th>
                             <th class="sortable" data-sort="brand">
                                 Brand <span class="sort-icon"></span>

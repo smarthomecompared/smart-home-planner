@@ -22,23 +22,9 @@ function isHomeAssistantLinked(value) {
 }
 
 function showFormMessage(message, type = 'success') {
-    const form = document.getElementById('device-form');
-    if (!form) return;
-    const existing = form.querySelector('.device-form-message');
-    if (existing) {
-        existing.remove();
+    if (typeof showToast === 'function') {
+        showToast(message, type === 'error' ? 'error' : 'success');
     }
-
-    const messageEl = document.createElement('div');
-    messageEl.className = `device-form-message device-form-message-${type}`;
-    messageEl.textContent = message;
-    form.insertBefore(messageEl, form.firstChild);
-
-    setTimeout(() => {
-        if (messageEl.parentNode) {
-            messageEl.remove();
-        }
-    }, 3000);
 }
 
 // Initialize

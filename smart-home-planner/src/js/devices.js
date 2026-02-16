@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     floors = data.floors;
     networks = data.networks || [];
     devices = allDevices;
+    applyAreaColumnVisibility();
     
     // Initialize filters
     deviceFilters = new DeviceFilters();
@@ -159,6 +160,18 @@ function updateViewVisibility() {
     } else if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.setVisible(false);
     }
+}
+
+function getHaAreaSyncTarget() {
+    return settings?.haAreaSyncTarget === 'controlled' ? 'controlled' : 'installed';
+}
+
+function applyAreaColumnVisibility() {
+    const tableContainer = document.getElementById('devices-table-container');
+    if (!tableContainer) return;
+    const target = getHaAreaSyncTarget();
+    tableContainer.classList.remove('area-target-installed', 'area-target-controlled');
+    tableContainer.classList.add(`area-target-${target}`);
 }
 
 function ensureDiagramReady() {
@@ -315,6 +328,14 @@ function renderDevices() {
                 aVal = a.controlledArea ? getAreaName(areas, a.controlledArea) : '';
                 bVal = b.controlledArea ? getAreaName(areas, b.controlledArea) : '';
             }
+
+            if (sortColumn === 'homeAssistant') {
+                aVal = isHomeAssistantLinked(a.homeAssistant) ? 1 : 0;
+                bVal = isHomeAssistantLinked(b.homeAssistant) ? 1 : 0;
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            }
             
             // Handle name field
             if (sortColumn === 'name') {
@@ -353,7 +374,7 @@ function renderDevices() {
     if (paginatedDevices.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="empty-state">
+                <td colspan="11" class="empty-state">
                         <div style="text-align: center; padding: 2rem;">
                         <div class="empty-state-icon">🔌</div>
                         <div class="empty-state-text">No devices found</div>
@@ -365,15 +386,29 @@ function renderDevices() {
     } else {
         tbody.innerHTML = paginatedDevices.map(device => {
             const areaName = device.area ? getAreaName(areas, device.area) : '-';
+            const controlledAreaName = device.controlledArea ? getAreaName(areas, device.controlledArea) : '-';
             const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
             const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
             const modelDisplay = device.model ? device.model.trim() : '-';
+            const powerDisplay = formatPowerLabel(device.power);
+            const connectivityDisplay = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
+            const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
             const normalizedStatus = normalizeStatusValue(device.status);
             const statusLabel = formatStatusLabel(normalizedStatus);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
-                    <td>${escapeHtml(areaName)}</td>
+                    <td class="table-col-ha col-optional-md">
+                        ${isHaEnabled
+                            ? `<span class="ha-enabled-icon ha-enabled-icon-table" title="Home Assistant enabled" aria-label="Home Assistant enabled">
+                                <img src="img/ha.png" alt="Home Assistant" loading="lazy">
+                            </span>`
+                            : '<span class="table-empty-value">-</span>'}
+                    </td>
+                    <td class="col-area-installed">${escapeHtml(areaName)}</td>
+                    <td class="col-area-controlled">${escapeHtml(controlledAreaName)}</td>
+                    <td class="col-optional-lg">${escapeHtml(powerDisplay)}</td>
+                    <td class="col-optional-lg">${escapeHtml(connectivityDisplay)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
                     <td>${escapeHtml(modelDisplay)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
@@ -435,10 +470,16 @@ function renderDevicesGrid(devicesToRender) {
         const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
         const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
         const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
+        const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
         const normalizedStatus = normalizeStatusValue(device.status);
         const statusLabel = formatStatusLabel(normalizedStatus);
         return `
-            <div class="device-card">
+            <div class="device-card${isHaEnabled ? ' has-ha' : ''}">
+                ${isHaEnabled
+                    ? `<span class="ha-enabled-icon device-card-ha-icon" title="Home Assistant enabled" aria-label="Home Assistant enabled">
+                        <img src="img/ha.png" alt="Home Assistant" loading="lazy">
+                      </span>`
+                    : ''}
                 <div class="device-card-header">
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
                 </div>
@@ -512,6 +553,20 @@ function normalizeStatusValue(status) {
     }
 
     return 'pending';
+}
+
+function formatPowerLabel(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return '-';
+    if (normalized === 'wired') return 'Wired';
+    if (normalized === 'battery') return 'Battery';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function isHomeAssistantLinked(value) {
+    if (value === true) return true;
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
 }
 
 function updatePaginationControls(totalPages, startIndex, endIndex, totalItems) {

@@ -64,9 +64,9 @@ html {
 }
 
 .container {
-    max-width: 1600px;
+    max-width: none;
     margin: 0 auto;
-    padding: 1rem;
+    padding: clamp(0.75rem, 1.2vw, 1.5rem);
     width: 100%;
 }
 
@@ -641,21 +641,6 @@ nav a.active::before {
     margin-bottom: 1.5rem;
 }
 
-.device-form-message {
-    margin-bottom: 1rem;
-    border-radius: 10px;
-    border: 1px solid transparent;
-    padding: 0.7rem 0.9rem;
-    font-size: 0.88rem;
-    font-weight: 500;
-}
-
-.device-form-message-success {
-    background: rgba(16, 185, 129, 0.14);
-    border-color: rgba(16, 185, 129, 0.35);
-    color: #a7f3d0;
-}
-
 .form-section:last-of-type {
     margin-bottom: 0;
 }
@@ -752,6 +737,48 @@ nav a.active::before {
     color: var(--text-secondary);
     line-height: 1.6;
     white-space: pre-line;
+}
+
+.app-toast-container {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1300;
+    width: min(92vw, 680px);
+    display: grid;
+    gap: 0.5rem;
+    pointer-events: none;
+}
+
+.app-toast {
+    border-radius: 12px;
+    border: 1px solid transparent;
+    padding: 0.8rem 1rem;
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(4px);
+    font-size: 0.9rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+.app-toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.app-toast-success {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.45);
+    color: #bbf7d0;
+}
+
+.app-toast-error {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.45);
+    color: #fecaca;
 }
 
 .form-group label {
@@ -1579,6 +1606,10 @@ nav a.active::before {
     transition: all var(--transition-base);
 }
 
+.filter-input-with-clear {
+    position: relative;
+}
+
 .filters-container .filter-select,
 .filters-container .filter-input {
     background-color: rgba(15, 23, 42, 0.75);
@@ -1586,6 +1617,50 @@ nav a.active::before {
     color: var(--text-color);
     min-width: 0;
     width: 100%;
+}
+
+.filters-container .filter-input-with-clear .filter-input {
+    padding-right: 2.5rem;
+}
+
+.filter-clear-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.55rem;
+    transform: translateY(-50%);
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+}
+
+.filter-clear-btn svg {
+    width: 0.7rem;
+    height: 0.7rem;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+}
+
+.filter-clear-btn:hover {
+    color: var(--text-color);
+    border-color: rgba(148, 163, 184, 0.65);
+    background: rgba(51, 65, 85, 0.95);
+}
+
+.filter-clear-btn:focus-visible {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 .filter-input-wide {

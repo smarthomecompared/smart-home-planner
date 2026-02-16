@@ -5,6 +5,11 @@
 - More automatic devices exclusions when syncing with HA
 - Support to open a device in HA
 - Now editing the name of a device in the app also edits it in HA
+- Added apply button on edit device screen
+  
+### Changed
+- Now the UI is wide screen and the devices tables supports more columns
+- Improved success messages UI
 
 ## 0.3.0 - 2026-02-15
 

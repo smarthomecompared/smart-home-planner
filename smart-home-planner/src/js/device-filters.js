@@ -109,6 +109,7 @@ class DeviceFilters {
                 element.addEventListener(eventType, () => this.applyFilters());
             }
         });
+        this.setupNameFilterClearButton();
 
         // Toggle advanced filters
         const toggleBtn = document.getElementById('toggle-advanced-filters');
@@ -147,6 +148,26 @@ class DeviceFilters {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => this.clearFilters());
         }
+    }
+
+    setupNameFilterClearButton() {
+        const nameInput = document.getElementById('filter-name');
+        const clearNameBtn = document.getElementById('clear-filter-name');
+        if (!nameInput || !clearNameBtn) return;
+        clearNameBtn.addEventListener('click', () => {
+            if (!nameInput.value) return;
+            nameInput.value = '';
+            nameInput.focus();
+            this.applyFilters();
+        });
+        this.updateNameFilterClearButtonVisibility();
+    }
+
+    updateNameFilterClearButtonVisibility() {
+        const nameInput = document.getElementById('filter-name');
+        const clearNameBtn = document.getElementById('clear-filter-name');
+        if (!nameInput || !clearNameBtn) return;
+        clearNameBtn.hidden = !nameInput.value;
     }
 
     // Update filter dropdown options
@@ -273,6 +294,7 @@ class DeviceFilters {
 
     // Apply all filters and return filtered devices
     applyFilters() {
+        this.updateNameFilterClearButtonVisibility();
         const getElementValue = (id) => {
             const el = document.getElementById(id);
             if (!el) {

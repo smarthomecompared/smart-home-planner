@@ -334,27 +334,9 @@ async function importData() {
 
 // Show Message
 function showMessage(message, type) {
-    // Remove existing messages
-    const existingMessage = document.querySelector('.settings-message');
-    if (existingMessage) {
-        existingMessage.remove();
+    if (typeof showToast === 'function') {
+        showToast(message, type === 'error' ? 'error' : 'success');
     }
-
-    // Create message element
-    const messageEl = document.createElement('div');
-    messageEl.className = `settings-message settings-message-${type}`;
-    messageEl.textContent = message;
-
-    // Insert at the top of settings container
-    const settingsContainer = document.querySelector('.settings-container');
-    settingsContainer.insertBefore(messageEl, settingsContainer.firstChild);
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (messageEl.parentNode) {
-            messageEl.remove();
-        }
-    }, 5000);
 }
 
 async function renderNetworksManagement() {
