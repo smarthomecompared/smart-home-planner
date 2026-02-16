@@ -128,8 +128,8 @@
 }
 
 .devices-table .ha-enabled-icon-table img {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
 }
 
 .table-empty-value {
@@ -196,15 +196,20 @@
     padding-right: 0;
 }
 
-.device-card.has-ha .device-card-title {
-    padding-right: 2rem;
+.device-card-ha-icon {
+    position: relative;
+    flex: 0 0 auto;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
 }
 
-.device-card-ha-icon {
-    position: absolute;
-    top: 0.8rem;
-    right: 0.8rem;
-    z-index: 2;
+.device-card-ha-icon img {
+    width: 19px;
+    height: 19px;
 }
 
 .device-card-status {
@@ -233,7 +238,8 @@
     background: #ef4444;
 }
 
-.device-card-status::after {
+.device-card-status::after,
+.device-card-ha-badge::after {
     content: attr(data-status);
     position: absolute;
     left: 50%;
@@ -255,8 +261,23 @@
 }
 
 .device-card-status:hover::after,
-.device-card-status:focus-visible::after {
+.device-card-status:focus-visible::after,
+.device-card-ha-badge:hover::after,
+.device-card-ha-badge:focus-visible::after {
     opacity: 1;
+}
+
+.device-card-ha-badge {
+    width: auto;
+    height: auto;
+    cursor: default;
+}
+
+.device-card-ha-badge::after {
+    content: attr(data-tooltip);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.72rem;
 }
 
 .device-card-meta {
@@ -293,7 +314,10 @@
     align-items: center;
 }
 
-.device-card-actions .device-card-status {
+.device-card-indicators {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
     margin-right: auto;
 }
 

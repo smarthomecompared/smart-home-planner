@@ -48,8 +48,8 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "googledrive",
   "musicassistant",
   "Zigbee2mqtt"
-]);
-const BLOCKED_DEVICE_NAMES = new Set(["sun"]);
+].map((value) => normalizeManufacturerKey(value)).filter(Boolean));
+const BLOCKED_DEVICE_NAMES = new Set(["sun"].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
 const BLOCKED_DEVICE_MODELS = new Set([
   "plugin",
   "integration",
@@ -61,11 +61,11 @@ const BLOCKED_DEVICE_MODELS = new Set([
   "googlecastgroup",
   "googledrive",
   "cloud",
-]);
+].map((value) => normalizeModelKey(value)).filter(Boolean));
 const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
   "music_assistant",
   "google_weather"
-]);
+].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
 const REGISTRY_FIELDS_TO_OMIT = {
   devices: new Set([
     "config_entries",
@@ -250,7 +250,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
     id,
     name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
     brand: hasExistingDevice ? normalizeString(base.brand) : manufacturer,
-    model: model || normalizeString(base.model),
+    model: hasExistingDevice ? normalizeString(base.model) : model,
     homeAssistant: true,
   };
 

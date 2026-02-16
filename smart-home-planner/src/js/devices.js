@@ -475,11 +475,6 @@ function renderDevicesGrid(devicesToRender) {
         const statusLabel = formatStatusLabel(normalizedStatus);
         return `
             <div class="device-card${isHaEnabled ? ' has-ha' : ''}">
-                ${isHaEnabled
-                    ? `<span class="ha-enabled-icon device-card-ha-icon" title="Home Assistant enabled" aria-label="Home Assistant enabled">
-                        <img src="img/ha.png" alt="Home Assistant" loading="lazy">
-                      </span>`
-                    : ''}
                 <div class="device-card-header">
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
                 </div>
@@ -506,7 +501,14 @@ function renderDevicesGrid(devicesToRender) {
                     </div>
                 </div>
                 <div class="device-card-actions">
-                    <span class="device-card-status status-${normalizedStatus}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}"></span>
+                    <div class="device-card-indicators">
+                        <span class="device-card-status status-${normalizedStatus}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}"></span>
+                        ${isHaEnabled
+                            ? `<span class="ha-enabled-icon device-card-ha-icon device-card-ha-badge" data-tooltip="Integrated with Home Assistant" aria-label="Integrated with Home Assistant" tabindex="0">
+                                <img src="img/ha.png" alt="Home Assistant" loading="lazy">
+                              </span>`
+                            : ''}
+                    </div>
                     <button class="btn btn-sm btn-secondary btn-icon" onclick="editDevice('${device.id}')" aria-label="Edit" title="Edit">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>

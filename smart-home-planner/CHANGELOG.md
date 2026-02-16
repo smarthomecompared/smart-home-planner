@@ -1,4 +1,4 @@
-## 0.4.0 - 
+## 0.4.0 - 2026-02-16
 
 ### Added
 - New "Excluded Devices" section on Settings
