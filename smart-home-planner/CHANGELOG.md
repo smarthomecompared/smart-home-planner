@@ -2,6 +2,7 @@
 
 ### Added
 - Now editing the area of a device in the app also edits it in HA
+- Support to attach files and images to each device
   
 ## 0.4.0 - 2026-02-16
 

@@ -391,14 +391,12 @@ async function restoreExcludedDevice(deviceId) {
 // Export Data
 async function exportData() {
     try {
-        const storageUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/storage') : '/api/storage';
-        const response = await fetch(storageUrl, { cache: 'no-store' });
+        const exportUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/export') : '/api/export';
+        const response = await fetch(exportUrl, { cache: 'no-store' });
         if (!response.ok) {
-            throw new Error(`Storage request failed: ${response.status}`);
+            throw new Error(`Export request failed: ${response.status}`);
         }
-        const rawStorage = await response.json();
-        const jsonString = JSON.stringify(rawStorage, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -409,17 +407,17 @@ async function exportData() {
             String(now.getMinutes()).padStart(2, '0'),
             String(now.getSeconds()).padStart(2, '0')
         ].join('-');
-        a.download = `smart-home-data-${datePart}-${timePart}.json`;
+        a.download = `samart-home-planner-${datePart}-${timePart}.tar`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
         // Show success message
-        showMessage('Data exported successfully!', 'success');
+        showMessage('Backup exported successfully.', 'success');
     } catch (error) {
         console.error('Export error:', error);
-        showMessage('Error exporting data: ' + error.message, 'error');
+        showMessage('Error exporting backup: ' + error.message, 'error');
     }
 }
 
@@ -430,14 +428,77 @@ function handleFileSelect(e) {
         return;
     }
 
-    if (!file.name.endsWith('.json')) {
-        showMessage('Please select a JSON file.', 'error');
+    if (!file.name.toLowerCase().endsWith('.tar')) {
+        showMessage('Please select a TAR backup file.', 'error');
         return;
     }
 
     selectedFile = file;
     document.getElementById('import-file-name').textContent = file.name;
     document.getElementById('import-confirm-btn').style.display = 'inline-flex';
+}
+
+function readTarHeaderString(bytes, start, length) {
+    const end = start + length;
+    const slice = bytes.subarray(start, end);
+    const nullIndex = slice.indexOf(0);
+    const effective = nullIndex >= 0 ? slice.subarray(0, nullIndex) : slice;
+    return new TextDecoder('utf-8').decode(effective).trim();
+}
+
+function readTarHeaderSize(bytes, start, length) {
+    const raw = readTarHeaderString(bytes, start, length).replace(/\0/g, '').trim();
+    if (!raw) return 0;
+    const sanitized = raw.replace(/[^\d]/g, '');
+    if (!sanitized) return 0;
+    return parseInt(sanitized, 8);
+}
+
+function extractDataJsonFromTar(arrayBuffer) {
+    const bytes = new Uint8Array(arrayBuffer);
+    const blockSize = 512;
+    let offset = 0;
+
+    while (offset + blockSize <= bytes.length) {
+        const header = bytes.subarray(offset, offset + blockSize);
+        const isZeroBlock = header.every((value) => value === 0);
+        if (isZeroBlock) {
+            break;
+        }
+
+        const name = readTarHeaderString(bytes, offset, 100);
+        const prefix = readTarHeaderString(bytes, offset + 345, 155);
+        const fullName = prefix ? `${prefix}/${name}` : name;
+        const fileSize = readTarHeaderSize(bytes, offset + 124, 12);
+        const dataStart = offset + blockSize;
+        const dataEnd = dataStart + fileSize;
+
+        if (fullName === 'data.json' && fileSize >= 0 && dataEnd <= bytes.length) {
+            return bytes.subarray(dataStart, dataEnd);
+        }
+
+        const blocksForFile = Math.ceil(fileSize / blockSize);
+        offset = dataStart + (blocksForFile * blockSize);
+    }
+
+    return null;
+}
+
+async function countDevicesInTarFile(file) {
+    try {
+        const buffer = await file.arrayBuffer();
+        const dataJsonBytes = extractDataJsonFromTar(buffer);
+        if (!dataJsonBytes) {
+            return null;
+        }
+        const text = new TextDecoder('utf-8').decode(dataJsonBytes);
+        const parsed = JSON.parse(text);
+        const devices = Array.isArray(parsed?.devices) ? parsed.devices : [];
+        return devices.length;
+    } catch (error) {
+        console.warn('Unable to inspect TAR backup before import:', error);
+        return null;
+    }
 }
 
 // Import Data
@@ -448,37 +509,43 @@ async function importData() {
     }
 
     try {
-        const rawText = await selectedFile.text();
-        const importedData = JSON.parse(rawText);
-        if (!importedData || typeof importedData !== 'object' || Array.isArray(importedData)) {
-            showMessage('Invalid data format. Expected a JSON object.', 'error');
-            return;
-        }
-
-        const devicesToImport = Array.isArray(importedData.devices) ? importedData.devices.length : 0;
-        const confirmMessage =
-            `This will replace all existing data with ${devicesToImport} devices. Are you sure?`;
+        const devicesToImport = await countDevicesInTarFile(selectedFile);
+        const confirmMessage = Number.isFinite(devicesToImport)
+            ? `This will replace all existing data and device files with ${devicesToImport} devices from this backup. Are you sure?`
+            : 'This will replace all existing data and device files with the selected backup. Are you sure?';
         const confirmed = await showConfirm(confirmMessage, {
-            title: 'Import data',
+            title: 'Import backup',
             confirmText: 'Import'
         });
         if (!confirmed) {
             return;
         }
 
-        const storageUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/storage') : '/api/storage';
-        const response = await fetch(storageUrl, {
-            method: 'PUT',
+        const importUrl = typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/import') : '/api/import';
+        const response = await fetch(importUrl, {
+            method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/x-tar'
             },
-            body: JSON.stringify(importedData)
+            body: selectedFile
         });
         if (!response.ok) {
-            throw new Error(`Storage write failed: ${response.status}`);
+            let message = `Import request failed: ${response.status}`;
+            try {
+                const payload = await response.json();
+                if (payload?.error) {
+                    message = payload.error;
+                }
+            } catch (error) {
+                // Keep fallback message.
+            }
+            throw new Error(message);
         }
+        const payload = await response.json();
+        const importedDevices = Number(payload?.result?.devices || 0);
+        const importedFiles = Number(payload?.result?.files || 0);
 
-        showMessage('Data imported successfully! Reloading...', 'success');
+        showMessage(`Backup imported successfully (${importedDevices} devices, ${importedFiles} files). Reloading...`, 'success');
         setTimeout(() => {
             window.location.reload();
         }, 300);

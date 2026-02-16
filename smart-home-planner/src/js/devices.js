@@ -15,6 +15,8 @@ let sortDirection = 'asc';
 let filteredDevices = [];
 let viewMode = 'table';
 let diagramReady = false;
+const DEVICE_FILES_DELETE_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files') : '/api/device-files';
 
 const VIEW_STORAGE_KEYS = {
     desktop: 'smartHomeDevicesViewDesktop',
@@ -27,6 +29,24 @@ function getViewStorageKey() {
 
 function getDefaultViewMode() {
     return window.innerWidth <= 640 ? 'grid' : 'table';
+}
+
+function normalizeDeviceFilePath(value) {
+    return String(value || '').trim();
+}
+
+async function deleteDeviceFilesFromServer(files) {
+    const items = Array.isArray(files) ? files : [];
+    for (const item of items) {
+        const path = normalizeDeviceFilePath(item && item.path);
+        if (!path) continue;
+        const url = `${DEVICE_FILES_DELETE_API_URL}?path=${encodeURIComponent(path)}`;
+        try {
+            await fetch(url, { method: 'DELETE' });
+        } catch (error) {
+            console.error(`Failed to remove file "${path}"`, error);
+        }
+    }
 }
 
 // Device Filters instance
@@ -282,6 +302,11 @@ async function deleteDevice(id) {
         await addDeviceToExcludedListIfInHa(id);
     } catch (error) {
         console.error('Failed to add device to excluded_devices:', error);
+    }
+
+    const deviceToDelete = allDevices.find(d => d.id === id);
+    if (deviceToDelete) {
+        await deleteDeviceFilesFromServer(deviceToDelete.files);
     }
 
     // Remove the device

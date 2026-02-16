@@ -362,6 +362,30 @@
                         </div>
                     </div>
 
+                    <!-- Files -->
+                    <div class="form-section">
+                        <div class="device-files-section-head">
+                            <h3 class="form-section-title">Files</h3>
+                            <span class="device-files-count" id="device-files-count">0 files</span>
+                        </div>
+                        <p class="device-files-description">Upload manuals, invoices, screenshots, or photos for this device. Image files include live previews.</p>
+                        <div class="device-files-dropzone" id="device-files-dropzone" role="button" tabindex="0" aria-label="Upload files for this device">
+                            <input type="file" id="device-files-input" multiple hidden>
+                            <div class="device-files-dropzone-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M12 16V7"></path>
+                                    <path d="m8.5 10.5 3.5-3.5 3.5 3.5"></path>
+                                    <path d="M20 16.5a3.5 3.5 0 0 0-1.4-6.7A5.5 5.5 0 0 0 8 7.8a4.2 4.2 0 0 0 .5 8.4H20z"></path>
+                                </svg>
+                            </div>
+                            <div class="device-files-dropzone-title">Drop files here or click to browse</div>
+                            <div class="device-files-dropzone-meta">Max 20 MB per file</div>
+                            <button type="button" class="btn btn-secondary btn-sm" id="device-files-upload-btn">Select Files</button>
+                        </div>
+                        <div class="device-files-list" id="device-files-list"></div>
+                        <div class="device-files-empty" id="device-files-empty">No files uploaded yet.</div>
+                    </div>
+
                     <div class="form-actions">
                         <button type="button" class="btn btn-danger" id="delete-device-btn">Delete</button>
                         <a href="devices.html" class="btn btn-secondary">Cancel</a>

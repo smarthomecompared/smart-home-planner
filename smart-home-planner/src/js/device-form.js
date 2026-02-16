@@ -12,10 +12,23 @@ let lastTypeValue = '';
 let lastBatteryTypeValue = '';
 let lastConnectivityValue = '';
 let autoSyncAreasEnabled = false;
+let activeDeviceId = '';
+let deviceFiles = [];
+let deviceFilePreviewModal = null;
+let deviceFileRenameModal = null;
 const HA_DEVICE_NAME_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
 const HA_DEVICE_AREA_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-area') : '/api/ha/device-area';
+const DEVICE_FILES_UPLOAD_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files/upload') : '/api/device-files/upload';
+const DEVICE_FILES_CONTENT_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files/content') : '/api/device-files/content';
+const DEVICE_FILES_DELETE_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files') : '/api/device-files';
+const DEVICE_FILES_RENAME_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files/rename') : '/api/device-files/rename';
+const MAX_DEVICE_FILE_BYTES = 20 * 1024 * 1024;
 
 function isHomeAssistantLinked(value) {
     if (value === true) return true;
@@ -27,6 +40,63 @@ function showFormMessage(message, type = 'success') {
     if (typeof showToast === 'function') {
         showToast(message, type === 'error' ? 'error' : 'success');
     }
+}
+
+function generateDeviceId() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function escapeFileParam(value) {
+    return encodeURIComponent(String(value || ''));
+}
+
+function getDeviceFileContentUrl(path, download = false) {
+    const safePath = String(path || '').trim();
+    if (!safePath) return '#';
+    const downloadSuffix = download ? '&download=1' : '';
+    return `${DEVICE_FILES_CONTENT_API_URL}?path=${escapeFileParam(safePath)}${downloadSuffix}`;
+}
+
+function formatFileSize(size) {
+    const bytes = Number(size);
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+        value /= 1024;
+        unitIndex += 1;
+    }
+    const precision = value >= 10 || unitIndex === 0 ? 0 : 1;
+    return `${value.toFixed(precision)} ${units[unitIndex]}`;
+}
+
+function isImageMimeType(value) {
+    return String(value || '').trim().toLowerCase().startsWith('image/');
+}
+
+function normalizeDeviceFiles(files) {
+    const result = [];
+    const seenPaths = new Set();
+    (Array.isArray(files) ? files : []).forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const path = String(item.path || '').trim();
+        if (!path || seenPaths.has(path)) return;
+        seenPaths.add(path);
+        const name = String(item.name || path.split('/').pop() || 'file').trim() || 'file';
+        const mimeType = String(item.mimeType || '').trim();
+        const sizeRaw = Number(item.size);
+        result.push({
+            id: String(item.id || `file-${Math.random().toString(36).slice(2, 10)}`).trim(),
+            name: name,
+            path: path,
+            mimeType: mimeType,
+            size: Number.isFinite(sizeRaw) ? sizeRaw : 0,
+            uploadedAt: String(item.uploadedAt || '').trim(),
+            isImage: item.isImage === true || isImageMimeType(mimeType)
+        });
+    });
+    return result;
 }
 
 // Initialize
@@ -41,8 +111,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check if we're editing (device-edit.html)
     const urlParams = new URLSearchParams(window.location.search);
     editingDeviceId = urlParams.get('id');
+    activeDeviceId = editingDeviceId || generateDeviceId();
     
     initializeEventListeners();
+    initializeDeviceFilesSupport();
     populateBrands();
     populateTypes();
     populateConnectivity();
@@ -118,12 +190,494 @@ function initializeEventListeners() {
     document.getElementById('connectivity-modal-overlay').addEventListener('click', closeConnectivityModal);
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
+            closeDeviceFilePreviewModal();
+            closeDeviceFileRenameModal();
             closeBrandModal();
             closeTypeModal();
             closeBatteryTypeModal();
             closeConnectivityModal();
         }
     });
+}
+
+function initializeDeviceFilesSupport() {
+    const input = document.getElementById('device-files-input');
+    const uploadButton = document.getElementById('device-files-upload-btn');
+    const dropzone = document.getElementById('device-files-dropzone');
+
+    if (!input || !uploadButton || !dropzone) return;
+
+    uploadButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        input.click();
+    });
+
+    input.addEventListener('change', async () => {
+        const selectedFiles = Array.from(input.files || []);
+        input.value = '';
+        if (!selectedFiles.length) return;
+        await uploadFilesForDevice(selectedFiles);
+    });
+
+    dropzone.addEventListener('click', (event) => {
+        if (event.target && event.target.closest('#device-files-upload-btn')) return;
+        input.click();
+    });
+
+    dropzone.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            input.click();
+        }
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            dropzone.classList.add('is-dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, (event) => {
+            event.preventDefault();
+            if (eventName === 'dragleave' && event.target !== dropzone) return;
+            dropzone.classList.remove('is-dragover');
+        });
+    });
+    dropzone.addEventListener('drop', async (event) => {
+        event.preventDefault();
+        dropzone.classList.remove('is-dragover');
+        const droppedFiles = Array.from(event.dataTransfer?.files || []);
+        if (!droppedFiles.length) return;
+        await uploadFilesForDevice(droppedFiles);
+    });
+
+    renderDeviceFiles();
+}
+
+function ensureDeviceFilePreviewModal() {
+    if (deviceFilePreviewModal && document.body.contains(deviceFilePreviewModal.root)) {
+        return deviceFilePreviewModal;
+    }
+
+    const root = document.createElement('div');
+    root.className = 'modal is-hidden device-file-preview-modal';
+    root.id = 'device-file-preview-modal';
+    root.setAttribute('aria-hidden', 'true');
+    root.innerHTML = `
+        <div class="modal-overlay" data-device-file-preview-close></div>
+        <div class="modal-content device-file-preview-modal-content" role="dialog" aria-modal="true" aria-labelledby="device-file-preview-title">
+            <div class="device-file-preview-header">
+                <div class="device-file-preview-title" id="device-file-preview-title">Image Preview</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" data-device-file-preview-close aria-label="Close preview">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6L6 18"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="device-file-preview-body">
+                <img class="device-file-preview-image" id="device-file-preview-image" alt="Image preview">
+            </div>
+        </div>
+    `;
+    document.body.appendChild(root);
+
+    root.querySelectorAll('[data-device-file-preview-close]').forEach((element) => {
+        element.addEventListener('click', closeDeviceFilePreviewModal);
+    });
+
+    deviceFilePreviewModal = {
+        root: root,
+        image: root.querySelector('#device-file-preview-image'),
+        title: root.querySelector('#device-file-preview-title')
+    };
+    return deviceFilePreviewModal;
+}
+
+function openDeviceFilePreviewModal(filePath, fileName = '') {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath) return;
+    const modal = ensureDeviceFilePreviewModal();
+    if (!modal || !modal.root || !modal.image || !modal.title) return;
+
+    modal.title.textContent = String(fileName || 'Image Preview').trim() || 'Image Preview';
+    modal.image.src = getDeviceFileContentUrl(normalizedPath);
+    modal.image.alt = modal.title.textContent;
+    modal.root.classList.remove('is-hidden');
+    modal.root.setAttribute('aria-hidden', 'false');
+}
+
+function closeDeviceFilePreviewModal() {
+    const modal = deviceFilePreviewModal;
+    if (!modal || !modal.root || modal.root.classList.contains('is-hidden')) return;
+    modal.root.classList.add('is-hidden');
+    modal.root.setAttribute('aria-hidden', 'true');
+    if (modal.image) {
+        modal.image.src = '';
+    }
+}
+
+function ensureDeviceFileRenameModal() {
+    if (deviceFileRenameModal && document.body.contains(deviceFileRenameModal.root)) {
+        return deviceFileRenameModal;
+    }
+
+    const root = document.createElement('div');
+    root.className = 'modal is-hidden device-file-rename-modal';
+    root.id = 'device-file-rename-modal';
+    root.setAttribute('aria-hidden', 'true');
+    root.innerHTML = `
+        <div class="modal-overlay" data-device-file-rename-close></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="device-file-rename-title">
+            <div class="modal-header">
+                <div class="modal-title" id="device-file-rename-title">Rename File</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" data-device-file-rename-close aria-label="Close rename file dialog" title="Close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6L6 18"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="form-group">
+                <label for="device-file-rename-input">File Name</label>
+                <input type="text" id="device-file-rename-input" placeholder="Enter a new file name">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" data-device-file-rename-close>Cancel</button>
+                <button class="btn btn-primary" type="button" id="device-file-rename-save-btn">Save</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(root);
+
+    root.querySelectorAll('[data-device-file-rename-close]').forEach((element) => {
+        element.addEventListener('click', closeDeviceFileRenameModal);
+    });
+
+    const saveButton = root.querySelector('#device-file-rename-save-btn');
+    const input = root.querySelector('#device-file-rename-input');
+    if (saveButton) {
+        saveButton.addEventListener('click', submitDeviceFileRename);
+    }
+    if (input) {
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitDeviceFileRename();
+            }
+        });
+    }
+
+    deviceFileRenameModal = {
+        root: root,
+        input: input,
+        saveButton: saveButton
+    };
+    return deviceFileRenameModal;
+}
+
+function openDeviceFileRenameModal(filePath, currentName = '') {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath) return;
+    const modal = ensureDeviceFileRenameModal();
+    if (!modal || !modal.root || !modal.input) return;
+    modal.root.dataset.filePath = normalizedPath;
+    modal.input.value = String(currentName || '').trim();
+    modal.root.classList.remove('is-hidden');
+    modal.root.setAttribute('aria-hidden', 'false');
+    modal.input.focus();
+    modal.input.select();
+}
+
+function closeDeviceFileRenameModal() {
+    const modal = deviceFileRenameModal;
+    if (!modal || !modal.root || modal.root.classList.contains('is-hidden')) return;
+    modal.root.classList.add('is-hidden');
+    modal.root.setAttribute('aria-hidden', 'true');
+    modal.root.dataset.filePath = '';
+    if (modal.input) {
+        modal.input.value = '';
+    }
+    if (modal.saveButton) {
+        modal.saveButton.disabled = false;
+    }
+}
+
+async function submitDeviceFileRename() {
+    const modal = ensureDeviceFileRenameModal();
+    if (!modal || !modal.root || !modal.input) return;
+    const filePath = String(modal.root.dataset.filePath || '').trim();
+    const nextName = String(modal.input.value || '').trim();
+    if (!filePath || !nextName) {
+        showAlert('Please enter a valid file name.');
+        return;
+    }
+
+    if (modal.saveButton) {
+        modal.saveButton.disabled = true;
+    }
+    try {
+        await renameDeviceFile(filePath, nextName);
+        closeDeviceFileRenameModal();
+    } finally {
+        if (modal.saveButton) {
+            modal.saveButton.disabled = false;
+        }
+    }
+}
+
+function renderDeviceFiles() {
+    const list = document.getElementById('device-files-list');
+    const empty = document.getElementById('device-files-empty');
+    const count = document.getElementById('device-files-count');
+    if (!list || !empty || !count) return;
+
+    const normalizedFiles = normalizeDeviceFiles(deviceFiles);
+    deviceFiles = normalizedFiles;
+
+    count.textContent = `${normalizedFiles.length} file${normalizedFiles.length === 1 ? '' : 's'}`;
+    if (!normalizedFiles.length) {
+        list.innerHTML = '';
+        empty.classList.remove('is-hidden');
+        return;
+    }
+
+    empty.classList.add('is-hidden');
+    list.innerHTML = normalizedFiles.map((file) => {
+        const displayName = escapeHtml(file.name || 'file');
+        const fileMeta = [formatFileSize(file.size), file.mimeType || 'Unknown type'].join(' • ');
+        const preview = file.isImage
+            ? `<button type="button" class="device-file-preview" data-device-file-view="${escapeHtml(file.path)}" data-device-file-name="${displayName}" title="View image">
+                    <img src="${escapeHtml(getDeviceFileContentUrl(file.path))}" alt="${displayName}" loading="lazy">
+               </button>`
+            : `<div class="device-file-preview-static">
+                    <span class="device-file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+                            <path d="M14 2v6h6"></path>
+                            <path d="M9 15h6"></path>
+                            <path d="M9 19h6"></path>
+                            <path d="M9 11h3"></path>
+                        </svg>
+                    </span>
+               </div>`;
+        return `
+            <article class="device-file-card">
+                ${preview}
+                <div class="device-file-content">
+                    <div class="device-file-name">${displayName}</div>
+                    <div class="device-file-meta">${escapeHtml(fileMeta)}</div>
+                    <div class="device-file-actions">
+                        <a class="device-file-action" href="${escapeHtml(getDeviceFileContentUrl(file.path, true))}" target="_blank" rel="noopener noreferrer">Download</a>
+                        <button type="button" class="device-file-action" data-device-file-rename="${escapeHtml(file.path)}" data-device-file-current-name="${displayName}">Rename</button>
+                        <button type="button" class="device-file-action device-file-action-danger" data-device-file-delete="${escapeHtml(file.path)}">Remove</button>
+                    </div>
+                </div>
+            </article>
+        `;
+    }).join('');
+
+    list.querySelectorAll('[data-device-file-delete]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const targetPath = button.getAttribute('data-device-file-delete') || '';
+            if (!targetPath) return;
+            button.disabled = true;
+            try {
+                await removeDeviceFile(targetPath);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    list.querySelectorAll('[data-device-file-view]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetPath = button.getAttribute('data-device-file-view') || '';
+            const targetName = button.getAttribute('data-device-file-name') || 'Image Preview';
+            if (!targetPath) return;
+            openDeviceFilePreviewModal(targetPath, targetName);
+        });
+    });
+
+    list.querySelectorAll('[data-device-file-rename]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetPath = button.getAttribute('data-device-file-rename') || '';
+            const currentName = button.getAttribute('data-device-file-current-name') || '';
+            if (!targetPath) return;
+            openDeviceFileRenameModal(targetPath, currentName);
+        });
+    });
+}
+
+async function uploadFilesForDevice(files) {
+    const validFiles = Array.isArray(files) ? files.filter(Boolean) : [];
+    if (!validFiles.length) return;
+
+    const oversizedFiles = validFiles.filter((file) => Number(file.size) > MAX_DEVICE_FILE_BYTES);
+    if (oversizedFiles.length) {
+        showAlert(`Some files are too large. Maximum per file is ${formatFileSize(MAX_DEVICE_FILE_BYTES)}.`);
+        return;
+    }
+
+    let successCount = 0;
+    for (const file of validFiles) {
+        try {
+            const uploaded = await uploadDeviceFile(file);
+            if (uploaded) {
+                deviceFiles.push(uploaded);
+                successCount += 1;
+            }
+        } catch (error) {
+            console.error('Failed to upload device file:', error);
+            showAlert(`Could not upload "${file.name}": ${error?.message || error}`);
+        }
+    }
+
+    if (!successCount) {
+        renderDeviceFiles();
+        return;
+    }
+
+    renderDeviceFiles();
+    await persistDeviceFilesForEditing();
+    showFormMessage(`${successCount} file${successCount === 1 ? '' : 's'} uploaded successfully.`, 'success');
+}
+
+async function uploadDeviceFile(file) {
+    const uploadUrl = `${DEVICE_FILES_UPLOAD_API_URL}?deviceId=${escapeFileParam(activeDeviceId)}`;
+    const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'X-File-Name': encodeURIComponent(file.name || 'file')
+        },
+        body: file
+    });
+
+    if (!response.ok) {
+        let message = `Upload failed (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload?.error) {
+                message = payload.error;
+            }
+        } catch (error) {
+            // Keep fallback message.
+        }
+        throw new Error(message);
+    }
+
+    const payload = await response.json();
+    return normalizeDeviceFiles([payload])[0] || null;
+}
+
+async function removeDeviceFile(filePath) {
+    const normalizedPath = String(filePath || '').trim();
+    if (!normalizedPath) return;
+    const deleteUrl = `${DEVICE_FILES_DELETE_API_URL}?path=${escapeFileParam(normalizedPath)}`;
+
+    try {
+        const response = await fetch(deleteUrl, { method: 'DELETE' });
+        if (!response.ok && response.status !== 404) {
+            let message = `Delete failed (${response.status})`;
+            try {
+                const payload = await response.json();
+                if (payload?.error) {
+                    message = payload.error;
+                }
+            } catch (error) {
+                // Keep fallback message.
+            }
+            throw new Error(message);
+        }
+    } catch (error) {
+        console.error('Failed to remove file from server:', error);
+        showAlert(`Could not remove file: ${error?.message || error}`);
+        return;
+    }
+
+    deviceFiles = deviceFiles.filter((file) => String(file.path || '').trim() !== normalizedPath);
+    renderDeviceFiles();
+    await persistDeviceFilesForEditing();
+    showFormMessage('File removed successfully.', 'success');
+}
+
+async function renameDeviceFile(filePath, newName) {
+    const normalizedPath = String(filePath || '').trim();
+    const normalizedName = String(newName || '').trim();
+    if (!normalizedPath || !normalizedName) return;
+
+    let renamedFile = null;
+    try {
+        const response = await fetch(DEVICE_FILES_RENAME_API_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                path: normalizedPath,
+                name: normalizedName
+            })
+        });
+        if (!response.ok) {
+            let message = `Rename failed (${response.status})`;
+            try {
+                const payload = await response.json();
+                if (payload?.error) {
+                    message = payload.error;
+                }
+            } catch (error) {
+                // Keep fallback message.
+            }
+            throw new Error(message);
+        }
+        const payload = await response.json();
+        renamedFile = normalizeDeviceFiles([payload?.file])[0] || null;
+    } catch (error) {
+        console.error('Failed to rename file:', error);
+        showAlert(`Could not rename file: ${error?.message || error}`);
+        return;
+    }
+
+    if (!renamedFile) return;
+    deviceFiles = normalizeDeviceFiles(deviceFiles.map((file) => {
+        if (String(file.path || '').trim() !== normalizedPath) {
+            return file;
+        }
+        return {
+            ...file,
+            ...renamedFile,
+            id: file.id || renamedFile.id,
+            uploadedAt: file.uploadedAt || renamedFile.uploadedAt
+        };
+    }));
+    renderDeviceFiles();
+    await persistDeviceFilesForEditing();
+    showFormMessage('File renamed successfully.', 'success');
+}
+
+async function persistDeviceFilesForEditing() {
+    if (!editingDeviceId) return;
+    const targetDevice = allDevices.find((device) => device.id === editingDeviceId);
+    if (!targetDevice) return;
+    targetDevice.files = normalizeDeviceFiles(deviceFiles);
+    await saveData({
+        ...(await loadData()),
+        devices: allDevices
+    });
+}
+
+async function deleteAllDeviceFiles(files) {
+    const normalized = normalizeDeviceFiles(files);
+    for (const file of normalized) {
+        const deleteUrl = `${DEVICE_FILES_DELETE_API_URL}?path=${escapeFileParam(file.path)}`;
+        try {
+            await fetch(deleteUrl, { method: 'DELETE' });
+        } catch (error) {
+            console.error(`Failed to delete file "${file.path}"`, error);
+        }
+    }
 }
 
 function buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter) {
@@ -435,11 +989,15 @@ async function loadDuplicateDeviceFromStorage() {
     }
     duplicateData.installationDate = '';
     duplicateData.lastBatteryChange = '';
+    duplicateData.files = [];
     loadDeviceData(duplicateData);
     await setUiPreference('duplicateDevice', null);
 }
 
 function loadDeviceData(device) {
+    if (device && device.id) {
+        activeDeviceId = String(device.id);
+    }
     updateViewOnHaButton(device);
     setAreas();
     const deviceIdReadonly = document.getElementById('device-id-readonly');
@@ -489,6 +1047,8 @@ function loadDeviceData(device) {
     document.getElementById('device-apple-home-kit').checked = device.appleHomeKit || false;
     document.getElementById('device-samsung-smartthings').checked = device.samsungSmartThings || false;
     document.getElementById('device-local-only').checked = device.localOnly || false;
+    deviceFiles = normalizeDeviceFiles(device.files);
+    renderDeviceFiles();
     
     handlePowerTypeChange();
     handleConnectivityChange();
@@ -603,7 +1163,8 @@ async function handleDeviceSubmit(e) {
         appleHomeKit: document.getElementById('device-apple-home-kit').checked,
         samsungSmartThings: document.getElementById('device-samsung-smartthings').checked,
         localOnly: document.getElementById('device-local-only').checked,
-        ports: getPortsData()
+        ports: getPortsData(),
+        files: normalizeDeviceFiles(deviceFiles)
     };
     
     if (editingDeviceId) {
@@ -1544,8 +2105,14 @@ async function createDevice(deviceData) {
         return;
     }
     
+    let nextDeviceId = String(activeDeviceId || '').trim() || generateDeviceId();
+    if (allDevices.some(device => String(device.id || '') === nextDeviceId)) {
+        nextDeviceId = generateDeviceId();
+    }
+    activeDeviceId = nextDeviceId;
+
     const device = {
-        id: Date.now().toString(),
+        id: nextDeviceId,
         name: name,
         brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
@@ -1581,6 +2148,7 @@ async function createDevice(deviceData) {
         samsungSmartThings: deviceData.samsungSmartThings || false,
         localOnly: deviceData.localOnly || false,
         ports: deviceData.ports || [],
+        files: normalizeDeviceFiles(deviceData.files),
         createdAt: new Date().toISOString()
     };
     
@@ -1649,6 +2217,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.samsungSmartThings = deviceData.samsungSmartThings || false;
         device.localOnly = deviceData.localOnly || false;
         device.ports = deviceData.ports || [];
+        device.files = normalizeDeviceFiles(deviceData.files);
         device.updatedAt = new Date().toISOString();
         
         await saveData({
@@ -1718,6 +2287,11 @@ async function handleDeleteDevice() {
         await addDeviceToExcludedListIfInHa(editingDeviceId);
     } catch (error) {
         console.error('Failed to add device to excluded_devices:', error);
+    }
+
+    const deviceToDelete = allDevices.find((device) => device.id === editingDeviceId);
+    if (deviceToDelete) {
+        await deleteAllDeviceFiles(deviceToDelete.files);
     }
 
     allDevices = allDevices.filter(device => device.id !== editingDeviceId);

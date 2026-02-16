@@ -122,20 +122,20 @@
                         <div class="settings-panel is-active" role="tabpanel" aria-labelledby="settings-tab-general" data-settings-panel="general" id="settings-panel-general">
                             <div class="settings-section">
                                 <h3 class="settings-section-title">Data Management</h3>
-                                <p class="settings-description">Export your data to a JSON file for backup, or import data from a previously exported file.</p>
+                                <p class="settings-description">Export your full backup as a TAR archive (data.json + files), or import from a TAR backup file.</p>
                                 
                                 <div class="settings-actions">
                                     <div class="settings-action-group">
                                         <h4>Export Data</h4>
-                                        <p>Download your devices, networks, and settings as a JSON file.</p>
+                                        <p>Download a TAR backup containing data.json and every file stored by the app.</p>
                                         <button class="btn btn-primary" id="export-btn">Export Data</button>
                                     </div>
 
                                     <div class="settings-action-group">
                                         <h4>Import Data</h4>
-                                        <p>Import data from a JSON file. This will replace all existing data.</p>
+                                        <p>Import from a TAR backup. This will replace all existing data and uploaded files.</p>
                                         <div class="import-wrapper">
-                                            <input type="file" id="import-file" accept=".json" style="display: none;">
+                                            <input type="file" id="import-file" accept=".tar,application/x-tar" style="display: none;">
                                             <button class="btn btn-secondary" id="import-btn">Choose File</button>
                                             <span id="import-file-name" class="import-file-name"></span>
                                         </div>
