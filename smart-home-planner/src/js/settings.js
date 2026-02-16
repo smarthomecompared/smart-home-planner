@@ -5,17 +5,138 @@ let settings = {};
 let networks = [];
 let networkModalMode = 'add';
 let networkModalTargetId = '';
+let activeSettingsPanel = 'general';
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
     initializeGithubSocialLink();
+    initializeSettingsSubmenu('general');
     initializeEventListeners();
     renderHaIntegrationSettings();
     await renderExcludedDevicesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
 });
+
+function initializeSettingsSubmenu(defaultPanel = 'general') {
+    const menuButtons = Array.from(document.querySelectorAll('[data-settings-panel-target]'));
+    const panels = Array.from(document.querySelectorAll('[data-settings-panel]'));
+    const tabList = document.querySelector('.settings-menu-list[role="tablist"]');
+    if (!menuButtons.length || !panels.length) return;
+
+    if (tabList) {
+        tabList.setAttribute('aria-orientation', 'vertical');
+    }
+
+    const panelKeys = new Set(panels.map(panel => panel.getAttribute('data-settings-panel')).filter(Boolean));
+    const initialPanel = panelKeys.has(defaultPanel) ? defaultPanel : (panels[0].getAttribute('data-settings-panel') || 'general');
+    activateSettingsPanel(initialPanel);
+
+    menuButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const target = button.getAttribute('data-settings-panel-target');
+            if (!target) return;
+            activateSettingsPanel(target);
+            closeSettingsMobileMenu();
+        });
+        button.addEventListener('keydown', (event) => {
+            const key = event.key;
+            if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(key)) {
+                return;
+            }
+            event.preventDefault();
+            const currentIndex = menuButtons.indexOf(button);
+            if (currentIndex < 0) return;
+
+            let nextIndex = currentIndex;
+            if (key === 'ArrowRight' || key === 'ArrowDown') {
+                nextIndex = (currentIndex + 1) % menuButtons.length;
+            } else if (key === 'ArrowLeft' || key === 'ArrowUp') {
+                nextIndex = (currentIndex - 1 + menuButtons.length) % menuButtons.length;
+            } else if (key === 'Home') {
+                nextIndex = 0;
+            } else if (key === 'End') {
+                nextIndex = menuButtons.length - 1;
+            }
+
+            const nextButton = menuButtons[nextIndex];
+            if (!nextButton) return;
+            const target = nextButton.getAttribute('data-settings-panel-target');
+            if (!target) return;
+            activateSettingsPanel(target);
+            nextButton.focus();
+        });
+    });
+}
+
+function activateSettingsPanel(targetPanel) {
+    const menuButtons = Array.from(document.querySelectorAll('[data-settings-panel-target]'));
+    const panels = Array.from(document.querySelectorAll('[data-settings-panel]'));
+    if (!menuButtons.length || !panels.length) return;
+
+    panels.forEach(panel => {
+        const panelKey = panel.getAttribute('data-settings-panel');
+        const isActive = panelKey === targetPanel;
+        panel.hidden = !isActive;
+        panel.classList.toggle('is-active', isActive);
+        panel.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+    });
+
+    menuButtons.forEach(button => {
+        const isActive = button.getAttribute('data-settings-panel-target') === targetPanel;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        button.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    activeSettingsPanel = targetPanel;
+    updateSettingsMobileNavLabel(targetPanel);
+}
+
+function isMobileSettingsLayout() {
+    return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function updateSettingsMobileNavLabel(panelKey = '') {
+    const label = document.getElementById('settings-mobile-nav-label');
+    const toggle = document.getElementById('settings-mobile-nav-toggle');
+    if (!label || !toggle) return;
+
+    const selectedButton = panelKey
+        ? document.querySelector(`[data-settings-panel-target="${panelKey}"]`)
+        : document.querySelector('[data-settings-panel-target].is-active');
+    const titleElement = selectedButton ? selectedButton.querySelector('.settings-menu-title') : null;
+    const text = titleElement ? titleElement.textContent.trim() : 'Sections';
+
+    label.textContent = text;
+    toggle.setAttribute('aria-label', `Open sections menu. Current section: ${text}`);
+}
+
+function openSettingsMobileMenu() {
+    if (!isMobileSettingsLayout()) return;
+    const toggle = document.getElementById('settings-mobile-nav-toggle');
+    document.body.classList.add('settings-menu-open');
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function closeSettingsMobileMenu() {
+    const toggle = document.getElementById('settings-mobile-nav-toggle');
+    document.body.classList.remove('settings-menu-open');
+    if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function toggleSettingsMobileMenu() {
+    if (document.body.classList.contains('settings-menu-open')) {
+        closeSettingsMobileMenu();
+    } else {
+        openSettingsMobileMenu();
+    }
+}
 
 function initializeGithubSocialLink() {
     const githubLink = document.getElementById('social-github-link');
@@ -46,8 +167,29 @@ function initializeEventListeners() {
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
     document.getElementById('network-modal-overlay').addEventListener('click', closeNetworkModal);
+    const mobileToggle = document.getElementById('settings-mobile-nav-toggle');
+    const mobileClose = document.getElementById('settings-menu-close');
+    const mobileBackdrop = document.getElementById('settings-menu-backdrop');
+    if (mobileToggle) {
+        mobileToggle.addEventListener('click', toggleSettingsMobileMenu);
+    }
+    if (mobileClose) {
+        mobileClose.addEventListener('click', closeSettingsMobileMenu);
+    }
+    if (mobileBackdrop) {
+        mobileBackdrop.addEventListener('click', closeSettingsMobileMenu);
+    }
+    window.addEventListener('resize', () => {
+        if (!isMobileSettingsLayout()) {
+            closeSettingsMobileMenu();
+        }
+    });
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
+            if (document.body.classList.contains('settings-menu-open')) {
+                closeSettingsMobileMenu();
+                return;
+            }
             closeNetworkModal();
         }
     });
