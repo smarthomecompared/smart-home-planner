@@ -14,6 +14,8 @@ let lastConnectivityValue = '';
 let autoSyncAreasEnabled = false;
 const HA_DEVICE_NAME_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
+const HA_DEVICE_AREA_SYNC_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-area') : '/api/ha/device-area';
 
 function isHomeAssistantLinked(value) {
     if (value === true) return true;
@@ -282,6 +284,24 @@ function buildHaDeviceDetailsUrl(deviceId) {
     return `${window.location.origin}/config/devices/device/${encodeURIComponent(normalizedId)}`;
 }
 
+function getHaAreaSyncTarget() {
+    return settings?.haAreaSyncTarget === 'installed' ? 'installed' : 'controlled';
+}
+
+function updateHaAreaSyncNotes(isHaDevice) {
+    const installedNote = document.getElementById('device-area-ha-note');
+    const controlledNote = document.getElementById('device-controlled-area-ha-note');
+    if (!installedNote && !controlledNote) return;
+
+    const target = getHaAreaSyncTarget();
+    if (installedNote) {
+        installedNote.hidden = !isHaDevice || target !== 'installed';
+    }
+    if (controlledNote) {
+        controlledNote.hidden = !isHaDevice || target !== 'controlled';
+    }
+}
+
 function updateViewOnHaButton(device) {
     const viewOnHaButton = document.getElementById('view-on-ha-btn');
     const isHaDevice = isHomeAssistantLinked(device && device.homeAssistant);
@@ -289,6 +309,7 @@ function updateViewOnHaButton(device) {
     if (nameHaNote) {
         nameHaNote.hidden = !isHaDevice;
     }
+    updateHaAreaSyncNotes(isHaDevice);
     if (!viewOnHaButton) return;
 
     const deviceId = device && device.id ? String(device.id).trim() : '';
@@ -352,6 +373,38 @@ async function syncDeviceNameToHa(deviceId, name) {
 
     if (!response.ok) {
         let errorMessage = `Failed to update Home Assistant device name (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+                errorMessage = payload.error;
+            }
+        } catch (error) {
+            // Ignore JSON parsing errors and keep the default message.
+        }
+        throw new Error(errorMessage);
+    }
+}
+
+async function syncDeviceAreaToHa(deviceId, areaId) {
+    const normalizedId = String(deviceId || '').trim();
+    const normalizedAreaId = String(areaId || '').trim();
+    if (!normalizedId) {
+        return;
+    }
+
+    const response = await fetch(HA_DEVICE_AREA_SYNC_API_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: normalizedId,
+            areaId: normalizedAreaId
+        })
+    });
+
+    if (!response.ok) {
+        let errorMessage = `Failed to update Home Assistant device area (${response.status})`;
         try {
             const payload = await response.json();
             if (payload && payload.error) {
@@ -1559,6 +1612,9 @@ async function updateDevice(id, deviceData, options = {}) {
     
     const device = allDevices.find(d => d.id === id);
     if (device) {
+        const previousName = String(device.name || '').trim();
+        const previousArea = String(device.area || '').trim();
+        const previousControlledArea = String(device.controlledArea || '').trim();
         device.name = name;
         device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
@@ -1603,11 +1659,33 @@ async function updateDevice(id, deviceData, options = {}) {
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
         if (isHomeAssistantLinked(device.homeAssistant)) {
+            const currentName = String(device.name || '').trim();
+            const shouldSyncName = previousName !== currentName;
+            const areaSyncTarget = getHaAreaSyncTarget();
+            const previousTargetArea = areaSyncTarget === 'installed' ? previousArea : previousControlledArea;
+            const nextTargetArea = areaSyncTarget === 'installed'
+                ? String(device.area || '').trim()
+                : String(device.controlledArea || '').trim();
+            const shouldSyncArea = previousTargetArea !== nextTargetArea;
+
             try {
-                await syncDeviceNameToHa(device.id, device.name);
+                if (shouldSyncName) {
+                    await syncDeviceNameToHa(device.id, device.name);
+                }
             } catch (error) {
                 console.error('Failed to sync device name to Home Assistant:', error);
                 await showAlert(`Device was saved locally, but Home Assistant name update failed: ${error?.message || error}`, {
+                    title: 'Home Assistant Sync Failed'
+                });
+                return;
+            }
+            try {
+                if (shouldSyncArea) {
+                    await syncDeviceAreaToHa(device.id, nextTargetArea);
+                }
+            } catch (error) {
+                console.error('Failed to sync device area to Home Assistant:', error);
+                await showAlert(`Device was saved locally, but Home Assistant area update failed: ${error?.message || error}`, {
                     title: 'Home Assistant Sync Failed'
                 });
                 return;

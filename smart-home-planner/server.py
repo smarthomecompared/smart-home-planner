@@ -145,6 +145,48 @@ def _update_ha_device_name(device_id, device_name):
         return {"raw": output}
 
 
+def _update_ha_device_area(device_id, area_id):
+    normalized_id = str(device_id or "").strip()
+    normalized_area = str(area_id or "").strip()
+    if not normalized_id:
+        raise ValueError("Missing device id")
+    if not os.path.isfile(HA_DEVICE_UPDATE_SCRIPT):
+        raise RuntimeError("Home Assistant device update script is missing")
+
+    command = [
+        NODE_BIN,
+        HA_DEVICE_UPDATE_SCRIPT,
+        "--id",
+        normalized_id,
+        "--area-id",
+        normalized_area,
+    ]
+
+    try:
+        completed = subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise RuntimeError("Timed out while updating Home Assistant device area") from error
+    except subprocess.CalledProcessError as error:
+        stderr = (error.stderr or "").strip()
+        stdout = (error.stdout or "").strip()
+        detail = stderr or stdout or str(error)
+        raise RuntimeError(detail) from error
+
+    output = (completed.stdout or "").strip()
+    if not output:
+        return {}
+    try:
+        return json.loads(output)
+    except json.JSONDecodeError:
+        return {"raw": output}
+
+
 class AppHandler(SimpleHTTPRequestHandler):
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -266,6 +308,35 @@ class AppHandler(SimpleHTTPRequestHandler):
 
             try:
                 result = _update_ha_device_name(device_id, device_name)
+            except ValueError as error:
+                self._send_json(400, {"error": str(error)})
+                return
+            except RuntimeError as error:
+                message = str(error)
+                status = 503 if "SUPERVISOR_TOKEN" in message else 502
+                self._send_json(status, {"error": message})
+                return
+
+            self._send_json(200, {"ok": True, "result": result})
+            return
+
+        if parsed.path == "/api/ha/device-area":
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if length else b"{}"
+            try:
+                payload = json.loads(body.decode("utf-8") or "{}")
+            except json.JSONDecodeError:
+                self.send_error(400, "Invalid JSON")
+                return
+
+            device_id = str(payload.get("id") or "").strip()
+            area_id = str(payload.get("areaId") or "").strip()
+            if not device_id:
+                self._send_json(400, {"error": "Missing required field: id"})
+                return
+
+            try:
+                result = _update_ha_device_area(device_id, area_id)
             except ValueError as error:
                 self._send_json(400, {"error": str(error)})
                 return

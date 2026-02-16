@@ -8,7 +8,7 @@ const SUPERVISOR_WS_URL = "ws://supervisor/core/websocket";
 const SUPERVISOR_TOKEN = process.env.SUPERVISOR_TOKEN;
 
 function parseArgs(argv) {
-  const args = { id: "", name: "" };
+  const args = { id: "", name: "", areaId: "", hasName: false, hasAreaId: false };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
     if (token === "--id") {
@@ -18,6 +18,13 @@ function parseArgs(argv) {
     }
     if (token === "--name") {
       args.name = String(argv[index + 1] || "").trim();
+      args.hasName = true;
+      index += 1;
+      continue;
+    }
+    if (token === "--area-id") {
+      args.areaId = String(argv[index + 1] || "").trim();
+      args.hasAreaId = true;
       index += 1;
       continue;
     }
@@ -26,11 +33,14 @@ function parseArgs(argv) {
 }
 
 async function main() {
-  const { id, name } = parseArgs(process.argv.slice(2));
+  const { id, name, areaId, hasName, hasAreaId } = parseArgs(process.argv.slice(2));
   if (!id) {
     throw new Error("Missing required argument: --id");
   }
-  if (!name) {
+  if (!hasName && !hasAreaId) {
+    throw new Error("Missing required argument: --name or --area-id");
+  }
+  if (hasName && !name) {
     throw new Error("Missing required argument: --name");
   }
 
@@ -55,11 +65,17 @@ async function main() {
   });
 
   try {
-    const result = await conn.sendMessagePromise({
+    const payload = {
       type: "config/device_registry/update",
       device_id: id,
-      name_by_user: name,
-    });
+    };
+    if (hasName) {
+      payload.name_by_user = name;
+    }
+    if (hasAreaId) {
+      payload.area_id = areaId || null;
+    }
+    const result = await conn.sendMessagePromise(payload);
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } finally {
     await conn.close();

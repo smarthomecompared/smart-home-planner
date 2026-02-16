@@ -9,12 +9,27 @@ let networkModalTargetId = '';
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     settings = await loadSettings();
+    initializeGithubSocialLink();
     initializeEventListeners();
     renderHaIntegrationSettings();
     await renderExcludedDevicesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
 });
+
+function initializeGithubSocialLink() {
+    const githubLink = document.getElementById('social-github-link');
+    const githubItem = document.getElementById('social-github-item');
+    if (!githubLink || !githubItem) return;
+
+    const repoUrl = typeof appRepoUrl === 'string' ? appRepoUrl.trim() : '';
+    if (!repoUrl) {
+        githubItem.remove();
+        return;
+    }
+
+    githubLink.href = repoUrl;
+}
 
 // Event Listeners
 function initializeEventListeners() {
