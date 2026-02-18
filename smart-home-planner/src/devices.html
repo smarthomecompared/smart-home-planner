@@ -317,10 +317,32 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="settings-group map-background-group">
+                            <div class="map-background-header">
+                                <span class="map-background-title">Diagram background</span>
+                                <span class="map-background-file" id="diagram-background-name">No background image</span>
+                            </div>
+                            <div class="map-background-actions">
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-upload-btn">Upload image</button>
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-replace-btn" hidden>Replace</button>
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-remove-btn" hidden>Remove</button>
+                            </div>
+                            <div class="map-background-tuning">
+                                <div class="form-group">
+                                    <label for="diagram-background-opacity">Background opacity</label>
+                                    <div class="map-range-row">
+                                        <input type="range" id="diagram-background-opacity" min="0" max="100" step="1" value="55">
+                                        <span class="map-range-value" id="diagram-background-opacity-value">55%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="diagram-background-input" accept="image/*" hidden>
+                        </div>
                     </div>
                 </div>
 
                 <div class="map-stage">
+                    <div id="network-map-background" aria-hidden="true"></div>
                     <div id="network-map"></div>
                     <div class="map-controls-overlay">
                         <div class="map-controls">

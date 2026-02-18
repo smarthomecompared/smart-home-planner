@@ -199,20 +199,153 @@
     justify-items: start;
 }
 
+.map-background-group {
+    display: grid;
+    gap: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(71, 85, 105, 0.5);
+}
+
+.map-background-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.map-background-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.map-background-file {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.map-background-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.map-background-tuning {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr);
+    gap: 0.75rem;
+}
+
+.map-background-tuning .form-group {
+    min-width: 0;
+}
+
+.map-range-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: center;
+}
+
+.map-range-row input[type="range"] {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    accent-color: var(--primary-color);
+}
+
+.map-range-row input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.35);
+}
+
+.map-range-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #dbeafe;
+    background: var(--primary-color);
+    margin-top: -5px;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+}
+
+.map-range-row input[type="range"]::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.35);
+}
+
+.map-range-row input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #dbeafe;
+    background: var(--primary-color);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+}
+
+.map-range-row input[type="range"]::-moz-range-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.55);
+}
+
+.map-range-value {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 40px;
+    text-align: right;
+}
+
 #network-map {
     width: 100%;
     height: 700px;
-    background: var(--bg-secondary);
+    background: transparent;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 2;
+}
+
+#network-map-background {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: 8px;
+    pointer-events: none;
+    background-color: transparent;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+#network-map-background.has-background {
+    background-color: #0f172a;
+    opacity: 0.55;
 }
 
 .map-stage {
     position: relative;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .map-controls-overlay {
@@ -273,6 +406,21 @@ body.map-fullscreen {
     overflow: hidden;
 }
 
+body.map-fullscreen #diagram-section,
+body.map-fullscreen #map-section {
+    background: var(--bg-color);
+}
+
+#diagram-section:fullscreen,
+#map-section:fullscreen {
+    background: var(--bg-color);
+}
+
+#diagram-section:fullscreen::backdrop,
+#map-section:fullscreen::backdrop {
+    background: var(--bg-color);
+}
+
 body.map-fullscreen .container {
     max-width: none;
     padding: 0;
@@ -289,13 +437,22 @@ body.map-fullscreen .pagination-container {
 
 body.map-fullscreen #network-map {
     position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     margin: 0;
     border-radius: 0;
     border: none;
     z-index: 1000;
+}
+
+body.map-fullscreen #network-map-background {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
+    z-index: 999;
 }
 
 body.map-fullscreen .map-controls-overlay {
@@ -560,6 +717,15 @@ body.map-fullscreen .map-controls-overlay {
         grid-template-columns: 1fr;
         align-items: stretch;
         width: 100%;
+    }
+
+    .map-background-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .map-background-tuning {
+        grid-template-columns: 1fr;
     }
     
     .connection-toggles {
