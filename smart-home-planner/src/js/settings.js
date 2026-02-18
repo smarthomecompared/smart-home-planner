@@ -5,12 +5,20 @@ let settings = {};
 let networks = [];
 let networkModalMode = 'add';
 let networkModalTargetId = '';
+let optionAddModalGroupKey = '';
 let activeSettingsPanel = 'general';
 let excludedDevicesRows = [];
 let excludedDevicesCurrentPage = 1;
 let excludedDevicesSortColumn = 'name';
 let excludedDevicesSortDirection = 'asc';
 const EXCLUDED_DEVICES_PAGE_SIZE = 10;
+const DEVICE_OPTIONS_GROUPS = [
+    { key: 'brands', label: 'Brands', singularLabel: 'brand', addPlaceholder: 'Add brand' },
+    { key: 'types', label: 'Device Types', singularLabel: 'device type', addPlaceholder: 'Add device type' },
+    { key: 'connectivity', label: 'Connectivity Options', singularLabel: 'connectivity option', addPlaceholder: 'Add connectivity option' },
+    { key: 'batteryTypes', label: 'Battery Types', singularLabel: 'battery type', addPlaceholder: 'Add battery type' }
+];
+const DEVICE_OPTIONS_GROUPS_BY_KEY = new Map(DEVICE_OPTIONS_GROUPS.map((group) => [group.key, group]));
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -172,6 +180,25 @@ function initializeEventListeners() {
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
     document.getElementById('network-modal-overlay').addEventListener('click', closeNetworkModal);
+    document.getElementById('option-add-modal-cancel').addEventListener('click', closeOptionAddModal);
+    document.getElementById('option-add-modal-save').addEventListener('click', () => {
+        void handleOptionAddModalSave();
+    });
+    document.getElementById('option-add-modal-overlay').addEventListener('click', closeOptionAddModal);
+    const optionAddModalInput = document.getElementById('option-add-modal-input');
+    if (optionAddModalInput) {
+        optionAddModalInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                void handleOptionAddModalSave();
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeOptionAddModal();
+            }
+        });
+    }
     const mobileToggle = document.getElementById('settings-mobile-nav-toggle');
     const mobileClose = document.getElementById('settings-menu-close');
     const mobileBackdrop = document.getElementById('settings-menu-backdrop');
@@ -195,6 +222,7 @@ function initializeEventListeners() {
                 closeSettingsMobileMenu();
                 return;
             }
+            closeOptionAddModal();
             closeNetworkModal();
         }
     });
@@ -815,6 +843,58 @@ function closeNetworkModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
+function capitalizeFirstWord(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function openOptionAddModal(key) {
+    const group = getDeviceOptionGroupConfig(key);
+    if (!group) return;
+
+    const modal = document.getElementById('option-add-modal');
+    const title = document.getElementById('option-add-modal-title');
+    const label = document.getElementById('option-add-modal-label');
+    const input = document.getElementById('option-add-modal-input');
+    if (!modal || !title || !label || !input) return;
+
+    optionAddModalGroupKey = group.key;
+    const singularTitle = capitalizeFirstWord(group.singularLabel);
+    title.textContent = `Add ${singularTitle}`;
+    label.textContent = singularTitle;
+    input.value = '';
+    input.placeholder = group.addPlaceholder || `Add ${group.singularLabel}`;
+
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    input.focus();
+}
+
+function closeOptionAddModal() {
+    const modal = document.getElementById('option-add-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    optionAddModalGroupKey = '';
+}
+
+async function handleOptionAddModalSave() {
+    const group = getDeviceOptionGroupConfig(optionAddModalGroupKey);
+    if (!group) {
+        closeOptionAddModal();
+        return;
+    }
+
+    const input = document.getElementById('option-add-modal-input');
+    if (!input) return;
+
+    const saved = await addDeviceOption(group.key, input.value);
+    if (saved) {
+        closeOptionAddModal();
+    }
+}
+
 async function handleNetworkModalSave() {
     const input = document.getElementById('network-modal-input');
     if (!input) return;
@@ -892,74 +972,319 @@ async function handleDeleteNetwork(networkId) {
 
 
 // Options Management
-function renderOptionsManagement() {
-    const container = document.getElementById('options-management');
-    
-    const optionsConfig = [
-        { key: 'brands', label: 'Brands', placeholder: 'e.g., Samsung, LG' },
-        { key: 'types', label: 'Device Types', placeholder: 'e.g., cameras, sensors' },
-        { key: 'connectivity', label: 'Connectivity Options', placeholder: 'e.g., wifi, zigbee' },
-        { key: 'batteryTypes', label: 'Battery Types', placeholder: 'e.g., USB, AA' }
-    ];
-    
-    container.innerHTML = optionsConfig.map(config => {
-        const values = (settings[config.key] || [])
-            .map(value => String(value))
-            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        return `
-            <div class="option-group">
-                <h4>${config.label}</h4>
-                <p class="option-description">One item per line. Values are case-sensitive.</p>
-                <textarea id="option-${config.key}" class="option-textarea" rows="8" placeholder="${config.placeholder}">${values.join('\n')}</textarea>
-            </div>
-        `;
-    }).join('');
-    
-    // Add save button
-    container.innerHTML += `
-        <div class="option-actions">
-            <button class="btn btn-primary" id="save-options-btn">Save Options</button>
-            <button class="btn btn-secondary" id="reset-options-btn">Reset to Defaults</button>
-        </div>
-    `;
-    
-    // Add event listeners
-    document.getElementById('save-options-btn').addEventListener('click', saveOptions);
-    document.getElementById('reset-options-btn').addEventListener('click', resetOptions);
+function getDeviceOptionGroupConfig(key) {
+    return DEVICE_OPTIONS_GROUPS_BY_KEY.get(String(key || '').trim()) || null;
 }
 
-async function saveOptions() {
-    const optionsConfig = ['brands', 'types', 'connectivity', 'batteryTypes'];
-    const newSettings = {
+function normalizeOptionIdentity(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const normalized = normalizeOptionValue(raw);
+    return normalized || raw.toLowerCase();
+}
+
+function buildUniqueOptionValues(values) {
+    const seen = new Set();
+    const result = [];
+    (values || []).forEach((value) => {
+        const text = String(value || '').trim();
+        if (!text) return;
+        const key = normalizeOptionIdentity(text);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        result.push(text);
+    });
+    return result;
+}
+
+function sortOptionValues(values) {
+    return [...(values || [])]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
+function getOptionValuesByKey(key) {
+    const source = Array.isArray(settings?.[key]) ? settings[key] : [];
+    return buildUniqueOptionValues(source);
+}
+
+function encodeOptionToken(value) {
+    return encodeURIComponent(String(value || '').trim());
+}
+
+function decodeOptionToken(value) {
+    try {
+        return decodeURIComponent(String(value || ''));
+    } catch (_error) {
+        return String(value || '');
+    }
+}
+
+function findOptionIndex(values, targetValue) {
+    const target = String(targetValue || '').trim();
+    if (!target) return -1;
+    const exactIndex = values.findIndex((value) => String(value || '').trim() === target);
+    if (exactIndex >= 0) return exactIndex;
+    const targetKey = normalizeOptionIdentity(target);
+    return values.findIndex((value) => normalizeOptionIdentity(value) === targetKey);
+}
+
+async function persistDeviceOptions(key, nextValues, successMessage) {
+    const nextSettings = {
+        ...settings,
+        [key]: sortOptionValues(buildUniqueOptionValues(nextValues)),
         haAreaSyncTarget: settings.haAreaSyncTarget === 'installed' ? 'installed' : 'controlled'
     };
-    
-    optionsConfig.forEach(key => {
-        const textarea = document.getElementById(`option-${key}`);
-        const values = textarea.value
-            .split('\n')
-            .map(v => v.trim())
-            .filter(v => v.length > 0);
-        newSettings[key] = values;
-    });
-    
-    await saveSettings(newSettings);
-    settings = newSettings;
-    showMessage('Options saved successfully!', 'success');
+    await saveSettings(nextSettings);
+    settings = nextSettings;
+    renderOptionsManagement();
+    if (successMessage) {
+        showMessage(successMessage, 'success');
+    }
 }
 
-async function resetOptions() {
-    const confirmed = await showConfirm('Are you sure you want to reset all options to their default values? This cannot be undone.', {
-        title: 'Reset options',
-        confirmText: 'Reset'
+function buildOptionEditorItemMarkup(key, value) {
+    const safeValue = String(value || '').trim();
+    const valueToken = encodeOptionToken(safeValue);
+    return `
+        <div class="option-editor-item" data-option-key="${escapeHtml(key)}" data-option-value="${escapeHtml(valueToken)}">
+            <div class="option-editor-value">${escapeHtml(safeValue)}</div>
+            <div class="option-editor-actions">
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-rename-start aria-label="Rename" title="Rename">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                        <path d="M13.5 6.5l4 4"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-danger btn-sm btn-icon" type="button" data-option-delete aria-label="Delete" title="Delete">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M6 6l1 14h10l1-14"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="option-editor-rename">
+                <input type="text" class="option-editor-rename-input" value="${escapeHtml(safeValue)}" maxlength="80">
+                <button class="btn btn-primary btn-sm btn-icon" type="button" data-option-rename-save aria-label="Save" title="Save">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-rename-cancel aria-label="Cancel" title="Cancel">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 6L6 18"></path>
+                        <path d="M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function renderOptionsManagement() {
+    const container = document.getElementById('options-management');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="option-editor-layout">
+            ${DEVICE_OPTIONS_GROUPS.map((group) => {
+                const values = sortOptionValues(getOptionValuesByKey(group.key));
+                const listContent = values.length
+                    ? values.map((value) => buildOptionEditorItemMarkup(group.key, value)).join('')
+                    : `<div class="option-editor-empty">No ${escapeHtml(group.label.toLowerCase())} yet.</div>`;
+                return `
+                    <div class="option-editor-group" data-option-group="${escapeHtml(group.key)}">
+                        <div class="option-editor-group-header">
+                            <div class="option-editor-group-heading">
+                                <div class="option-editor-group-title">${escapeHtml(group.label)}</div>
+                                <span class="option-editor-group-count">${values.length}</span>
+                            </div>
+                            <button class="btn btn-primary btn-sm option-editor-group-add-btn" type="button" data-option-add-open="${escapeHtml(group.key)}" aria-label="Add" title="Add">+</button>
+                        </div>
+                        <div class="option-editor-list">
+                            ${listContent}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+
+    initializeOptionEditorEvents();
+}
+
+function initializeOptionEditorEvents() {
+    const container = document.getElementById('options-management');
+    if (!container) return;
+    if (container.dataset.optionEditorBound === 'true') return;
+
+    container.dataset.optionEditorBound = 'true';
+    container.addEventListener('click', (event) => {
+        void handleOptionEditorClick(event);
     });
-    if (confirmed) {
-        const defaultSettings = getDefaultSettings();
-        
-        await saveSettings(defaultSettings);
-        settings = defaultSettings;
-        renderHaIntegrationSettings();
+    container.addEventListener('keydown', (event) => {
+        void handleOptionEditorKeydown(event);
+    });
+}
+
+function getOptionEditorItemContext(target) {
+    const item = target.closest('.option-editor-item');
+    if (!item) return null;
+    const key = String(item.dataset.optionKey || '').trim();
+    const group = getDeviceOptionGroupConfig(key);
+    if (!group) return null;
+    const currentValue = decodeOptionToken(item.dataset.optionValue);
+    return { item, key, group, currentValue };
+}
+
+function enterOptionRenameMode(item) {
+    if (!item) return;
+    item.classList.add('is-renaming');
+    const input = item.querySelector('.option-editor-rename-input');
+    if (input) {
+        const currentValue = decodeOptionToken(item.dataset.optionValue);
+        input.value = currentValue;
+        input.focus();
+        input.select();
+    }
+}
+
+function exitOptionRenameMode(item) {
+    if (!item) return;
+    item.classList.remove('is-renaming');
+    const input = item.querySelector('.option-editor-rename-input');
+    if (input) {
+        input.value = decodeOptionToken(item.dataset.optionValue);
+    }
+}
+
+async function addDeviceOption(key, nextValue = '') {
+    const group = getDeviceOptionGroupConfig(key);
+    if (!group) return false;
+
+    const value = String(nextValue || '').trim();
+    if (!value) {
+        showMessage(`Enter a ${group.singularLabel} first.`, 'error');
+        return false;
+    }
+
+    const currentValues = getOptionValuesByKey(key);
+    const valueKey = normalizeOptionIdentity(value);
+    const alreadyExists = currentValues.some((item) => normalizeOptionIdentity(item) === valueKey);
+    if (alreadyExists) {
+        showMessage(`That ${group.singularLabel} already exists.`, 'error');
+        return false;
+    }
+
+    await persistDeviceOptions(key, [...currentValues, value], `${group.label} updated.`);
+    return true;
+}
+
+async function deleteDeviceOption(context) {
+    if (!context) return;
+    const { key, group, currentValue } = context;
+    const currentValues = getOptionValuesByKey(key);
+    const index = findOptionIndex(currentValues, currentValue);
+    if (index < 0) {
         renderOptionsManagement();
-        showMessage('Options reset to defaults successfully!', 'success');
+        return;
+    }
+    const nextValues = currentValues.filter((_, itemIndex) => itemIndex !== index);
+    await persistDeviceOptions(key, nextValues, `${group.label} updated.`);
+}
+
+async function renameDeviceOption(context) {
+    if (!context) return;
+    const { item, key, group, currentValue } = context;
+    const input = item.querySelector('.option-editor-rename-input');
+    if (!input) return;
+
+    const nextValue = String(input.value || '').trim();
+    if (!nextValue) {
+        showMessage(`Enter a ${group.singularLabel} name.`, 'error');
+        input.focus();
+        return;
+    }
+
+    const currentValues = getOptionValuesByKey(key);
+    const index = findOptionIndex(currentValues, currentValue);
+    if (index < 0) {
+        renderOptionsManagement();
+        return;
+    }
+
+    const duplicate = currentValues.some((value, itemIndex) => (
+        itemIndex !== index && normalizeOptionIdentity(value) === normalizeOptionIdentity(nextValue)
+    ));
+    if (duplicate) {
+        showMessage(`That ${group.singularLabel} already exists.`, 'error');
+        input.focus();
+        input.select();
+        return;
+    }
+
+    const nextValues = [...currentValues];
+    nextValues[index] = nextValue;
+    await persistDeviceOptions(key, nextValues, `${group.label} updated.`);
+}
+
+async function handleOptionEditorClick(event) {
+    const addOpenBtn = event.target.closest('[data-option-add-open]');
+    if (addOpenBtn) {
+        const key = addOpenBtn.getAttribute('data-option-add-open') || '';
+        openOptionAddModal(key);
+        return;
+    }
+
+    const renameStartBtn = event.target.closest('[data-option-rename-start]');
+    if (renameStartBtn) {
+        const context = getOptionEditorItemContext(renameStartBtn);
+        if (!context) return;
+        enterOptionRenameMode(context.item);
+        return;
+    }
+
+    const renameCancelBtn = event.target.closest('[data-option-rename-cancel]');
+    if (renameCancelBtn) {
+        const context = getOptionEditorItemContext(renameCancelBtn);
+        if (!context) return;
+        exitOptionRenameMode(context.item);
+        return;
+    }
+
+    const renameSaveBtn = event.target.closest('[data-option-rename-save]');
+    if (renameSaveBtn) {
+        const context = getOptionEditorItemContext(renameSaveBtn);
+        await renameDeviceOption(context);
+        return;
+    }
+
+    const deleteBtn = event.target.closest('[data-option-delete]');
+    if (deleteBtn) {
+        const context = getOptionEditorItemContext(deleteBtn);
+        await deleteDeviceOption(context);
+    }
+}
+
+async function handleOptionEditorKeydown(event) {
+    const renameInput = event.target.closest('.option-editor-rename-input');
+    if (!renameInput) return;
+
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        const context = getOptionEditorItemContext(renameInput);
+        if (!context) return;
+        exitOptionRenameMode(context.item);
+        return;
+    }
+
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const context = getOptionEditorItemContext(renameInput);
+        await renameDeviceOption(context);
     }
 }

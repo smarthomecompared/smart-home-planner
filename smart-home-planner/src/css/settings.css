@@ -722,52 +722,175 @@
     font-style: italic;
 }
 
-.option-group {
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+.option-editor-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
 }
 
-.option-group h4 {
-    font-size: 1.125rem;
+.option-editor-group {
+    padding: 0.75rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background:
+        linear-gradient(165deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.8)) padding-box,
+        linear-gradient(145deg, rgba(148, 163, 184, 0.34), rgba(96, 165, 250, 0.16)) border-box;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.16);
+    display: grid;
+    gap: 0.55rem;
+}
+
+.option-editor-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.option-editor-group-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.option-editor-group-title {
+    color: var(--text-color);
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.option-editor-group-add-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.option-editor-group-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 20px;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+    background: rgba(59, 130, 246, 0.18);
+    color: #dbeafe;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.option-editor-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.35rem;
+}
+
+.option-editor-item {
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 8px;
+    background: rgba(15, 23, 42, 0.45);
+    padding: 0.45rem 0.55rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.option-editor-value {
+    color: var(--text-color);
+    font-size: 0.84rem;
     font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 0.5rem;
+    word-break: break-word;
 }
 
-.option-description {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-bottom: 0.75rem;
+.option-editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
-.option-textarea {
+.option-editor-actions .btn {
+    min-width: 0;
+}
+
+.option-editor-actions .btn-icon,
+.option-editor-rename .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 0.28rem;
+}
+
+.option-editor-actions .btn-icon svg,
+.option-editor-rename .btn-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.option-editor-actions .btn-icon[data-tooltip]::after,
+.option-editor-rename .btn-icon[data-tooltip]::after {
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.option-editor-rename {
+    display: none;
+}
+
+.option-editor-item.is-renaming {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+}
+
+.option-editor-item.is-renaming .option-editor-value,
+.option-editor-item.is-renaming .option-editor-actions {
+    display: none;
+}
+
+.option-editor-item.is-renaming .option-editor-rename {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.35rem;
+}
+
+.option-editor-rename-input {
     width: 100%;
-    padding: 0.75rem;
+    min-width: 0;
+    height: 31px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-family: 'Courier New', monospace;
-    background: var(--card-bg);
+    border-radius: 7px;
+    background: rgba(15, 23, 42, 0.72);
     color: var(--text-color);
-    resize: vertical;
-    transition: all var(--transition-base);
+    padding: 0 0.6rem;
+    font-size: 0.82rem;
 }
 
-.option-textarea:focus {
+.option-editor-rename-input:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
 }
 
-.option-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--border-color);
+.option-editor-empty {
+    grid-column: 1 / -1;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-style: italic;
+    padding: 0.2rem 0.05rem;
 }
 
 @media (max-width: 1024px) {
@@ -875,16 +998,29 @@
         text-align: center;
     }
 
-    .option-group {
-        padding: 1rem;
+    .option-editor-layout {
+        grid-template-columns: 1fr;
     }
 
-    .option-actions {
-        flex-direction: column;
+    .option-editor-group {
+        padding: 0.9rem;
     }
 
-    .option-actions .btn {
-        width: 100%;
+    .option-editor-list {
+        grid-template-columns: 1fr;
+    }
+
+    .option-editor-item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+    }
+
+    .option-editor-actions {
+        justify-content: flex-end;
+    }
+
+    .option-editor-item.is-renaming .option-editor-rename {
+        grid-template-columns: 1fr;
     }
 
     .networks-actions .btn {
