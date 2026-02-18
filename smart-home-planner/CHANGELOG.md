@@ -7,6 +7,8 @@
 
 ### Changed
 - Home dashboard UI improvements
+- Navigation UI improvements
+- Excluded Devices UI Improvements
   
 ## 0.4.0 - 2026-02-16
 

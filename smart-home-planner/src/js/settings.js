@@ -6,6 +6,11 @@ let networks = [];
 let networkModalMode = 'add';
 let networkModalTargetId = '';
 let activeSettingsPanel = 'general';
+let excludedDevicesRows = [];
+let excludedDevicesCurrentPage = 1;
+let excludedDevicesSortColumn = 'name';
+let excludedDevicesSortDirection = 'asc';
+const EXCLUDED_DEVICES_PAGE_SIZE = 10;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -193,6 +198,35 @@ function initializeEventListeners() {
             closeNetworkModal();
         }
     });
+    initializeExcludedDevicesTableControls();
+}
+
+function initializeExcludedDevicesTableControls() {
+    const sortableHeaders = document.querySelectorAll('#excluded-devices-table th.sortable');
+    sortableHeaders.forEach((header) => {
+        header.addEventListener('click', () => {
+            const nextColumn = header.getAttribute('data-sort');
+            if (!nextColumn) return;
+            if (excludedDevicesSortColumn === nextColumn) {
+                excludedDevicesSortDirection = excludedDevicesSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                excludedDevicesSortColumn = nextColumn;
+                excludedDevicesSortDirection = 'asc';
+            }
+            excludedDevicesCurrentPage = 1;
+            renderExcludedDevicesTable();
+        });
+    });
+
+    const prevPageBtn = document.getElementById('excluded-prev-page-btn');
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => goToExcludedDevicesPage(excludedDevicesCurrentPage - 1));
+    }
+
+    const nextPageBtn = document.getElementById('excluded-next-page-btn');
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => goToExcludedDevicesPage(excludedDevicesCurrentPage + 1));
+    }
 }
 
 function renderHaIntegrationSettings() {
@@ -251,6 +285,17 @@ function pickHaDeviceName(device) {
     return normalizeExcludedDeviceId(device?.id);
 }
 
+function buildHaDeviceDetailsUrl(deviceId) {
+    const normalizedId = normalizeExcludedDeviceId(deviceId);
+    if (!normalizedId) return '';
+    return `${window.location.origin}/config/devices/device/${encodeURIComponent(normalizedId)}`;
+}
+
+function formatExcludedDeviceField(value, fallback = '-') {
+    const text = String(value || '').trim();
+    return text || fallback;
+}
+
 function buildRestoredDeviceFromHa(haDevice) {
     const id = normalizeExcludedDeviceId(haDevice?.id);
     const areaId = normalizeExcludedDeviceId(haDevice?.area_id);
@@ -267,11 +312,10 @@ function buildRestoredDeviceFromHa(haDevice) {
 }
 
 async function renderExcludedDevicesManagement() {
-    const listEl = document.getElementById('excluded-devices-list');
+    const tableContainer = document.getElementById('excluded-devices-table-container');
     const emptyEl = document.getElementById('excluded-devices-empty');
-    if (!listEl || !emptyEl) return;
-
-    listEl.innerHTML = '';
+    const paginationEl = document.getElementById('excluded-devices-pagination');
+    if (!tableContainer || !emptyEl || !paginationEl) return;
 
     let excludedIds = [];
     let haDevices = [];
@@ -282,13 +326,9 @@ async function renderExcludedDevicesManagement() {
         haDevices = await loadHaRegistry(getHaDevicesApiUrl());
     } catch (error) {
         console.error('Failed to load excluded devices:', error);
+        tableContainer.style.display = 'none';
+        paginationEl.style.display = 'none';
         emptyEl.textContent = 'Failed to load excluded devices.';
-        emptyEl.classList.remove('is-hidden');
-        return;
-    }
-
-    if (!excludedIds.length) {
-        emptyEl.textContent = 'No excluded devices.';
         emptyEl.classList.remove('is-hidden');
         return;
     }
@@ -300,50 +340,188 @@ async function renderExcludedDevicesManagement() {
             .filter(([id]) => Boolean(id))
     );
 
-    excludedIds.forEach((deviceId) => {
+    excludedDevicesRows = excludedIds.map((deviceId) => {
         const haDevice = haById.get(deviceId);
-        const item = document.createElement('div');
-        item.className = 'excluded-device-item';
-
-        const info = document.createElement('div');
-        info.className = 'excluded-device-info';
-
-        const nameEl = document.createElement('div');
-        nameEl.className = 'excluded-device-name';
-        nameEl.textContent = haDevice ? (pickHaDeviceName(haDevice) || deviceId) : 'Device not found in Home Assistant';
-
-        const metaEl = document.createElement('div');
-        metaEl.className = 'excluded-device-meta';
-        metaEl.textContent = `ID: ${deviceId}`;
-
-        const statusEl = document.createElement('div');
-        statusEl.className = `excluded-device-status ${haDevice ? 'is-available' : 'is-missing'}`;
-        statusEl.textContent = haDevice ? 'Available in Home Assistant' : 'Missing from Home Assistant';
-
-        info.appendChild(nameEl);
-        info.appendChild(metaEl);
-        info.appendChild(statusEl);
-
-        const restoreBtn = document.createElement('button');
-        restoreBtn.type = 'button';
-        restoreBtn.className = 'btn btn-primary btn-sm';
-        restoreBtn.textContent = 'Restore';
-        restoreBtn.disabled = !haDevice;
-        restoreBtn.addEventListener('click', async () => {
-            restoreBtn.disabled = true;
-            try {
-                await restoreExcludedDevice(deviceId);
-            } finally {
-                restoreBtn.disabled = false;
-            }
-        });
-
-        item.appendChild(info);
-        item.appendChild(restoreBtn);
-        listEl.appendChild(item);
+        const name = haDevice ? (pickHaDeviceName(haDevice) || deviceId) : 'Device not found in Home Assistant';
+        const manufacturer = formatExcludedDeviceField(normalizeHaBrandName(haDevice?.manufacturer));
+        const model = formatExcludedDeviceField(haDevice?.model);
+        return {
+            id: deviceId,
+            name,
+            manufacturer,
+            model,
+            haAvailable: Boolean(haDevice),
+            haUrl: haDevice ? buildHaDeviceDetailsUrl(deviceId) : ''
+        };
     });
 
+    if (!excludedDevicesRows.length) {
+        tableContainer.style.display = 'none';
+        paginationEl.style.display = 'none';
+        emptyEl.textContent = 'No excluded devices.';
+        emptyEl.classList.remove('is-hidden');
+        return;
+    }
+
+    tableContainer.style.display = '';
+    paginationEl.style.display = '';
     emptyEl.classList.add('is-hidden');
+    renderExcludedDevicesTable();
+}
+
+function getExcludedDeviceSortValue(row, column) {
+    if (!row) return '';
+    if (column === 'manufacturer') return String(row.manufacturer || '').toLowerCase();
+    if (column === 'model') return String(row.model || '').toLowerCase();
+    return String(row.name || '').toLowerCase();
+}
+
+function getSortedExcludedDevicesRows() {
+    const sorted = [...excludedDevicesRows];
+    sorted.sort((a, b) => {
+        const aValue = getExcludedDeviceSortValue(a, excludedDevicesSortColumn);
+        const bValue = getExcludedDeviceSortValue(b, excludedDevicesSortColumn);
+        const compare = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+        return excludedDevicesSortDirection === 'asc' ? compare : -compare;
+    });
+    return sorted;
+}
+
+function renderExcludedDevicesTable() {
+    const tbody = document.getElementById('excluded-devices-table-body');
+    if (!tbody) return;
+
+    const sortedRows = getSortedExcludedDevicesRows();
+    const totalItems = sortedRows.length;
+    const totalPages = Math.ceil(totalItems / EXCLUDED_DEVICES_PAGE_SIZE);
+
+    if (excludedDevicesCurrentPage > totalPages) {
+        excludedDevicesCurrentPage = totalPages || 1;
+    }
+    if (excludedDevicesCurrentPage < 1) {
+        excludedDevicesCurrentPage = 1;
+    }
+
+    const startIndex = (excludedDevicesCurrentPage - 1) * EXCLUDED_DEVICES_PAGE_SIZE;
+    const endIndex = Math.min(startIndex + EXCLUDED_DEVICES_PAGE_SIZE, totalItems);
+    const pagedRows = sortedRows.slice(startIndex, endIndex);
+
+    document.querySelectorAll('#excluded-devices-table th.sortable').forEach((header) => {
+        const column = header.getAttribute('data-sort');
+        header.classList.remove('sort-asc', 'sort-desc');
+        if (column === excludedDevicesSortColumn) {
+            header.classList.add(`sort-${excludedDevicesSortDirection}`);
+        }
+    });
+
+    tbody.innerHTML = pagedRows.map((row) => {
+        const escapedId = escapeHtml(row.id);
+        const escapedName = escapeHtml(row.name);
+        const escapedManufacturer = escapeHtml(row.manufacturer);
+        const escapedModel = escapeHtml(row.model);
+        const missingClass = row.haAvailable ? '' : ' class="is-missing"';
+        const openAction = row.haAvailable && row.haUrl
+            ? `<a class="btn btn-secondary btn-sm" href="${escapeHtml(row.haUrl)}" target="_blank" rel="noopener noreferrer">Open in HA</a>`
+            : '<button class="btn btn-secondary btn-sm" type="button" disabled>Open in HA</button>';
+        const restoreDisabled = row.haAvailable ? '' : ' disabled';
+
+        return `
+            <tr${missingClass}>
+                <td><strong>${escapedName}</strong></td>
+                <td>${escapedManufacturer}</td>
+                <td>${escapedModel}</td>
+                <td class="actions-cell">
+                    ${openAction}
+                    <button class="btn btn-primary btn-sm" type="button" data-excluded-restore="${escapedId}"${restoreDisabled}>Restore</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('[data-excluded-restore]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const targetId = button.getAttribute('data-excluded-restore');
+            if (!targetId) return;
+            button.disabled = true;
+            try {
+                await restoreExcludedDevice(targetId);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    });
+
+    updateExcludedDevicesPagination(totalPages, startIndex, endIndex, totalItems);
+}
+
+function updateExcludedDevicesPagination(totalPages, startIndex, endIndex, totalItems) {
+    const infoEl = document.getElementById('excluded-pagination-info');
+    const prevBtn = document.getElementById('excluded-prev-page-btn');
+    const nextBtn = document.getElementById('excluded-next-page-btn');
+    const pageNumbersEl = document.getElementById('excluded-page-numbers');
+    if (!infoEl || !prevBtn || !nextBtn || !pageNumbersEl) return;
+
+    if (totalItems === 0) {
+        infoEl.textContent = 'Showing 0-0 of 0';
+    } else {
+        infoEl.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems}`;
+    }
+
+    prevBtn.disabled = excludedDevicesCurrentPage <= 1;
+    nextBtn.disabled = excludedDevicesCurrentPage >= totalPages || totalPages === 0;
+
+    pageNumbersEl.innerHTML = '';
+    if (totalPages <= 0) return;
+
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, excludedDevicesCurrentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    if (endPage - startPage < maxPagesToShow - 1) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    if (startPage > 1) {
+        const firstBtn = document.createElement('button');
+        firstBtn.className = 'page-number';
+        firstBtn.textContent = '1';
+        firstBtn.addEventListener('click', () => goToExcludedDevicesPage(1));
+        pageNumbersEl.appendChild(firstBtn);
+        if (startPage > 2) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.className = 'excluded-page-ellipsis';
+            pageNumbersEl.appendChild(ellipsis);
+        }
+    }
+
+    for (let page = startPage; page <= endPage; page += 1) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `page-number${page === excludedDevicesCurrentPage ? ' active' : ''}`;
+        pageBtn.textContent = String(page);
+        pageBtn.addEventListener('click', () => goToExcludedDevicesPage(page));
+        pageNumbersEl.appendChild(pageBtn);
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const ellipsis = document.createElement('span');
+            ellipsis.textContent = '...';
+            ellipsis.className = 'excluded-page-ellipsis';
+            pageNumbersEl.appendChild(ellipsis);
+        }
+        const lastBtn = document.createElement('button');
+        lastBtn.className = 'page-number';
+        lastBtn.textContent = String(totalPages);
+        lastBtn.addEventListener('click', () => goToExcludedDevicesPage(totalPages));
+        pageNumbersEl.appendChild(lastBtn);
+    }
+}
+
+function goToExcludedDevicesPage(page) {
+    const totalPages = Math.ceil(excludedDevicesRows.length / EXCLUDED_DEVICES_PAGE_SIZE);
+    if (page < 1 || page > totalPages) return;
+    excludedDevicesCurrentPage = page;
+    renderExcludedDevicesTable();
 }
 
 async function restoreExcludedDevice(deviceId) {

@@ -33,7 +33,7 @@ const registries = [
 ];
 
 const registryQueue = new Map(registries.map((registry) => [registry.name, Promise.resolve()]));
-const BLOCKED_DEVICE_MANUFACTURERS = new Set([
+const AUTO_EXCLUDED_DEVICE_MANUFACTURERS = new Set([
   "officialaddons",
   "homeassistant",
   "homeassistantcommunityapps",
@@ -49,8 +49,8 @@ const BLOCKED_DEVICE_MANUFACTURERS = new Set([
   "musicassistant",
   "Zigbee2mqtt"
 ].map((value) => normalizeManufacturerKey(value)).filter(Boolean));
-const BLOCKED_DEVICE_NAMES = new Set(["sun"].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
-const BLOCKED_DEVICE_MODELS = new Set([
+const AUTO_EXCLUDED_DEVICE_NAMES = new Set(["sun"].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
+const AUTO_EXCLUDED_DEVICE_MODELS = new Set([
   "plugin",
   "integration",
   "alarmo",
@@ -62,7 +62,7 @@ const BLOCKED_DEVICE_MODELS = new Set([
   "googledrive",
   "cloud",
 ].map((value) => normalizeModelKey(value)).filter(Boolean));
-const BLOCKED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
+const AUTO_EXCLUDED_DEVICE_IDENTIFIER_NAMESPACES = new Set([
   "music_assistant",
   "google_weather"
 ].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
@@ -186,31 +186,31 @@ function normalizeBrand(value) {
   return raw;
 }
 
-function shouldSkipDevice(haDevice) {
+function shouldAutoExcludeOnCreate(haDevice) {
   const disabledBy = normalizeString(haDevice?.disabled_by).toLowerCase();
   if (disabledBy === "user" || disabledBy === "config_entry") {
     return true;
   }
   const identifiers = Array.isArray(haDevice?.identifiers) ? haDevice.identifiers : [];
-  const hasBlockedIdentifier = identifiers.some(
+  const hasExcludedIdentifierNamespace = identifiers.some(
     (entry) =>
       Array.isArray(entry) &&
-      BLOCKED_DEVICE_IDENTIFIER_NAMESPACES.has(normalizeString(entry[0]).toLowerCase())
+      AUTO_EXCLUDED_DEVICE_IDENTIFIER_NAMESPACES.has(normalizeString(entry[0]).toLowerCase())
   );
-  if (hasBlockedIdentifier) {
+  if (hasExcludedIdentifierNamespace) {
     return true;
   }
   const manufacturerKey = normalizeManufacturerKey(haDevice?.manufacturer);
-  if (BLOCKED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
+  if (AUTO_EXCLUDED_DEVICE_MANUFACTURERS.has(manufacturerKey)) {
     return true;
   }
   const modelKey = normalizeModelKey(haDevice?.model);
-  if (BLOCKED_DEVICE_MODELS.has(modelKey)) {
+  if (AUTO_EXCLUDED_DEVICE_MODELS.has(modelKey)) {
     return true;
   }
   const rawName = normalizeString(haDevice?.name_by_user) || normalizeString(haDevice?.name);
   const nameKey = rawName.toLowerCase();
-  return BLOCKED_DEVICE_NAMES.has(nameKey);
+  return AUTO_EXCLUDED_DEVICE_NAMES.has(nameKey);
 }
 
 function pickDeviceName(device) {
@@ -281,12 +281,34 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   );
 
   const sourceDevices = (haDevices || []).filter((device) => device && typeof device === "object");
-  const filteredSourceDevices = sourceDevices.filter((device) => !shouldSkipDevice(device));
-  const ignoredDevicesCount = sourceDevices.length - filteredSourceDevices.length;
-  const sourceDevicesAfterExclusions = filteredSourceDevices.filter(
-    (device) => !excludedDeviceIds.has(normalizeString(device.id))
-  );
-  const excludedDevicesCount = filteredSourceDevices.length - sourceDevicesAfterExclusions.length;
+  const sourceDevicesAfterExclusions = [];
+  const autoExcludedOnCreateIds = new Set();
+  let excludedDevicesCount = 0;
+
+  for (const sourceDevice of sourceDevices) {
+    const id = normalizeString(sourceDevice?.id);
+    if (!id) continue;
+
+    // Existing devices are never auto-excluded by sync rules.
+    if (existingById.has(id)) {
+      sourceDevicesAfterExclusions.push(sourceDevice);
+      continue;
+    }
+
+    if (excludedDeviceIds.has(id)) {
+      excludedDevicesCount += 1;
+      continue;
+    }
+
+    if (shouldAutoExcludeOnCreate(sourceDevice)) {
+      autoExcludedOnCreateIds.add(id);
+      excludedDevicesCount += 1;
+      continue;
+    }
+
+    sourceDevicesAfterExclusions.push(sourceDevice);
+  }
+
   const sourceById = new Map(
     sourceDevicesAfterExclusions
       .map((device) => [normalizeString(device?.id), device])
@@ -333,19 +355,27 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     createdDevicesCount += 1;
   }
 
+  const nextExcludedDevices = [...excludedDeviceIds];
+  for (const id of autoExcludedOnCreateIds) {
+    if (excludedDeviceIds.has(id)) continue;
+    excludedDeviceIds.add(id);
+    nextExcludedDevices.push(id);
+  }
+
   const nextStorage = {
     ...storage,
     devices: nextDevices,
+    excluded_devices: nextExcludedDevices,
   };
 
   await writeStorageJson(nextStorage);
   log(`data.json devices synced (${nextDevices.length})`);
   log(`Home Assistant area sync target: ${haAreaSyncTarget}`);
-  if (ignoredDevicesCount > 0) {
-    log(`Ignored ${ignoredDevicesCount} device(s) by sync filters.`);
-  }
   if (excludedDevicesCount > 0) {
     log(`Ignored ${excludedDevicesCount} device(s) by excluded_devices.`);
+  }
+  if (autoExcludedOnCreateIds.size > 0) {
+    log(`Auto-excluded ${autoExcludedOnCreateIds.size} new device(s) by sync exclusion rules.`);
   }
   if (unlinkedDevicesCount > 0) {
     log(

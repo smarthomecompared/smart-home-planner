@@ -253,9 +253,40 @@
 
                             <div class="settings-section">
                                 <h3 class="settings-section-title">Excluded Devices</h3>
-                                <p class="settings-description">Devices removed from the app while still existing in Home Assistant. Restore them to add them back to data.json.</p>
-                                <div class="excluded-devices-list" id="excluded-devices-list"></div>
+                                <p class="settings-description">Devices removed from the app while still existing in Home Assistant. Restore them to add them back to the app.</p>
+                                <div class="table-container excluded-table-container" id="excluded-devices-table-container">
+                                    <table class="excluded-devices-table" id="excluded-devices-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-sort="name">
+                                                    Name <span class="sort-icon"></span>
+                                                </th>
+                                                <th class="sortable" data-sort="manufacturer">
+                                                    Manufacturer <span class="sort-icon"></span>
+                                                </th>
+                                                <th class="sortable" data-sort="model">
+                                                    Model <span class="sort-icon"></span>
+                                                </th>
+                                                <th>
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="excluded-devices-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
                                 <div class="excluded-devices-empty" id="excluded-devices-empty">No excluded devices.</div>
+                                <div class="pagination-container excluded-pagination" id="excluded-devices-pagination">
+                                    <div class="pagination-info">
+                                        <span id="excluded-pagination-info">Showing 0-0 of 0</span>
+                                    </div>
+                                    <div class="pagination-controls">
+                                        <button class="btn btn-sm btn-secondary" id="excluded-prev-page-btn" disabled>Previous</button>
+                                        <span id="excluded-page-numbers"></span>
+                                        <button class="btn btn-sm btn-secondary" id="excluded-next-page-btn" disabled>Next</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
