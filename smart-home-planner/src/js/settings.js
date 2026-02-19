@@ -613,7 +613,7 @@ async function exportData() {
             String(now.getMinutes()).padStart(2, '0'),
             String(now.getSeconds()).padStart(2, '0')
         ].join('-');
-        a.download = `samart-home-planner-${datePart}-${timePart}.tar`;
+        a.download = `smart-home-planner-${datePart}-${timePart}.tar`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

@@ -200,7 +200,7 @@ def _iter_device_files_for_export():
 
 def _create_export_archive():
     timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S")
-    archive_name = f"samart-home-planner-{timestamp}.tar"
+    archive_name = f"smart-home-planner-{timestamp}.tar"
     archive_file = tempfile.NamedTemporaryFile(prefix="smart-home-export-", suffix=".tar", delete=False)
     archive_path = archive_file.name
     archive_file.close()
