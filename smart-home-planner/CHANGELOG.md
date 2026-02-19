@@ -1,4 +1,4 @@
-## 0.5.0 - 
+## 0.5.0 - 2026-02-19
 
 ### Added
 - Now editing the area of a device in the app also edits it in HA
