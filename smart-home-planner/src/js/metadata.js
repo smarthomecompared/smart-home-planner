@@ -17,13 +17,16 @@ const DEFAULT_BRANDS = [
 ];
 
 const DEFAULT_TYPES = [
-    'Air Purifiers', 'Air Quality Monitors', 'Cameras', 'Curtain Controllers', 'Displays', 'Dongles', 'Door Locks',
-    'Door/Window Sensors', 'Doorbells', 'Hubs', 'IR Remote Controls',
-    'LED Bulbs', 'Mini PCs', 'Motion Sensors', 'Plugs', 'Presence Sensors',
-    'Radiator Valves', 'Relays', 'Robot Vacuums', 'Routers', 'Sirens',
-    'Smoke Alarms', 'Speakers', 'Streaming Devices', 'Temperature/Humidity Sensors', 'Thermostats',
-    'Vibration Sensors', 'Voice Assistants', 'Wall Outlets', 'Wall Switches',
-    'Water Leak Sensors', 'Water Valves'
+    'Access Points', 'Air Conditioners', 'Air Purifiers', 'Air Quality Monitors', 'Cameras', 'Curtain Controllers',
+    'Dehumidifiers', 'Dimmer Switches', 'Displays', 'Dongles', 'Door Locks',
+    'Door/Window Sensors', 'Doorbells', 'Energy Monitors', 'Fans', 'Garage Door Openers', 'Gate Controllers',
+    'Heaters', 'Hubs', 'Humidifiers', 'IR Remote Controls', 'Keypads', 'LED Bulbs', 'Light Sensors', 'Light Strips',
+    'Mini PCs', 'Motion Sensors', 'NAS', 'Network Switches', 'Plugs', 'Presence Sensors',
+    'Radiator Valves', 'Rain Sensors', 'Relays', 'Robot Vacuums', 'Routers', 'Sirens',
+    'Smart Buttons', 'Smart TVs', 'Smoke & CO detectors', 'Soil Moisture Sensors', 'Speakers', 'Streaming Devices',
+    'Temperature/Humidity Sensors', 'Thermostats', 'UV Sensors', 'Vibration Sensors', 'Voice Assistants',
+    'Wall Outlets', 'Wall Switches', 'Water Leak Sensors', 'Water Meters', 'Water Valves', 'Weather Stations',
+    'Window Shades'
 ];
 
 const DEFAULT_CONNECTIVITY = [

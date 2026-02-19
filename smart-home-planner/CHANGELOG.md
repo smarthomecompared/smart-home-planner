@@ -1,6 +1,7 @@
 ## 1.0.0 - 
 
 ### Added
+- More device types
 
 ## 0.5.0 - 2026-02-19
 
