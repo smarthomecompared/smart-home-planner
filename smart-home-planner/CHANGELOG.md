@@ -3,7 +3,6 @@
 ### Added
 - Now editing the area of a device in the app also edits it in HA
 - Support to attach files and images to each device
-- Support to upload a background image for the devices diagram
 
 ### Changed
 - Home dashboard UI improvements
