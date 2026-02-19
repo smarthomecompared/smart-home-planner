@@ -49,6 +49,10 @@ npx stylelint "smart-home-planner/src/css/*.css"
 
 **All code, comments, documentation, UI text, variable names, function names, commit messages, and documentation must be written in English.** This applies to both backend and frontend code.
 
+## Documentation Hygiene
+
+- When you change code, verify whether `smart-home-planner/DOCS.md` must be updated to reflect the new behavior and update it when needed.
+
 ## Code Style Guidelines
 
 ### Python

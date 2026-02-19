@@ -397,6 +397,10 @@
     line-height: 1.6;
 }
 
+.about-feedback-note {
+    margin-top: 1.25rem;
+}
+
 .settings-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -490,7 +494,6 @@
     padding: 1.5rem;
     background: var(--bg-secondary);
     border-radius: 8px;
-    border: 1px solid var(--border-color);
 }
 
 .settings-action-group h4 {

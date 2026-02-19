@@ -134,13 +134,15 @@ The Apply action lets you save changes without leaving the page, which is useful
 
 Settings is where you maintain the app’s overall structure and reference data.
 
-### General
+### Backup
 
-Use Data Management when you want a portable backup of the app:
+The app stores its data inside Home Assistant, so your regular Home Assistant backups already include it. Use the backup tools when you need a manual export or a restore from a file:
 1. Export Data saves your full inventory and attachments.
 2. Import Data restores a previous backup.
 
-Use Networks to manage the list used in device connectivity fields.
+### Networks
+
+Networks manages the list of VLANs or network names used in device connectivity fields.
 
 ### Device Options
 
@@ -154,6 +156,7 @@ Key behaviors:
 1. You choose whether Home Assistant areas map to Installed or Controlled Area.
 2. Devices removed from the app but still present in Home Assistant are listed as excluded.
 3. Excluded devices can be restored without re-entering their data.
+
 
 ## Common Use Cases
 
