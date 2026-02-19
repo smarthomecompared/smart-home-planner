@@ -883,6 +883,16 @@
                     closeChartModal();
                 }
             });
+
+            refreshFitLegendLists();
+            window.addEventListener('resize', () => {
+                requestAnimationFrame(refreshFitLegendLists);
+            });
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => {
+                    refreshFitLegendLists();
+                });
+            }
         });
 
         function buildStats(devices, key, formatter) {
@@ -1163,6 +1173,80 @@
             `).join('');
         }
 
+        function getNumberStyle(element, key) {
+            if (!element) return 0;
+            const value = Number.parseFloat(window.getComputedStyle(element)[key]);
+            return Number.isFinite(value) ? value : 0;
+        }
+
+        function measureLegendRowHeights(target) {
+            if (!target) return null;
+            const width = target.clientWidth;
+            if (!width) return null;
+
+            const sampleItem = document.createElement('div');
+            sampleItem.className = 'legend-item';
+            sampleItem.style.position = 'absolute';
+            sampleItem.style.visibility = 'hidden';
+            sampleItem.style.pointerEvents = 'none';
+            sampleItem.style.width = `${width}px`;
+            sampleItem.innerHTML = '<span class="legend-dot"></span><span>Sample</span><span></span>';
+
+            const sampleMore = document.createElement('div');
+            sampleMore.className = 'legend-more';
+            sampleMore.style.position = 'absolute';
+            sampleMore.style.visibility = 'hidden';
+            sampleMore.style.pointerEvents = 'none';
+            sampleMore.style.width = `${width}px`;
+            sampleMore.textContent = '+99 more';
+
+            target.appendChild(sampleItem);
+            target.appendChild(sampleMore);
+
+            const itemHeight = sampleItem.getBoundingClientRect().height;
+            const moreHeight = sampleMore.getBoundingClientRect().height;
+
+            sampleItem.remove();
+            sampleMore.remove();
+
+            if (!itemHeight) return null;
+
+            const targetStyles = window.getComputedStyle(target);
+            const gap = Number.parseFloat(targetStyles.rowGap || targetStyles.gap) || 0;
+
+            return {
+                itemHeight,
+                moreHeight: moreHeight || itemHeight,
+                gap
+            };
+        }
+
+        function calculateLegendMaxItems(target, totalRows) {
+            const card = target ? target.closest('.chart-card') : null;
+            if (!card) return 5;
+            const cardRect = card.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            if (!cardRect.height || !targetRect.top) return 5;
+
+            const paddingBottom = getNumberStyle(card, 'paddingBottom');
+            const availableHeight = cardRect.bottom - paddingBottom - targetRect.top;
+            if (!Number.isFinite(availableHeight) || availableHeight <= 0) return 5;
+
+            const metrics = measureLegendRowHeights(target);
+            if (!metrics) return 5;
+
+            const maxWithoutMore = Math.floor((availableHeight + metrics.gap) / (metrics.itemHeight + metrics.gap));
+            let maxItems = Math.max(1, maxWithoutMore);
+
+            if (totalRows > maxItems) {
+                const availableForItems = availableHeight - metrics.moreHeight - metrics.gap;
+                maxItems = Math.floor((availableForItems + metrics.gap) / (metrics.itemHeight + metrics.gap));
+                maxItems = Math.max(1, maxItems);
+            }
+
+            return maxItems;
+        }
+
         function renderLegendList(targetId, rows, options = {}) {
             const target = document.getElementById(targetId);
             if (!target) return;
@@ -1175,7 +1259,11 @@
                 return;
             }
 
-            const maxItems = options.maxItems === undefined ? 5 : options.maxItems;
+            const fitMode = options.maxItems === 'fit';
+            let maxItems = options.maxItems === undefined ? 5 : options.maxItems;
+            if (maxItems === 'fit') {
+                maxItems = calculateLegendMaxItems(target, rows.length);
+            }
             const showMore = options.showMore !== false;
             const visibleRows = maxItems ? rows.slice(0, maxItems) : rows.slice();
             const remaining = maxItems ? Math.max(rows.length - maxItems, 0) : 0;
@@ -1197,10 +1285,37 @@
             chartRegistry[targetId] = {
                 type: 'legend-list',
                 rows,
-                emptyMessage: options.emptyMessage
+                emptyMessage: options.emptyMessage,
+                fitMode,
+                showMore
             };
             updateExpandButton(targetId, rows.length > 0);
             updateCardVisibilityByTargetId(targetId, rows.length > 0);
+
+            if (fitMode && !options._fitPass) {
+                requestAnimationFrame(() => {
+                    if (!document.body.contains(target)) return;
+                    const nextMax = calculateLegendMaxItems(target, rows.length);
+                    if (Number.isFinite(nextMax) && nextMax !== maxItems) {
+                        renderLegendList(targetId, rows, {
+                            ...options,
+                            maxItems: 'fit',
+                            _fitPass: true
+                        });
+                    }
+                });
+            }
+        }
+
+        function refreshFitLegendLists() {
+            Object.entries(chartRegistry).forEach(([targetId, data]) => {
+                if (!data || data.type !== 'legend-list' || !data.fitMode) return;
+                renderLegendList(targetId, data.rows, {
+                    maxItems: 'fit',
+                    emptyMessage: data.emptyMessage,
+                    showMore: data.showMore
+                });
+            });
         }
 
         function renderPendingDevices(targetId, devices) {
@@ -1213,7 +1328,7 @@
                 dotColor: 'var(--warning-color)'
             }));
             renderLegendList(targetId, rows, {
-                maxItems: 5,
+                maxItems: 'fit',
                 emptyMessage: 'No pending devices'
             });
         }
@@ -1228,7 +1343,7 @@
                 dotColor: '#38bdf8'
             }));
             renderLegendList(targetId, rows, {
-                maxItems: 5,
+                maxItems: 'fit',
                 emptyMessage: 'No wishlist devices'
             });
         }
@@ -1243,7 +1358,7 @@
                 dotColor: '#ef4444'
             }));
             renderLegendList(targetId, rows, {
-                maxItems: 5,
+                maxItems: 'fit',
                 emptyMessage: 'No devices not working'
             });
         }
