@@ -3,15 +3,15 @@ var appRepoUrl = "https://github.com/smarthomecompared/smart-home-planner";
 
 const DEFAULT_BRANDS = [
     'Aeotec', 'AirGradient', 'Airthings', 'Amazon', 'Apollo Automation',
-    'Apple', 'Aqara', 'Aranet', 'Arlo', 'Arre', 'Asus', 'August',
-    'Beelink', 'Belkin', 'Blink', 'Bosch', 'BroadLink', 'Centralite',
-    'Cync', 'Ecovacs', 'Ecobee', 'Eero', 'Eufy', 'Eve', 'Fibaro', 'GE',
-    'Geekom', 'Google', 'Govee Life', 'Heiman', 'Honeywell Home',
-    'Hubitat', 'IKEA', 'Insteon', 'IQAir', 'iRobot', 'Kasa', 'Kwikset',
-    'Leviton', 'LIFX', 'Lutron', 'Meross', 'Moes', 'Nanoleaf', 'Nabu Casa',
-    'Netatmo', 'Nest', 'Nuki', 'Philips', 'Philips Hue', 'Rachio',
-    'Reolink', 'Ring', 'Roborock', 'Schlage', 'Sensi', 'Shelly',
-    'SimpliSafe', 'Smlight', 'SmartThings', 'Sonoff', 'Sonos', 'SwitchBot',
+    'Apple', 'Aqara', 'Aranet', 'Arlo', 'Arre', 'Asus',
+    'Beelink', 'Blink', 'Bosch', 'BroadLink', 'Centralite',
+    'Ecobee', 'Eero', 'Eufy', 'Eve', 'Fibaro',
+    'Geekom', 'Google', 'Govee Life', 'Heiman',
+    'IKEA', 'iRobot', 'Kasa',
+    'Meross', 'Moes', 'Nanoleaf', 'Nabu Casa',
+    'Netatmo', 'Nest', 'Nuki', 'Philips',
+    'Reolink', 'Ring', 'Roborock', 'Sensi', 'Shelly',
+    'Smlight', 'SmartThings', 'Sonoff', 'Sonos', 'SwitchBot',
     'Tapo', 'Third Reality', 'TP-Link', 'Tuya', 'Ubiquiti', 'Wyze',
     'X-Sense', 'Xiaomi', 'Yale', 'YoLink', 'Zooz'
 ];
@@ -34,5 +34,21 @@ const DEFAULT_CONNECTIVITY = [
 ];
 
 const DEFAULT_BATTERY_TYPES = [
-    'AA', 'AAA', 'CR123A', 'CR17450', 'CR2032', 'CR2477', 'Internal', 'USB'
+    'AA',
+    'AAA',
+    'CR123A',
+    'CR17450',
+    'CR2',
+    'CR2016',
+    'CR2025',
+    'CR2032',
+    'CR2430',
+    'CR2450',
+    'CR2477',
+    'ER14250',
+    'ER14335',
+    'ER14505',
+    'ER18505',
+    'Internal',
+    'USB'
 ];
