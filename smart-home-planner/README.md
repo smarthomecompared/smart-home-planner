@@ -1,6 +1,6 @@
 # Smart Home Planner (Home Assistant App)
 
-Home Assistant App to plan, document, and visualize your smart home ecosystem. All data is stored in the app `/data` volume (so it is included in Home Assistant backups) and the UI includes dashboards, advanced filters, and a device connection map. The app is served via Home Assistant **ingress** for a clean, built-in experience.
+Plan, document, and visualize your smart home with a Home Assistant app that keeps everything organized. Data is stored in the app /data volume (included in Home Assistant backups), and the UI offers dashboards, advanced filters, and a device connection map. Devices, labels, areas, and floors sync automatically with Home Assistant.
 
 ## Features
 - A quick dashboard that highlights what matters most in your smart home.
