@@ -486,13 +486,27 @@ nav.site-nav a.active .site-nav-icon {
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-size: 0.7rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: normal;
+    max-width: min(220px, calc(100vw - 24px));
+    text-align: center;
+    line-height: 1.2;
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast);
     z-index: 2;
+}
+
+.btn-icon[data-tooltip-align="left"]::after {
+    left: 0;
+    transform: none;
+}
+
+.btn-icon[data-tooltip-align="right"]::after {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
 .btn-icon[data-tooltip]:hover::after,
@@ -847,6 +861,26 @@ nav.site-nav a.active .site-nav-icon {
     white-space: normal;
     width: max-content;
     max-width: min(240px, 80vw);
+}
+
+.tooltip-measure {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    visibility: hidden;
+    pointer-events: none;
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text-color);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: normal;
+    max-width: min(220px, calc(100vw - 24px));
+    line-height: 1.2;
+    z-index: -1;
 }
 
 .form-page .form-group input,
@@ -1825,20 +1859,20 @@ nav.site-nav a.active .site-nav-icon {
     }
 
     .form-page .form-actions {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
+        flex-direction: column-reverse;
+        align-items: stretch;
+        justify-content: flex-start;
         gap: 0.75rem;
     }
 
     .form-page .form-actions .btn {
-        width: auto;
-        min-width: 120px;
+        width: 100%;
+        min-width: 0;
         flex: 0 0 auto;
     }
 
     .form-page .form-actions .btn:last-child {
-        margin-left: auto;
+        margin-left: 0;
     }
 
     .device-files-section-head {

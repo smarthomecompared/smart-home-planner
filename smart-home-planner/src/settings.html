@@ -40,29 +40,26 @@
         </header>
 
         <section>
-            <div class="section-header">
+            <div class="section-header settings-section-header">
+                <button
+                    class="settings-mobile-nav-toggle"
+                    id="settings-mobile-nav-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="settings-menu-drawer"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                    <span id="settings-mobile-nav-label">Backup</span>
+                </button>
                 <h2>Settings</h2>
             </div>
 
             <div class="settings-container">
                 <div class="settings-layout">
-                    <div class="settings-mobile-nav">
-                        <button
-                            class="settings-mobile-nav-toggle"
-                            id="settings-mobile-nav-toggle"
-                            type="button"
-                            aria-expanded="false"
-                            aria-controls="settings-menu-drawer"
-                        >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M3 6h18"></path>
-                                <path d="M3 12h18"></path>
-                                <path d="M3 18h18"></path>
-                            </svg>
-                            <span id="settings-mobile-nav-label">Backup</span>
-                        </button>
-                    </div>
-
                     <aside class="settings-menu" id="settings-menu-drawer" aria-label="Settings sections">
                         <div class="settings-menu-header">
                             <p class="settings-menu-heading">Sections</p>

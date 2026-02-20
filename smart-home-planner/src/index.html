@@ -611,6 +611,24 @@
                     </div>
                     <div class="legend" id="wishlist-devices"></div>
                 </div>
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Devices by Label</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="label-summary" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="label-summary"></div>
+                </div>
                 <div class="chart-card" id="battery-alert-card">
                     <div class="chart-header">
                         <div class="chart-title">Battery Changes Soon</div>
@@ -811,6 +829,7 @@
             const devices = data.devices || [];
             const floors = data.floors || [];
             const areas = data.areas || [];
+            const labels = data.labels || [];
             
             const floorsCount = floors.length;
             const areasCount = areas.length;
@@ -855,6 +874,7 @@
             renderPendingDevices('pending-devices', devices);
             renderNotWorkingDevices('not-working-devices', devices);
             renderWishlistDevices('wishlist-devices', devices);
+            renderLabelSummary('label-summary', devices, labels);
             renderPowerTotals('power-totals', buildPowerTotals(devices));
             renderPieChart('chart-power-usage', buildPowerUsageStats(devices), null, {
                 maxItems: 6,
@@ -1328,7 +1348,7 @@
                 dotColor: 'var(--warning-color)'
             }));
             renderLegendList(targetId, rows, {
-                maxItems: 'fit',
+                maxItems: getLegendMaxItems(),
                 emptyMessage: 'No pending devices'
             });
         }
@@ -1343,7 +1363,7 @@
                 dotColor: '#38bdf8'
             }));
             renderLegendList(targetId, rows, {
-                maxItems: 'fit',
+                maxItems: getLegendMaxItems(),
                 emptyMessage: 'No wishlist devices'
             });
         }
@@ -1361,6 +1381,62 @@
                 maxItems: 'fit',
                 emptyMessage: 'No devices not working'
             });
+        }
+
+        function renderLabelSummary(targetId, devices, labels) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const rows = buildLabelSummaryRows(devices, labels);
+            renderLegendList(targetId, rows, {
+                maxItems: getLegendMaxItems(),
+                emptyMessage: 'No labels assigned'
+            });
+        }
+
+        function getLegendMaxItems() {
+            return window.innerWidth <= 640 ? 5 : 'fit';
+        }
+
+        function buildLabelSummaryRows(devices, labels) {
+            const labelMeta = new Map();
+            (labels || []).forEach((label) => {
+                if (!label || typeof label !== 'object') return;
+                const id = String(label.id || label.label_id || '').trim();
+                if (!id || labelMeta.has(id)) return;
+                const name = String(label.name || '').trim() || id;
+                const color = typeof resolveLabelColor === 'function'
+                    ? resolveLabelColor(label.color)
+                    : String(label.color || '').trim();
+                labelMeta.set(id, { name, color });
+            });
+
+            const counts = new Map();
+            (devices || []).forEach((device) => {
+                const deviceLabels = Array.isArray(device?.labels) ? device.labels : [];
+                deviceLabels.forEach((labelId) => {
+                    const normalized = String(labelId || '').trim();
+                    if (!normalized) return;
+                    counts.set(normalized, (counts.get(normalized) || 0) + 1);
+                    if (!labelMeta.has(normalized)) {
+                        labelMeta.set(normalized, { name: normalized, color: '' });
+                    }
+                });
+            });
+
+            return Array.from(counts.entries())
+                .map(([id, count]) => {
+                    const meta = labelMeta.get(id) || { name: id, color: '' };
+                    return {
+                        label: meta.name,
+                        count,
+                        meta: `${count} device${count === 1 ? '' : 's'}`,
+                        dotColor: meta.color || 'var(--primary-color)'
+                    };
+                })
+                .sort((a, b) => {
+                    if (b.count !== a.count) return b.count - a.count;
+                    return a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
+                });
         }
 
         function buildPowerTotals(devices) {

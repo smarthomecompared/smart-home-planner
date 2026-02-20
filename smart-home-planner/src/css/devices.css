@@ -419,7 +419,7 @@
 
 .device-card-status::after,
 .device-card-ha-badge::after {
-    content: attr(data-status);
+    content: attr(data-tooltip);
     position: absolute;
     left: 50%;
     bottom: calc(100% + 8px);
@@ -430,13 +430,29 @@
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-size: 0.7rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: normal;
+    max-width: min(220px, calc(100vw - 24px));
+    text-align: center;
+    line-height: 1.2;
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast);
     z-index: 30;
+}
+
+.device-card-status[data-tooltip-align="left"]::after,
+.device-card-ha-badge[data-tooltip-align="left"]::after {
+    left: 0;
+    transform: none;
+}
+
+.device-card-status[data-tooltip-align="right"]::after,
+.device-card-ha-badge[data-tooltip-align="right"]::after {
+    left: auto;
+    right: 0;
+    transform: none;
 }
 
 .device-card-status:hover::after,
@@ -453,7 +469,6 @@
 }
 
 .device-card-ha-badge::after {
-    content: attr(data-tooltip);
     text-transform: none;
     letter-spacing: 0;
     font-size: 0.72rem;
@@ -640,7 +655,15 @@
     }
 
     .pagination-controls {
-        justify-content: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    #page-numbers {
+        flex: 1 1 100%;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 0.25rem;
     }
 
     .pagination-size {
@@ -662,6 +685,13 @@
 
     .pagination-size .filter-select {
         width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    #page-numbers .page-number {
+        min-width: 34px;
+        padding: 0.35rem 0.55rem;
     }
 }
 

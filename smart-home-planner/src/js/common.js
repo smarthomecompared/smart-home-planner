@@ -803,10 +803,62 @@ function applyIconTooltip(el) {
     if (el.hasAttribute('title')) {
         el.removeAttribute('title');
     }
+    bindTooltipAlignment(el);
+}
+
+let tooltipMeasureElement = null;
+
+function getTooltipMeasureElement() {
+    if (tooltipMeasureElement) return tooltipMeasureElement;
+    const element = document.createElement('div');
+    element.className = 'tooltip-measure';
+    document.body.appendChild(element);
+    tooltipMeasureElement = element;
+    return element;
+}
+
+function measureTooltipWidth(text) {
+    const element = getTooltipMeasureElement();
+    if (!element) return 0;
+    element.textContent = text;
+    return element.getBoundingClientRect().width;
+}
+
+function updateTooltipAlignment(el) {
+    if (!el || !el.dataset) return;
+    const label = String(el.dataset.tooltip || '').trim();
+    if (!label) return;
+    const width = measureTooltipWidth(label);
+    if (!width) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect || !Number.isFinite(rect.left)) return;
+    const center = rect.left + rect.width / 2;
+    const leftEdge = center - width / 2;
+    const rightEdge = center + width / 2;
+    const padding = 12;
+    let align = 'center';
+    if (leftEdge < padding && rightEdge > window.innerWidth - padding) {
+        align = 'center';
+    } else if (leftEdge < padding) {
+        align = 'left';
+    } else if (rightEdge > window.innerWidth - padding) {
+        align = 'right';
+    }
+    el.dataset.tooltipAlign = align;
+}
+
+function bindTooltipAlignment(el) {
+    if (!el || el.dataset.tooltipAlignBound === 'true') return;
+    const handler = () => updateTooltipAlignment(el);
+    el.addEventListener('mouseenter', handler);
+    el.addEventListener('focus', handler);
+    el.addEventListener('touchstart', handler, { passive: true });
+    el.dataset.tooltipAlignBound = 'true';
 }
 
 function initIconTooltips() {
     document.querySelectorAll('.btn-icon').forEach(applyIconTooltip);
+    document.querySelectorAll('[data-tooltip]').forEach(bindTooltipAlignment);
     const observer = new MutationObserver((mutations) => {
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
@@ -814,6 +866,10 @@ function initIconTooltips() {
                 if (node.classList.contains('btn-icon')) {
                     applyIconTooltip(node);
                 }
+                if (node.matches && node.matches('[data-tooltip]')) {
+                    bindTooltipAlignment(node);
+                }
+                node.querySelectorAll?.('[data-tooltip]').forEach(bindTooltipAlignment);
                 node.querySelectorAll?.('.btn-icon').forEach(applyIconTooltip);
             });
         });
@@ -821,6 +877,9 @@ function initIconTooltips() {
     if (document.body) {
         observer.observe(document.body, { childList: true, subtree: true });
     }
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.btn-icon[data-tooltip]').forEach(updateTooltipAlignment);
+    });
 }
 
 async function getUiPreference(key) {

@@ -971,7 +971,7 @@ function renderDevicesGrid(devicesToRender) {
                 </div>
                 <div class="device-card-actions">
                     <div class="device-card-indicators">
-                        <span class="device-card-status status-${normalizedStatus}" data-status="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}"></span>
+                        <span class="device-card-status status-${normalizedStatus}" data-status="${escapeHtml(statusLabel)}" data-tooltip="${escapeHtml(statusLabel)}" aria-label="${escapeHtml(statusLabel)}"></span>
                         ${isHaEnabled
                             ? `<span class="ha-enabled-icon device-card-ha-icon device-card-ha-badge" data-tooltip="Integrated with Home Assistant" aria-label="Integrated with Home Assistant" tabindex="0">
                                 <img src="img/ha.png" alt="Home Assistant" loading="lazy">
