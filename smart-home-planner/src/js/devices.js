@@ -16,8 +16,15 @@ let sortDirection = 'asc';
 let filteredDevices = [];
 let viewMode = 'table';
 let diagramReady = false;
+let selectedDeviceIds = new Set();
+let currentPageDeviceIds = [];
+let bulkEditVisible = false;
 const DEVICE_FILES_DELETE_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files') : '/api/device-files';
+const HA_DEVICE_AREA_SYNC_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-area') : '/api/ha/device-area';
+const HA_DEVICE_LABELS_SYNC_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-labels') : '/api/ha/device-labels';
 
 const VIEW_STORAGE_KEYS = {
     desktop: 'smartHomeDevicesViewDesktop',
@@ -70,6 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     deviceFilters.init(devices, areas, floors, networks, settings, labels);
     deviceFilters.onFilterChange = (filtered) => {
         filteredDevices = filtered;
+        syncSelectionToFiltered();
         currentPage = 1;
         renderDevices();
         if (diagramReady && window.DeviceDiagram) {
@@ -78,6 +86,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     
     initializeEventListeners();
+    initializeBulkEdit();
+    setBulkEditVisible(false, { skipRender: true, force: true });
+    populateBulkEditOptions();
     await initializeViewToggle();
     applyQueryFilters();
     deviceFilters.applyFilters();
@@ -108,6 +119,76 @@ function initializeEventListeners() {
             renderDevices();
         });
     });
+
+    const bulkToggle = document.getElementById("bulk-edit-toggle");
+    if (bulkToggle) {
+        bulkToggle.addEventListener("click", () => {
+            setBulkEditVisible(!bulkEditVisible);
+        });
+    }
+
+    const tableBody = document.getElementById('devices-table-body');
+    if (tableBody) {
+        tableBody.addEventListener('change', (event) => {
+            const target = event.target;
+            if (!target || !target.classList.contains('device-select')) return;
+            const deviceId = target.dataset.deviceId;
+            if (!deviceId) return;
+            toggleDeviceSelection(deviceId, target.checked);
+        });
+    }
+
+    const grid = document.getElementById('devices-grid');
+    if (grid) {
+        grid.addEventListener('change', (event) => {
+            const target = event.target;
+            if (!target || !target.classList.contains('device-select')) return;
+            const deviceId = target.dataset.deviceId;
+            if (!deviceId) return;
+            toggleDeviceSelection(deviceId, target.checked);
+        });
+    }
+
+    const selectAll = document.getElementById('select-all-page');
+    if (selectAll) {
+        selectAll.addEventListener('change', (event) => {
+            if (!bulkEditVisible) {
+                event.target.checked = false;
+                return;
+            }
+            const shouldSelect = Boolean(event.target.checked);
+            if (shouldSelect) {
+                currentPageDeviceIds.forEach((id) => selectedDeviceIds.add(id));
+            } else {
+                currentPageDeviceIds.forEach((id) => selectedDeviceIds.delete(id));
+            }
+            updateBulkEditState();
+            renderDevices();
+        });
+    }
+}
+
+function initializeBulkEdit() {
+    const bulkField = document.getElementById('bulk-edit-field');
+    const applyBtn = document.getElementById('bulk-apply-btn');
+
+    if (bulkField) {
+        bulkField.addEventListener('change', () => {
+            updateBulkFieldVisibility();
+            updateBulkEditState();
+        });
+    }
+
+    document.querySelectorAll('.bulk-edit-field select').forEach((select) => {
+        select.addEventListener('change', updateBulkEditState);
+    });
+
+    if (applyBtn) {
+        applyBtn.addEventListener('click', handleBulkApply);
+    }
+
+    updateBulkFieldVisibility();
+    updateBulkEditState();
 }
 
 async function initializeViewToggle() {
@@ -181,6 +262,188 @@ function updateViewVisibility() {
         }
     } else if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.setVisible(false);
+    }
+
+    updateBulkEditAvailability();
+}
+
+function updateBulkFieldVisibility() {
+    const fieldValue = document.getElementById('bulk-edit-field')?.value || '';
+    document.querySelectorAll('.bulk-edit-field').forEach((group) => {
+        const supportedFields = (group.dataset.bulkField || '')
+            .split(/\s+/)
+            .map(value => value.trim())
+            .filter(Boolean);
+        const shouldShow = supportedFields.includes(fieldValue);
+        group.classList.toggle('is-collapsed', !shouldShow);
+    });
+}
+
+function setBulkEditVisible(isVisible, options = {}) {
+    const shouldShow = Boolean(isVisible);
+    if (bulkEditVisible === shouldShow && !options.force) return;
+    bulkEditVisible = shouldShow;
+    document.body.classList.toggle("bulk-edit-active", bulkEditVisible);
+    const bulkToggle = document.getElementById("bulk-edit-toggle");
+    if (bulkToggle) {
+        bulkToggle.setAttribute("aria-pressed", bulkEditVisible ? "true" : "false");
+        bulkToggle.classList.toggle("is-active", bulkEditVisible);
+    }
+    if (!bulkEditVisible) {
+        selectedDeviceIds.clear();
+    }
+    updateBulkEditState();
+    if (!options.skipRender) {
+        renderDevices();
+    }
+}
+
+function updateBulkEditAvailability() {
+    const isDiagram = viewMode === "diagram";
+    document.body.classList.toggle("diagram-view", isDiagram);
+    const bulkToggle = document.getElementById("bulk-edit-toggle");
+    if (bulkToggle) {
+        bulkToggle.hidden = isDiagram;
+    }
+    if (isDiagram && bulkEditVisible) {
+        setBulkEditVisible(false, { skipRender: true, force: true });
+    }
+}
+
+function updateBulkEditState() {
+    const countLabel = document.getElementById('bulk-edit-count');
+    const applyBtn = document.getElementById('bulk-apply-btn');
+    const selectAll = document.getElementById('select-all-page');
+    const selectedCount = selectedDeviceIds.size;
+    if (countLabel) {
+        countLabel.textContent = `${selectedCount} selected`;
+    }
+
+    if (selectAll) {
+        const totalOnPage = currentPageDeviceIds.length;
+        const selectedOnPage = currentPageDeviceIds.filter((id) => selectedDeviceIds.has(id)).length;
+        selectAll.checked = totalOnPage > 0 && selectedOnPage === totalOnPage;
+        selectAll.indeterminate = selectedOnPage > 0 && selectedOnPage < totalOnPage;
+    }
+
+    if (applyBtn) {
+        applyBtn.disabled = !bulkEditVisible || selectedCount === 0 || !getBulkEditValue().isValid;
+    }
+}
+
+function toggleDeviceSelection(deviceId, isSelected) {
+    if (!bulkEditVisible) return;
+    if (!deviceId) return;
+    if (isSelected) {
+        selectedDeviceIds.add(deviceId);
+    } else {
+        selectedDeviceIds.delete(deviceId);
+    }
+    updateBulkEditState();
+}
+
+function syncSelectionToFiltered() {
+    const visibleIds = new Set(filteredDevices.map((device) => device.id));
+    let changed = false;
+    selectedDeviceIds.forEach((id) => {
+        if (!visibleIds.has(id)) {
+            selectedDeviceIds.delete(id);
+            changed = true;
+        }
+    });
+    if (changed) {
+        updateBulkEditState();
+    }
+}
+
+function getBulkEditValue() {
+    const field = document.getElementById('bulk-edit-field')?.value || '';
+    const selectValue = (id) => document.getElementById(id)?.value || '';
+    let value = '';
+    if (field === 'installed-area') {
+        value = selectValue('bulk-installed-area');
+    } else if (field === 'controlled-area') {
+        value = selectValue('bulk-controlled-area');
+    } else if (field === 'labels-add' || field === 'labels-remove') {
+        value = selectValue('bulk-labels');
+    } else if (field === 'type') {
+        value = selectValue('bulk-type');
+    } else if (field === 'brand') {
+        value = selectValue('bulk-brand');
+    } else if (field === 'status') {
+        value = selectValue('bulk-status');
+    }
+    const isValid = Boolean(field && value);
+    return { field, value, isValid };
+}
+
+function buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter) {
+    const options = new Map();
+    (configuredValues || []).forEach(value => {
+        const normalized = normalizeOptionValue(value);
+        if (!normalized || options.has(normalized)) return;
+        options.set(normalized, value);
+    });
+    (deviceValues || []).forEach(value => {
+        const normalized = normalizeOptionValue(value);
+        if (!normalized || options.has(normalized)) return;
+        options.set(normalized, getFriendlyOption(configuredValues, value, fallbackFormatter));
+    });
+    return Array.from(options.entries())
+        .map(([value, label]) => ({ value, label: label || value }))
+        .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+}
+
+function populateBulkEditOptions() {
+    const installedSelect = document.getElementById('bulk-installed-area');
+    const controlledSelect = document.getElementById('bulk-controlled-area');
+    const labelSelect = document.getElementById('bulk-labels');
+    const typeSelect = document.getElementById('bulk-type');
+    const brandSelect = document.getElementById('bulk-brand');
+
+    const sortedAreas = [...areas].sort((a, b) =>
+        (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
+    const areaOptions = sortedAreas
+        .map(area => `<option value="${area.id}">${escapeHtml(area.name)}</option>`)
+        .join('');
+
+    if (installedSelect) {
+        installedSelect.innerHTML = areaOptions +
+            '<option value="__clear__">Clear area</option>';
+    }
+    if (controlledSelect) {
+        controlledSelect.innerHTML = areaOptions +
+            '<option value="__clear__">Clear area</option>';
+    }
+
+    if (labelSelect) {
+        const labelOptions = (labels || [])
+            .map(label => ({
+                id: normalizeLabelId(label.id || label.label_id),
+                name: String(label.name || '').trim()
+            }))
+            .filter(option => option.id)
+            .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id, undefined, { sensitivity: 'base' }));
+        labelSelect.innerHTML = labelOptions
+            .map(option => `<option value="${option.id}">${escapeHtml(option.name || option.id)}</option>`)
+            .join('');
+    }
+
+    if (typeSelect) {
+        const configuredTypes = settings.types || [];
+        const deviceTypes = [...new Set(devices.map(d => d.type).filter(Boolean))];
+        const typeOptions = buildFriendlyOptions(configuredTypes, deviceTypes, formatDeviceType);
+        typeSelect.innerHTML = typeOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('') +
+            '<option value="__clear__">Clear type</option>';
+    }
+
+    if (brandSelect) {
+        const configuredBrands = settings.brands || [];
+        const deviceBrands = [...new Set(devices.map(d => d.brand).filter(Boolean))];
+        const brandOptions = buildFriendlyOptions(configuredBrands, deviceBrands, formatDeviceType);
+        brandSelect.innerHTML = brandOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('') +
+            '<option value="__clear__">Clear brand</option>';
     }
 }
 
@@ -318,6 +581,7 @@ async function deleteDevice(id) {
     // Remove the device
     allDevices = allDevices.filter(d => d.id !== id);
     devices = allDevices;
+    selectedDeviceIds.delete(id);
     
     // Clean up port references in other devices
     allDevices.forEach(device => {
@@ -332,6 +596,168 @@ async function deleteDevice(id) {
         window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
     }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
+}
+
+async function syncDeviceAreaToHa(deviceId, areaId) {
+    const normalizedId = String(deviceId || '').trim();
+    const normalizedAreaId = String(areaId || '').trim();
+    if (!normalizedId) {
+        return;
+    }
+
+    const response = await fetch(HA_DEVICE_AREA_SYNC_API_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: normalizedId,
+            areaId: normalizedAreaId
+        })
+    });
+
+    if (!response.ok) {
+        let errorMessage = `Failed to update Home Assistant device area (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+                errorMessage = payload.error;
+            }
+        } catch (error) {
+            // Ignore JSON parsing errors and keep the default message.
+        }
+        throw new Error(errorMessage);
+    }
+}
+
+async function syncDeviceLabelsToHa(deviceId, labelIds) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) {
+        return;
+    }
+    const normalizedLabels = normalizeLabelList(labelIds);
+
+    const response = await fetch(HA_DEVICE_LABELS_SYNC_API_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: normalizedId,
+            labels: normalizedLabels
+        })
+    });
+
+    if (!response.ok) {
+        let errorMessage = `Failed to update Home Assistant device labels (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+                errorMessage = payload.error;
+            }
+        } catch (error) {
+            // Ignore JSON parsing errors and keep the default message.
+        }
+        throw new Error(errorMessage);
+    }
+}
+
+async function handleBulkApply() {
+    const { field, value, isValid } = getBulkEditValue();
+    if (!isValid) {
+        return;
+    }
+    const ids = Array.from(selectedDeviceIds);
+    if (ids.length === 0) {
+        showAlert('Select at least one device for bulk edit.');
+        return;
+    }
+
+    const areaSyncTarget = getHaAreaSyncTarget();
+    const shouldSyncArea = (field === 'installed-area' && areaSyncTarget === 'installed') ||
+        (field === 'controlled-area' && areaSyncTarget === 'controlled');
+    const shouldSyncLabels = field === 'labels-add' || field === 'labels-remove';
+
+    const selectedSet = new Set(ids);
+    const validLabelIds = new Set(
+        (labels || [])
+            .map(label => normalizeLabelId(label.id || label.label_id))
+            .filter(Boolean)
+    );
+    const updatedDevices = allDevices.map((device) => {
+        if (!selectedSet.has(device.id)) return device;
+        const next = { ...device };
+        if (field === 'installed-area') {
+            next.area = value === '__clear__' ? '' : value;
+        } else if (field === 'controlled-area') {
+            next.controlledArea = value === '__clear__' ? '' : value;
+        } else if (field === 'labels-add') {
+            const normalizedLabel = normalizeLabelId(value);
+            const existingLabels = normalizeLabelList(next.labels);
+            if (normalizedLabel && validLabelIds.has(normalizedLabel) && !existingLabels.includes(normalizedLabel)) {
+                existingLabels.push(normalizedLabel);
+            }
+            next.labels = existingLabels;
+        } else if (field === 'labels-remove') {
+            const normalizedLabel = normalizeLabelId(value);
+            const existingLabels = normalizeLabelList(next.labels);
+            if (normalizedLabel) {
+                next.labels = existingLabels.filter(label => label !== normalizedLabel);
+            } else {
+                next.labels = existingLabels;
+            }
+        } else if (field === 'type') {
+            next.type = value === '__clear__' ? '' : normalizeOptionValue(value);
+        } else if (field === 'brand') {
+            next.brand = value === '__clear__' ? '' : normalizeOptionValue(value);
+        } else if (field === 'status') {
+            next.status = value;
+        }
+        next.updatedAt = new Date().toISOString();
+        return next;
+    });
+
+    allDevices = updatedDevices;
+    devices = allDevices;
+    await saveData(await getAllData());
+
+    const haFailures = [];
+    if (shouldSyncArea || shouldSyncLabels) {
+        for (const device of updatedDevices) {
+            if (!selectedSet.has(device.id)) continue;
+            if (!isHomeAssistantLinked(device.homeAssistant)) continue;
+            try {
+                if (shouldSyncArea) {
+                    const areaValue = field === 'installed-area' ? device.area : device.controlledArea;
+                    await syncDeviceAreaToHa(device.id, areaValue);
+                }
+                if (shouldSyncLabels) {
+                    await syncDeviceLabelsToHa(device.id, device.labels);
+                }
+            } catch (error) {
+                haFailures.push({
+                    id: device.id,
+                    name: device.name || device.id,
+                    error: error?.message || String(error)
+                });
+            }
+        }
+    }
+
+    deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
+    deviceFilters.applyFilters();
+    renderDevices();
+    populateBulkEditOptions();
+
+    if (haFailures.length > 0) {
+        const names = haFailures.map(item => item.name).join(', ');
+        await showAlert(`Bulk edit saved locally, but Home Assistant sync failed for: ${names}`, {
+            title: 'Home Assistant Sync Failed'
+        });
+        return;
+    }
+
+    showToast('Bulk edit applied to selected devices.');
 }
 
 // Rendering
@@ -396,6 +822,7 @@ function renderDevices() {
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, sortedDevices.length);
     const paginatedDevices = sortedDevices.slice(startIndex, endIndex);
+    currentPageDeviceIds = paginatedDevices.map((device) => device.id);
     
     // Update sort icons
     document.querySelectorAll('.sortable').forEach(th => {
@@ -434,6 +861,11 @@ function renderDevices() {
             const statusLabel = formatStatusLabel(normalizedStatus);
             return `
                 <tr>
+                    <td class="col-select">
+                        <label class="table-select">
+                            <input type="checkbox" class="device-select" data-device-id="${device.id}" ${selectedDeviceIds.has(device.id) ? 'checked' : ''} aria-label="Select device">
+                        </label>
+                    </td>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
                     <td class="col-optional-lg">
                         ${labelChips ? `<div class="device-labels-inline">${labelChips}</div>` : '<span class="table-empty-value">-</span>'}
@@ -483,6 +915,7 @@ function renderDevices() {
 
     // Update pagination controls
     updatePaginationControls(totalPages, startIndex, endIndex, sortedDevices.length);
+    updateBulkEditState();
 }
 
 function renderDevicesGrid(devicesToRender) {
@@ -517,7 +950,6 @@ function renderDevicesGrid(devicesToRender) {
             <div class="device-card${isHaEnabled ? ' has-ha' : ''}">
                 <div class="device-card-header">
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
-                    ${labelChips ? `<div class="device-card-labels">${labelChips}</div>` : ''}
                 </div>
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
@@ -768,84 +1200,6 @@ async function getAllData() {
         ...(await loadData()),
         devices: allDevices
     };
-}
-
-function normalizeLabelId(value) {
-    return String(value || '').trim();
-}
-
-function normalizeLabelList(values) {
-    const result = [];
-    const seen = new Set();
-    (Array.isArray(values) ? values : []).forEach((value) => {
-        const normalized = normalizeLabelId(value);
-        if (!normalized || seen.has(normalized)) return;
-        seen.add(normalized);
-        result.push(normalized);
-    });
-    return result;
-}
-
-function buildLabelNameMap(labelItems) {
-    const map = new Map();
-    (labelItems || []).forEach((label) => {
-        if (!label || typeof label !== 'object') return;
-        const id = normalizeLabelId(label.id || label.label_id);
-        if (!id || map.has(id)) return;
-        const name = String(label.name || '').trim() || id;
-        map.set(id, name);
-    });
-    return map;
-}
-
-function formatDeviceLabels(device, labelNameMap) {
-    const labelIds = normalizeLabelList(device && device.labels);
-    if (!labelIds.length) {
-        return '-';
-    }
-    const names = labelIds.map((id) => labelNameMap.get(id) || id);
-    return names.join(', ');
-}
-
-function buildLabelMetaMap(labelItems) {
-    const map = new Map();
-    (labelItems || []).forEach((label) => {
-        if (!label || typeof label !== 'object') return;
-        const id = normalizeLabelId(label.id || label.label_id);
-        if (!id || map.has(id)) return;
-        const name = String(label.name || '').trim() || id;
-        const color = typeof resolveLabelColor === 'function' ? resolveLabelColor(label.color) : String(label.color || '').trim();
-        const icon = String(label.icon || '').trim();
-        map.set(id, {
-            id,
-            name,
-            color,
-            icon
-        });
-    });
-    return map;
-}
-
-function renderDeviceLabelChips(device, labelMetaMap) {
-    const labelIds = normalizeLabelList(device && device.labels);
-    if (!labelIds.length) {
-        return '';
-    }
-    return labelIds
-        .map((id) => {
-            const meta = labelMetaMap.get(id) || { name: id, color: '', icon: '' };
-            const colorStyle = meta.color ? ` style="--label-color: ${meta.color};"` : '';
-            const colorClass = meta.color ? ' has-color' : '';
-            return `
-                <span class="label-chip label-chip-compact label-chip-static${colorClass}"${colorStyle}>
-                    <span class="label-chip-body">
-                        <span class="label-swatch"></span>
-                        <span class="label-name">${escapeHtml(meta.name)}</span>
-                    </span>
-                </span>
-            `;
-        })
-        .join('');
 }
 
 function formatDeviceType(typeSlug) {

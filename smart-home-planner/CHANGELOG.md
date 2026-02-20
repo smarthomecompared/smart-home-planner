@@ -3,6 +3,7 @@
 ### Added
 - More device types
 - Integration with Home Assistant labels
+- Support for bulk edit the devices
 
 # Changed
 - Settings UI improvements

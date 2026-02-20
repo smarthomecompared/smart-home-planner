@@ -2,6 +2,8 @@
 
 The Smart Home Planner app helps you plan, document, and visualize your smart home. It is built for clarity: it keeps real-world details in one place so you can manage devices across rooms, floors, and networks without losing context.
 
+In the app, a device represents a physical piece of hardware (unlike Home Assistant, where a device can also be a logical or integration-level entity).
+
 ## Initial Sync With Home Assistant
 
 When the app is installed in Home Assistant, it will sync key information so you do not have to start from scratch. This sync brings in the structure of your home and keeps the app aligned with what Home Assistant already knows.
@@ -75,6 +77,10 @@ Common filters include:
 6. Integrations and local-only devices
 
 Use Clear Filters when you want to return to a full inventory view.
+
+### Bulk Edit
+
+Bulk Edit lets you apply a single change to multiple devices. Select devices from the table or cards, choose a field, and apply one update at a time. Supported fields include Installed Area, Controlled Area, Add/Remove Labels, Type, Brand, and Status. When the field you edit is synced with Home Assistant, the app updates Home Assistant too.
 
 ### Table View
 

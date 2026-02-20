@@ -12,8 +12,23 @@
     white-space: nowrap;
 }
 
-.devices-table th:first-child,
-.devices-table td:first-child {
+.devices-table th.col-select,
+.devices-table td.col-select {
+    width: 46px;
+    min-width: 46px;
+    text-align: center;
+    padding: 0.75rem 0.6rem;
+}
+
+.table-select input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+.devices-table th:nth-child(2),
+.devices-table td:nth-child(2) {
     white-space: normal;
     min-width: 220px;
     width: 24%;
@@ -152,11 +167,42 @@
 }
 
 .devices-header .view-toggle {
+    grid-column: 2;
     justify-self: center;
 }
 
-.devices-header .devices-add-btn {
+.devices-header-actions {
     grid-column: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-self: end;
+}
+
+.devices-bulk-btn {
+    position: relative;
+}
+
+.devices-bulk-btn.is-active,
+.devices-bulk-btn[aria-pressed="true"] {
+    background: linear-gradient(140deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.14));
+    border-color: rgba(56, 189, 248, 0.7);
+    color: var(--text-color);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45), 0 12px 26px rgba(15, 23, 42, 0.45);
+}
+
+.devices-bulk-btn.is-active::after,
+.devices-bulk-btn[aria-pressed="true"]::after {
+    content: "On";
+    margin-left: 0.55rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: rgba(15, 23, 42, 0.6);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 
@@ -170,6 +216,125 @@
 .devices-diagram {
     display: none;
     margin-bottom: 1.5rem;
+}
+
+.bulk-edit-card {
+    display: none;
+    margin: 1.5rem auto;
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(71, 85, 105, 0.6);
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.74));
+    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06);
+    width: 100%;
+    max-width: 980px;
+}
+
+.bulk-edit-active .bulk-edit-card {
+    display: block;
+}
+
+.bulk-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.bulk-edit-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.bulk-edit-subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.bulk-edit-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.bulk-edit-body {
+    display: grid;
+    gap: 0.75rem 1.5rem;
+}
+
+.bulk-edit-body .form-group {
+    margin-bottom: 0;
+}
+
+.bulk-edit-body .form-row {
+    margin-bottom: 0;
+    grid-template-columns: minmax(220px, 280px) minmax(240px, 1fr);
+}
+
+.bulk-edit-field.is-collapsed {
+    display: none;
+}
+
+.bulk-edit-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+.devices-table th.col-select,
+.devices-table td.col-select,
+.device-card-select {
+    display: none;
+}
+
+.bulk-edit-active .devices-table th.col-select,
+.bulk-edit-active .devices-table td.col-select {
+    display: table-cell;
+}
+
+.bulk-edit-active .device-card-select {
+    display: inline-flex;
+}
+
+.device-card-select {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.device-card-select input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
+    cursor: pointer;
+}
+
+.diagram-view .devices-bulk-btn,
+.diagram-view .bulk-edit-card {
+    display: none;
+}
+
+@media (min-width: 1024px) {
+    .bulk-edit-body {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+    }
+
+    .bulk-edit-body .form-row {
+        grid-column: 1;
+    }
+
+    .bulk-edit-footer {
+        grid-column: 2;
+        align-self: end;
+    }
 }
 
 .device-card {
@@ -426,7 +591,7 @@
     .devices-header {
         grid-template-columns: 1fr auto;
         grid-template-areas:
-            "title button"
+            "title actions"
             "toggle toggle";
         row-gap: 0.75rem;
     }
@@ -447,12 +612,16 @@
         grid-area: title;
     }
 
-    .devices-header .devices-add-btn {
-        grid-area: button;
+    .devices-header-actions {
+        grid-area: actions;
         justify-self: end;
     }
 
     .devices-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .bulk-edit-body .form-row {
         grid-template-columns: 1fr;
     }
 

@@ -52,7 +52,10 @@
                     <button class="view-toggle-btn" type="button" data-view="grid" aria-pressed="false">Grid</button>
                     <button class="view-toggle-btn" type="button" data-view="diagram" aria-pressed="false">Diagram</button>
                 </div>
-                <a href="device-add.html" class="btn btn-primary devices-add-btn">Add Device</a>
+                <div class="devices-header-actions">
+                    <button class="btn btn-secondary devices-bulk-btn" type="button" id="bulk-edit-toggle" aria-pressed="false">Bulk Edit</button>
+                    <a href="device-add.html" class="btn btn-primary devices-add-btn">Add Device</a>
+                </div>
             </div>
             
             <!-- Device Filters Component -->
@@ -241,10 +244,80 @@
                 </div>
             </div>
 
+            <div class="bulk-edit-card">
+                <div class="bulk-edit-header">
+                    <div>
+                        <h3>Bulk Edit</h3>
+                        <p class="bulk-edit-subtitle">Apply one change to multiple devices at once.</p>
+                    </div>
+                    <div class="bulk-edit-meta">
+                        <span id="bulk-edit-count">0 selected</span>
+                    </div>
+                </div>
+                <div class="bulk-edit-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="bulk-edit-field">Field</label>
+                            <select id="bulk-edit-field">
+                                <option value="installed-area">Installed Area</option>
+                                <option value="controlled-area">Controlled Area</option>
+                                <option value="labels-add">Add Label</option>
+                                <option value="labels-remove">Remove Label</option>
+                                <option value="type">Type</option>
+                                <option value="brand">Brand</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="installed-area">
+                            <label for="bulk-installed-area">Installed Area</label>
+                            <select id="bulk-installed-area">
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="controlled-area">
+                            <label for="bulk-controlled-area">Controlled Area</label>
+                            <select id="bulk-controlled-area">
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="labels-add labels-remove">
+                            <label for="bulk-labels">Label</label>
+                            <select id="bulk-labels">
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="type">
+                            <label for="bulk-type">Type</label>
+                            <select id="bulk-type">
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="brand">
+                            <label for="bulk-brand">Brand</label>
+                            <select id="bulk-brand">
+                            </select>
+                        </div>
+                        <div class="form-group bulk-edit-field is-collapsed" data-bulk-field="status">
+                            <label for="bulk-status">Status</label>
+                            <select id="bulk-status">
+                                <option value="working">Working</option>
+                                <option value="pending">Pending</option>
+                                <option value="not-working">Not Working</option>
+                                <option value="wishlist">Wishlist</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bulk-edit-footer">
+                        <button class="btn btn-primary" type="button" id="bulk-apply-btn" disabled>Apply</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-container" id="devices-table-container">
                 <table class="devices-table">
                     <thead>
                         <tr>
+                            <th class="col-select">
+                                <label class="table-select">
+                                    <input type="checkbox" id="select-all-page" aria-label="Select all devices on this page">
+                                </label>
+                            </th>
                             <th class="sortable" data-sort="name">
                                 Name <span class="sort-icon"></span>
                             </th>
