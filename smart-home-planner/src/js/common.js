@@ -21,6 +21,7 @@ const STORAGE_API_URL = buildAppUrl('api/storage');
 const HA_AREAS_API_URL = buildAppUrl('api/ha/areas');
 const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
 const HA_DEVICES_API_URL = buildAppUrl('api/ha/devices');
+const HA_LABELS_API_URL = buildAppUrl('api/ha/labels');
 
 function isIngressRuntime() {
     const pathname = window.location.pathname || '';
@@ -166,6 +167,64 @@ function normalizeAreas(rawAreas) {
         .filter(Boolean);
 }
 
+function normalizeLabels(rawLabels) {
+    return (rawLabels || [])
+        .filter(item => item && typeof item === 'object')
+        .map((item) => {
+            const id = String(item.label_id || item.id || '').trim();
+            if (!id) return null;
+            const name = String(item.name || '').trim() || id;
+            const color = String(item.color || '').trim();
+            const icon = String(item.icon || '').trim();
+            return {
+                id,
+                name,
+                color,
+                icon
+            };
+        })
+        .filter(Boolean);
+}
+
+const LABEL_COLOR_MAP = {
+    red: '#ef4444',
+    pink: '#ec4899',
+    purple: '#a855f7',
+    indigo: '#6366f1',
+    blue: '#3b82f6',
+    'light-blue': '#38bdf8',
+    cyan: '#06b6d4',
+    teal: '#14b8a6',
+    green: '#22c55e',
+    'light-green': '#4ade80',
+    lime: '#84cc16',
+    yellow: '#eab308',
+    amber: '#f59e0b',
+    orange: '#f97316',
+    'deep-orange': '#ea580c',
+    brown: '#a16207',
+    grey: '#94a3b8',
+    gray: '#94a3b8',
+    'blue-grey': '#64748b',
+    'blue-gray': '#64748b'
+};
+
+function resolveLabelColor(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const normalized = raw.toLowerCase();
+    if (LABEL_COLOR_MAP[normalized]) {
+        return LABEL_COLOR_MAP[normalized];
+    }
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) {
+        return raw;
+    }
+    if (/^rgba?\(/i.test(raw) || /^hsla?\(/i.test(raw)) {
+        return raw;
+    }
+    return raw;
+}
+
 let storageCache = null;
 let storageLoadPromise = null;
 let storageSavePromise = Promise.resolve();
@@ -239,8 +298,10 @@ async function loadData() {
     let networks = Array.isArray(storage.networks) ? storage.networks : [];
     const rawAreas = await loadHaRegistry(HA_AREAS_API_URL);
     const rawFloors = await loadHaRegistry(HA_FLOORS_API_URL);
+    const rawLabels = await loadHaRegistry(HA_LABELS_API_URL);
     const areas = normalizeAreas(rawAreas);
     const floors = normalizeFloors(rawFloors);
+    const labels = normalizeLabels(rawLabels);
     let didUpdate = false;
 
     if (!Array.isArray(networks) || networks.length === 0) {
@@ -259,7 +320,8 @@ async function loadData() {
         devices: devices,
         areas: areas,
         floors: floors,
-        networks: networks
+        networks: networks,
+        labels: labels
     };
 }
 

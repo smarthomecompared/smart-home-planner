@@ -4,6 +4,8 @@ let allDevices = [];
 let devices = [];
 let allAreas = [];
 let areas = [];
+let allLabels = [];
+let labels = [];
 let editingDeviceId = null;
 let settings = {};
 let networks = [];
@@ -20,6 +22,8 @@ const HA_DEVICE_NAME_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
 const HA_DEVICE_AREA_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-area') : '/api/ha/device-area';
+const HA_DEVICE_LABELS_SYNC_API_URL =
+    typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-labels') : '/api/ha/device-labels';
 const DEVICE_FILES_UPLOAD_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files/upload') : '/api/device-files/upload';
 const DEVICE_FILES_CONTENT_API_URL =
@@ -104,6 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await loadData();
     allDevices = data.devices;
     allAreas = data.areas;
+    allLabels = data.labels || [];
     settings = await loadSettings();
     networks = data.networks || [];
     devices = allDevices;
@@ -120,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateConnectivity();
     populateNetworks();
     populateBatteryTypes();
+    populateLabels();
     setAreas();
     handleBrandChange();
     handleConnectivityChange();
@@ -799,6 +805,197 @@ function populateBatteryTypes() {
     lastBatteryTypeValue = batteryTypeSelect.value || '';
 }
 
+function normalizeLabelId(value) {
+    return String(value || '').trim();
+}
+
+function normalizeLabelList(values) {
+    const result = [];
+    const seen = new Set();
+    (Array.isArray(values) ? values : []).forEach((value) => {
+        const normalized = normalizeLabelId(value);
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        result.push(normalized);
+    });
+    return result;
+}
+
+function labelsEqual(source, target) {
+    const normalizedSource = normalizeLabelList(source);
+    const normalizedTarget = normalizeLabelList(target);
+    if (normalizedSource.length !== normalizedTarget.length) return false;
+    const targetSet = new Set(normalizedTarget);
+    return normalizedSource.every((value) => targetSet.has(value));
+}
+
+function normalizeLabelColor(value) {
+    if (typeof resolveLabelColor === 'function') {
+        return resolveLabelColor(value);
+    }
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return raw;
+}
+
+function formatLabelIconText(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const clean = raw.includes(':') ? raw.split(':').pop() : raw;
+    const chunks = clean.split(/[-_]/).filter(Boolean);
+    const initials = chunks.slice(0, 2).map((item) => item[0]).join('');
+    return initials.toUpperCase();
+}
+
+function getLabelSelect() {
+    return document.getElementById('device-labels');
+}
+
+function getLabelPicker() {
+    return document.getElementById('device-labels-picker');
+}
+
+function getLabelCountEl() {
+    return document.getElementById('device-labels-count');
+}
+
+function getLabelEmptyEl() {
+    return document.getElementById('device-labels-empty');
+}
+
+function buildLabelOptions() {
+    const options = new Map();
+    (labels || []).forEach((label) => {
+        if (!label || typeof label !== 'object') return;
+        const id = normalizeLabelId(label.id || label.label_id);
+        if (!id || options.has(id)) return;
+        const name = String(label.name || '').trim() || id;
+        const color = normalizeLabelColor(label.color);
+        const icon = String(label.icon || '').trim();
+        options.set(id, {
+            id,
+            name,
+            color,
+            icon
+        });
+    });
+    (devices || []).forEach((device) => {
+        normalizeLabelList(device && device.labels).forEach((labelId) => {
+            if (!options.has(labelId)) {
+                options.set(labelId, {
+                    id: labelId,
+                    name: labelId,
+                    color: '',
+                    icon: ''
+                });
+            }
+        });
+    });
+    return Array.from(options.values())
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function getSelectedLabels() {
+    const picker = getLabelPicker();
+    if (picker) {
+        return Array.from(picker.querySelectorAll('input[type="checkbox"]:checked'))
+            .map((input) => normalizeLabelId(input.value))
+            .filter(Boolean);
+    }
+    const labelSelect = getLabelSelect();
+    if (!labelSelect) return [];
+    return Array.from(labelSelect.selectedOptions || [])
+        .map((option) => normalizeLabelId(option.value))
+        .filter(Boolean);
+}
+
+function updateLabelSelectionCount(countOverride) {
+    const countEl = getLabelCountEl();
+    if (!countEl) return;
+    const count = Number.isFinite(countOverride) ? countOverride : getSelectedLabels().length;
+    countEl.textContent = `${count} selected`;
+}
+
+function setSelectedLabels(values) {
+    const normalized = new Set(normalizeLabelList(values));
+    const labelSelect = getLabelSelect();
+    if (labelSelect) {
+        Array.from(labelSelect.options || []).forEach((option) => {
+            option.selected = normalized.has(option.value);
+        });
+    }
+    const picker = getLabelPicker();
+    if (picker) {
+        Array.from(picker.querySelectorAll('.label-chip')).forEach((chip) => {
+            const input = chip.querySelector('input[type="checkbox"]');
+            if (!input) return;
+            const isSelected = normalized.has(input.value);
+            input.checked = isSelected;
+            chip.classList.toggle('is-selected', isSelected);
+        });
+    }
+    updateLabelSelectionCount(normalized.size);
+}
+
+function bindLabelPickerEvents() {
+    const picker = getLabelPicker();
+    if (!picker || picker.dataset.bound === 'true') return;
+    picker.dataset.bound = 'true';
+    picker.addEventListener('change', (event) => {
+        const target = event.target;
+        if (!target || target.type !== 'checkbox') return;
+        setSelectedLabels(getSelectedLabels());
+    });
+}
+
+function populateLabels() {
+    labels = allLabels;
+    const selected = getSelectedLabels();
+    const options = buildLabelOptions();
+    const labelSelect = getLabelSelect();
+    const picker = getLabelPicker();
+    const emptyEl = getLabelEmptyEl();
+
+    if (labelSelect) {
+        labelSelect.disabled = options.length === 0;
+        if (options.length === 0) {
+            labelSelect.innerHTML = '<option value="" disabled>No labels available</option>';
+        } else {
+            labelSelect.innerHTML = options
+                .map(option => `<option value="${option.id}">${escapeHtml(option.name)}</option>`)
+                .join('');
+        }
+    }
+
+    if (picker) {
+        if (options.length === 0) {
+            picker.innerHTML = '';
+        } else {
+            picker.innerHTML = options
+                .map((option) => {
+                    const colorStyle = option.color ? ` style="--label-color: ${option.color};"` : '';
+                    const colorClass = option.color ? ' has-color' : '';
+                    return `
+                        <label class="label-chip${colorClass}"${colorStyle}>
+                            <input type="checkbox" value="${escapeHtml(option.id)}">
+                            <span class="label-chip-body">
+                                <span class="label-swatch"></span>
+                                <span class="label-name">${escapeHtml(option.name)}</span>
+                            </span>
+                        </label>
+                    `;
+                })
+                .join('');
+            bindLabelPickerEvents();
+        }
+    }
+
+    if (emptyEl) {
+        emptyEl.hidden = options.length > 0;
+    }
+    setSelectedLabels(selected);
+}
+
 function populateAreas() {
     const areaSelect = document.getElementById('device-area');
     const controlledSelect = document.getElementById('device-controlled-area');
@@ -860,8 +1057,12 @@ function updateViewOnHaButton(device) {
     const viewOnHaButton = document.getElementById('view-on-ha-btn');
     const isHaDevice = isHomeAssistantLinked(device && device.homeAssistant);
     const nameHaNote = document.getElementById('device-name-ha-note');
+    const labelsHaNote = document.getElementById('device-labels-ha-note');
     if (nameHaNote) {
         nameHaNote.hidden = !isHaDevice;
+    }
+    if (labelsHaNote) {
+        labelsHaNote.hidden = !isHaDevice;
     }
     updateHaAreaSyncNotes(isHaDevice);
     if (!viewOnHaButton) return;
@@ -971,6 +1172,38 @@ async function syncDeviceAreaToHa(deviceId, areaId) {
     }
 }
 
+async function syncDeviceLabelsToHa(deviceId, labels) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) {
+        return;
+    }
+    const normalizedLabels = normalizeLabelList(labels);
+
+    const response = await fetch(HA_DEVICE_LABELS_SYNC_API_URL, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            id: normalizedId,
+            labels: normalizedLabels
+        })
+    });
+
+    if (!response.ok) {
+        let errorMessage = `Failed to update Home Assistant device labels (${response.status})`;
+        try {
+            const payload = await response.json();
+            if (payload && payload.error) {
+                errorMessage = payload.error;
+            }
+        } catch (error) {
+            // Ignore JSON parsing errors and keep the default message.
+        }
+        throw new Error(errorMessage);
+    }
+}
+
 async function loadDuplicateDeviceFromStorage() {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('duplicate') !== 'true') {
@@ -1008,6 +1241,7 @@ function loadDeviceData(device) {
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
     document.getElementById('device-type').value = device.type ? normalizeOptionValue(device.type) : '';
+    setSelectedLabels(device.labels);
     document.getElementById('device-ip').value = device.ip || '';
     document.getElementById('device-mac').value = device.mac || '';
     document.getElementById('device-status').value = device.status || 'working';
@@ -1134,6 +1368,7 @@ async function handleDeviceSubmit(e) {
         brand: brandValue,
         model: document.getElementById('device-model').value,
         type: typeValue,
+        labels: getSelectedLabels(),
         ip: ipValue,
         mac: macValue,
         status: statusValue,
@@ -2117,6 +2352,7 @@ async function createDevice(deviceData) {
         brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
         type: normalizeOptionValue(deviceData.type),
+        labels: normalizeLabelList(deviceData.labels),
         ip: deviceData.ip.trim() || '',
         mac: deviceData.mac.trim() || '',
         status: deviceData.status,
@@ -2183,10 +2419,12 @@ async function updateDevice(id, deviceData, options = {}) {
         const previousName = String(device.name || '').trim();
         const previousArea = String(device.area || '').trim();
         const previousControlledArea = String(device.controlledArea || '').trim();
+        const previousLabels = normalizeLabelList(device.labels);
         device.name = name;
         device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
         device.type = normalizeOptionValue(deviceData.type);
+        device.labels = normalizeLabelList(deviceData.labels);
         device.ip = deviceData.ip.trim() || '';
         device.mac = deviceData.mac.trim() || '';
         device.status = deviceData.status;
@@ -2236,6 +2474,7 @@ async function updateDevice(id, deviceData, options = {}) {
                 ? String(device.area || '').trim()
                 : String(device.controlledArea || '').trim();
             const shouldSyncArea = previousTargetArea !== nextTargetArea;
+            const shouldSyncLabels = !labelsEqual(previousLabels, device.labels);
 
             try {
                 if (shouldSyncName) {
@@ -2255,6 +2494,17 @@ async function updateDevice(id, deviceData, options = {}) {
             } catch (error) {
                 console.error('Failed to sync device area to Home Assistant:', error);
                 await showAlert(`Device was saved locally, but Home Assistant area update failed: ${error?.message || error}`, {
+                    title: 'Home Assistant Sync Failed'
+                });
+                return;
+            }
+            try {
+                if (shouldSyncLabels) {
+                    await syncDeviceLabelsToHa(device.id, device.labels);
+                }
+            } catch (error) {
+                console.error('Failed to sync device labels to Home Assistant:', error);
+                await showAlert(`Device was saved locally, but Home Assistant label update failed: ${error?.message || error}`, {
                     title: 'Home Assistant Sync Failed'
                 });
                 return;

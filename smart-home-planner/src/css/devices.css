@@ -184,7 +184,9 @@
 }
 
 .device-card-header {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
 }
 
 .device-card-title {
@@ -194,6 +196,18 @@
     letter-spacing: -0.01em;
     width: 100%;
     padding-right: 0;
+}
+
+.device-card-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.device-labels-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
 .device-card-ha-icon {

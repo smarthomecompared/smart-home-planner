@@ -75,3 +75,8 @@ MIT. See `LICENSE`.
 - Instagram: https://instagram.com/smarthomecompared
 - Reddit: https://www.reddit.com/user/smarthomecompared
 - Stacker News: https://stacker.news/shcompared
+
+## Other Products
+
+- Smart Home Compared: Comparing the best Smart Home devices: thermostats, cameras, doorbells, lights, sensors, sirens, air quality monitors, smoke & CO alarms and more. https://smarthomecompared.com/
+- Smart Home Deals: Discover the best smart home discounts across cameras, sensors, thermostats, doorbells, and more. Automatically filtered so you only see real price drops. https://smarthomedealsnow.com/

@@ -9,11 +9,14 @@ When the app is installed in Home Assistant, it will sync key information so you
 What to expect from the initial sync:
 1. Areas and floors from Home Assistant appear in the app.
 2. Devices present in Home Assistant appear in the app with their basic identity.
-3. The app uses the same area structure so you can navigate devices by room immediately.
+3. Device labels from Home Assistant are imported so you can use them throughout the app.
+4. The app uses the same area structure so you can navigate devices by room immediately.
 
 You stay in control of how Home Assistant areas map into the app:
 1. Installed Area is where the device physically lives.
 2. Controlled Area is the space a device influences, even if it is installed elsewhere.
+
+When you update labels on a Home Assistant-linked device in the app, those label changes are also applied in Home Assistant.
 
 ### Adding Devices Outside Home Assistant
 
@@ -68,7 +71,8 @@ Common filters include:
 2. Floor, Installed Area, and Controlled Area
 3. Status and power type
 4. Connectivity, network, and role flags
-5. Integrations and local-only devices
+5. Labels
+6. Integrations and local-only devices
 
 Use Clear Filters when you want to return to a full inventory view.
 
@@ -90,6 +94,7 @@ Best use cases:
 1. Visual scanning for key details.
 2. Opening device cards for deeper editing.
 3. Reviewing status and ownership by ecosystem.
+4. Quickly spotting device labels without opening the full record.
 
 ### Diagram View
 
@@ -108,7 +113,7 @@ The layout editor lets you position devices in a way that matches your real-worl
 Use Add Device to capture both operational and planning information. The form is organized to mirror how you think about hardware: what it is, where it lives, how it connects, and how it is maintained.
 
 Guidance for each section:
-1. Basic Information identifies the device and makes it searchable.
+1. Basic Information identifies the device, including any labels used for filtering.
 2. Installation defines location and status, which drives filters and dashboards.
 3. Power captures energy needs, battery planning, and consumption data.
 4. Storage helps document hubs and servers with disk space.
@@ -126,7 +131,8 @@ Typical tasks:
 2. Update battery change dates after maintenance.
 3. Add files such as invoices or manuals.
 4. Update connectivity details after a network change.
-5. Delete the device if it is permanently removed.
+5. Adjust labels to keep Home Assistant and the app aligned.
+6. Delete the device if it is permanently removed.
 
 The Apply action lets you save changes without leaving the page, which is useful during longer editing sessions.
 

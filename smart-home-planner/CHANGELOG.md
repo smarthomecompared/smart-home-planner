@@ -2,6 +2,10 @@
 
 ### Added
 - More device types
+- Integration with Home Assistant labels
+
+# Changed
+- Settings UI improvements
 
 ## 0.5.0 - 2026-02-19
 

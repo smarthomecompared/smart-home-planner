@@ -9,6 +9,8 @@ globalThis.WebSocket = WebSocket;
 const SUPERVISOR_WS_URL = "ws://supervisor/core/websocket";
 const DATA_DIR = "/data";
 const STORAGE_FILE = path.join(DATA_DIR, "data.json");
+const LABELS_FILE = path.join(DATA_DIR, "labels.json");
+const DEVICES_FILE = path.join(DATA_DIR, "devices.json");
 const SUPERVISOR_TOKEN = process.env.SUPERVISOR_TOKEN;
 
 const registries = [
@@ -29,6 +31,12 @@ const registries = [
     command: "config/device_registry/list",
     event: "device_registry_updated",
     file: "devices.json",
+  },
+  {
+    name: "labels",
+    command: "config/label_registry/list",
+    event: "label_registry_updated",
+    file: "labels.json",
   },
 ];
 
@@ -123,6 +131,20 @@ async function saveToData(file, data) {
   await fs.rename(temp, target);
 }
 
+async function readRegistryFile(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return [];
+    }
+    log(`Failed to read registry file ${filePath}: ${error?.message || error}`);
+    return [];
+  }
+}
+
 function omitFieldsFromObject(source, fieldsToOmit) {
   if (!source || typeof source !== "object") return source;
   if (!fieldsToOmit || fieldsToOmit.size === 0) return source;
@@ -163,6 +185,26 @@ async function writeStorageJson(payload) {
 function normalizeString(value) {
   if (value === undefined || value === null) return "";
   return String(value).trim();
+}
+
+async function readLabelsRegistry() {
+  try {
+    const raw = await fs.readFile(LABELS_FILE, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+    const labelIds = parsed
+      .map((item) => normalizeString(item?.label_id || item?.id))
+      .filter(Boolean);
+    return new Set(labelIds);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return new Set();
+    }
+    log(`Failed to read labels registry: ${error?.message || error}`);
+    return new Set();
+  }
 }
 
 function normalizeManufacturerKey(value) {
@@ -237,11 +279,19 @@ function getExcludedDeviceIds(storage) {
   return new Set(source.map((value) => normalizeString(value)).filter(Boolean));
 }
 
-function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
+function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLabels) {
   const id = normalizeString(haDevice?.id);
   const areaId = normalizeString(haDevice?.area_id);
   const manufacturer = normalizeBrand(haDevice?.manufacturer);
   const model = normalizeString(haDevice?.model);
+  let haLabels = Array.isArray(haDevice?.labels)
+    ? haDevice.labels.map((label) => normalizeString(label)).filter(Boolean)
+    : Array.isArray(haDevice?.label_ids)
+      ? haDevice.label_ids.map((label) => normalizeString(label)).filter(Boolean)
+      : null;
+  if (haLabels && allowedLabels instanceof Set) {
+    haLabels = haLabels.filter((label) => allowedLabels.has(label));
+  }
   const hasExistingDevice = Boolean(existingDevice && typeof existingDevice === "object");
   const base = hasExistingDevice ? { ...existingDevice } : {};
 
@@ -253,6 +303,11 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
     model: hasExistingDevice ? normalizeString(base.model) : model,
     homeAssistant: true,
   };
+  if (haLabels !== null) {
+    synced.labels = haLabels;
+  } else if (!Array.isArray(synced.labels)) {
+    synced.labels = [];
+  }
 
   if (!hasExistingDevice) {
     synced.status = "working";
@@ -271,6 +326,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget) {
 async function syncStorageDevicesFromRegistry(haDevices) {
   const storage = await readStorageJson();
   const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
+  const allowedLabels = await readLabelsRegistry();
   const excludedDeviceIds = getExcludedDeviceIds(storage);
   const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
   const existingById = new Map(
@@ -332,7 +388,7 @@ async function syncStorageDevicesFromRegistry(haDevices) {
 
     const sourceDevice = sourceById.get(id);
     if (sourceDevice) {
-      nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget));
+      nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels));
       syncedIds.add(id);
       continue;
     }
@@ -351,7 +407,7 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   for (const sourceDevice of sourceDevicesAfterExclusions) {
     const id = normalizeString(sourceDevice?.id);
     if (!id || syncedIds.has(id)) continue;
-    nextDevices.push(buildSyncedDevice(sourceDevice, existingById.get(id), haAreaSyncTarget));
+    nextDevices.push(buildSyncedDevice(sourceDevice, existingById.get(id), haAreaSyncTarget, allowedLabels));
     createdDevicesCount += 1;
   }
 
@@ -402,6 +458,13 @@ async function syncRegistry(conn, registry, reason = "manual") {
   if (registry.name === "devices") {
     await syncStorageDevicesFromRegistry(data);
   }
+  if (registry.name === "labels") {
+    const devicesRegistry = await readRegistryFile(DEVICES_FILE);
+    if (devicesRegistry.length > 0) {
+      await syncStorageDevicesFromRegistry(devicesRegistry);
+      log("Devices re-synced after labels update.");
+    }
+  }
 
   if (registry.name === "areas") {
     log(`Areas synced (${data.length})`);
@@ -447,6 +510,9 @@ async function subscribeToUpdates(conn) {
           }
           if (eventType === "device_registry_updated") {
             log("Device Registry updated -> re-syncing");
+          }
+          if (eventType === "label_registry_updated") {
+            log("Label Registry updated -> re-syncing");
           }
           enqueueRegistrySync(conn, registry, `event ${eventType}`);
         }, registry.event);

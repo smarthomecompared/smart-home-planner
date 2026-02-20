@@ -163,6 +163,20 @@
                             </div>
                         </div>
                         <div class="filters-block">
+                            <div class="filters-block-title">Labels</div>
+                            <div class="filters-block-body">
+                                <div class="filter-field filter-field-wide">
+                                    <div class="filter-label-row">
+                                        <label for="filter-labels">Labels</label>
+                                        <span class="label-picker-count" id="filter-labels-count">0 selected</span>
+                                    </div>
+                                    <select id="filter-labels" class="visually-hidden" multiple></select>
+                                    <div class="label-picker label-picker-compact" id="filter-labels-picker" role="listbox" aria-multiselectable="true"></div>
+                                    <div class="label-picker-empty" id="filter-labels-empty" hidden>No labels available yet.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filters-block">
                             <div class="filters-block-title">Power</div>
                             <div class="filters-block-body">
                                 <div class="filter-field">
@@ -234,6 +248,9 @@
                             <th class="sortable" data-sort="name">
                                 Name <span class="sort-icon"></span>
                             </th>
+                            <th class="sortable col-optional-lg" data-sort="labels">
+                                Labels <span class="sort-icon"></span>
+                            </th>
                             <th class="sortable table-col-ha col-optional-md" data-sort="homeAssistant">
                                 HA <span class="sort-icon"></span>
                             </th>
@@ -242,12 +259,6 @@
                             </th>
                             <th class="sortable col-area-controlled" data-sort="controlledArea">
                                 Controlled Area <span class="sort-icon"></span>
-                            </th>
-                            <th class="sortable col-optional-lg" data-sort="power">
-                                Power <span class="sort-icon"></span>
-                            </th>
-                            <th class="sortable col-optional-lg" data-sort="connectivity">
-                                Connectivity <span class="sort-icon"></span>
                             </th>
                             <th class="sortable" data-sort="brand">
                                 Brand <span class="sort-icon"></span>

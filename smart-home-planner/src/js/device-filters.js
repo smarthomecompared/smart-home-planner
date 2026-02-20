@@ -1,23 +1,32 @@
 // Device Filters Module
 // This module provides shared filtering functionality for devices
 
+function resolveLabelColorSafe(value) {
+    if (typeof resolveLabelColor === 'function') {
+        return resolveLabelColor(value);
+    }
+    return String(value || '').trim();
+}
+
 class DeviceFilters {
     constructor() {
         this.devices = [];
         this.areas = [];
         this.floors = [];
         this.networks = [];
+        this.labels = [];
         this.settings = {};
         this.filteredDevices = [];
         this.onFilterChange = null; // Callback for when filters change
     }
 
     // Initialize with data
-    init(devices, areas, floors, networks, settings) {
+    init(devices, areas, floors, networks, settings, labels) {
         this.devices = devices;
         this.areas = areas;
         this.floors = floors;
         this.networks = networks || [];
+        this.labels = labels || [];
         this.settings = settings;
         this.filteredDevices = devices; // Initialize with all devices
         this.setupEventListeners();
@@ -33,6 +42,10 @@ class DeviceFilters {
             if (el && !el.dataset.userModified) { // Only clear if not modified by user
                 if (el.type === 'checkbox') {
                     el.checked = value;
+                } else if (el.multiple) {
+                    Array.from(el.options || []).forEach((option) => {
+                        option.selected = false;
+                    });
                 } else {
                     el.value = value;
                 }
@@ -48,6 +61,7 @@ class DeviceFilters {
         setValue('filter-status', '');
         setValue('filter-type', '');
         setValue('filter-connectivity', '');
+        setValue('filter-labels', '');
         setValue('filter-network', '');
         setValue('filter-power', '');
         setValue('filter-ups-protected', '');
@@ -62,14 +76,17 @@ class DeviceFilters {
         setValue('filter-apple-home-kit', false);
         setValue('filter-samsung-smartthings', false);
         setValue('filter-local-only', '');
+
+        this.setSelectedLabels([]);
     }
 
     // Update data (called when data changes)
-    updateData(devices, areas, floors, networks, settings) {
+    updateData(devices, areas, floors, networks, settings, labels) {
         this.devices = devices;
         this.areas = areas;
         this.floors = floors;
         this.networks = networks || [];
+        this.labels = labels || [];
         this.settings = settings;
         this.updateFilterOptions();
     }
@@ -86,6 +103,7 @@ class DeviceFilters {
             'filter-status',
             'filter-type',
             'filter-connectivity',
+            'filter-labels',
             'filter-network',
             'filter-power',
             'filter-ups-protected',
@@ -267,6 +285,49 @@ class DeviceFilters {
             connectivityFilter.value = currentConnectivityValue ? normalizeOptionValue(currentConnectivityValue) : currentConnectivityValue;
         }
 
+        // Update labels filter
+        const labelsFilter = this.getLabelSelect();
+        const currentLabelValues = this.getSelectedLabelValues();
+        const labelOptions = this.buildLabelOptions();
+        if (labelsFilter) {
+            labelsFilter.disabled = labelOptions.length === 0;
+            if (labelOptions.length === 0) {
+                labelsFilter.innerHTML = '<option value="" disabled>No labels available</option>';
+            } else {
+                labelsFilter.innerHTML = labelOptions
+                    .map(option => `<option value="${option.id}">${this.escapeHtml(option.name)}</option>`)
+                    .join('');
+            }
+        }
+        const labelPicker = this.getLabelPicker();
+        const labelEmpty = this.getLabelEmptyEl();
+        if (labelPicker) {
+            if (labelOptions.length === 0) {
+                labelPicker.innerHTML = '';
+            } else {
+                labelPicker.innerHTML = labelOptions
+                    .map(option => {
+                        const colorStyle = option.color ? ` style="--label-color: ${option.color};"` : '';
+                        const colorClass = option.color ? ' has-color' : '';
+                        return `
+                            <label class="label-chip label-chip-compact${colorClass}"${colorStyle}>
+                                <input type="checkbox" value="${this.escapeHtml(option.id)}">
+                                <span class="label-chip-body">
+                                    <span class="label-swatch"></span>
+                                    <span class="label-name">${this.escapeHtml(option.name)}</span>
+                                </span>
+                            </label>
+                        `;
+                    })
+                    .join('');
+                this.bindLabelPickerEvents();
+            }
+        }
+        if (labelEmpty) {
+            labelEmpty.hidden = labelOptions.length > 0;
+        }
+        this.setSelectedLabels(currentLabelValues);
+
         // Update network filter
         const networkFilter = document.getElementById('filter-network');
         const currentNetworkValue = networkFilter ? networkFilter.value : '';
@@ -301,8 +362,20 @@ class DeviceFilters {
                 console.warn(`Filter element not found: ${id}`);
                 return '';
             }
-            const value = el.type === 'checkbox' ? el.checked : el.value;
-            if (value && value !== '' && value !== false) {
+            let value;
+            if (el.type === 'checkbox') {
+                value = el.checked;
+            } else if (el.multiple) {
+                value = Array.from(el.selectedOptions || [])
+                    .map(option => String(option.value || '').trim())
+                    .filter(Boolean);
+            } else {
+                value = el.value;
+            }
+            const hasActiveValue = Array.isArray(value)
+                ? value.length > 0
+                : value && value !== '' && value !== false;
+            if (hasActiveValue) {
                 console.log(`Filter ${id} has value:`, value);
             }
             return value;
@@ -317,6 +390,7 @@ class DeviceFilters {
         const statusFilter = getElementValue('filter-status');
         const typeFilter = getElementValue('filter-type');
         const connectivityFilter = getElementValue('filter-connectivity');
+        const labelsFilter = getElementValue('filter-labels');
         const networkFilter = getElementValue('filter-network');
         const powerFilter = getElementValue('filter-power');
         const upsProtectedFilter = getElementValue('filter-ups-protected');
@@ -343,6 +417,7 @@ class DeviceFilters {
             status: statusFilter,
             type: typeFilter,
             connectivity: connectivityFilter,
+            labels: labelsFilter,
             network: networkFilter,
             power: powerFilter,
             upsProtected: upsProtectedFilter,
@@ -359,9 +434,21 @@ class DeviceFilters {
             localOnly: localOnlyFilter
         };
         
+        const hasActiveValue = (value) => {
+            if (Array.isArray(value)) {
+                return value.length > 0;
+            }
+            return value && value !== '';
+        };
+
         const appliedFilters = Object.entries(activeFilters)
-            .filter(([key, value]) => value && value !== '')
-            .map(([key, value]) => `${key}: ${value}`);
+            .filter(([key, value]) => hasActiveValue(value))
+            .map(([key, value]) => {
+                if (Array.isArray(value)) {
+                    return `${key}: ${value.join(', ')}`;
+                }
+                return `${key}: ${value}`;
+            });
         
         if (appliedFilters.length > 0) {
             console.log('Active filters:', appliedFilters);
@@ -435,6 +522,14 @@ class DeviceFilters {
             } else {
                 this.filteredDevices = this.filteredDevices.filter(d => normalizeOptionValue(d.connectivity) === connectivityFilter);
             }
+        }
+
+        if (Array.isArray(labelsFilter) && labelsFilter.length) {
+            const selectedLabels = new Set(labelsFilter.map(value => String(value || '').trim()).filter(Boolean));
+            this.filteredDevices = this.filteredDevices.filter(d => {
+                const deviceLabels = Array.isArray(d.labels) ? d.labels : [];
+                return deviceLabels.some(label => selectedLabels.has(String(label || '').trim()));
+            });
         }
 
         if (networkFilter) {
@@ -521,6 +616,10 @@ class DeviceFilters {
             if (el) {
                 if (el.type === 'checkbox') {
                     el.checked = value;
+                } else if (el.multiple) {
+                    Array.from(el.options || []).forEach((option) => {
+                        option.selected = false;
+                    });
                 } else {
                     el.value = value;
                 }
@@ -535,6 +634,7 @@ class DeviceFilters {
         setValue('filter-status', '');
         setValue('filter-type', '');
         setValue('filter-connectivity', '');
+        setValue('filter-labels', '');
         setValue('filter-power', '');
         setValue('filter-ups-protected', '');
         setValue('filter-battery-type', '');
@@ -548,7 +648,8 @@ class DeviceFilters {
         setValue('filter-apple-home-kit', false);
         setValue('filter-samsung-smartthings', false);
         setValue('filter-local-only', '');
-        
+
+        this.setSelectedLabels([]);
         this.applyFilters();
     }
 
@@ -590,6 +691,110 @@ class DeviceFilters {
         return Array.from(options.entries())
             .map(([value, label]) => ({ value, label: label || value }))
             .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+    }
+
+    buildLabelOptions() {
+        const options = new Map();
+        (this.labels || []).forEach(label => {
+            if (!label || typeof label !== 'object') return;
+            const id = String(label.id || label.label_id || '').trim();
+            if (!id || options.has(id)) return;
+            const name = String(label.name || '').trim() || id;
+            const color = resolveLabelColorSafe(label.color);
+            const icon = String(label.icon || '').trim();
+            options.set(id, {
+                id,
+                name,
+                color,
+                icon
+            });
+        });
+        (this.devices || []).forEach(device => {
+            const deviceLabels = Array.isArray(device?.labels) ? device.labels : [];
+            deviceLabels.forEach((labelId) => {
+                const normalized = String(labelId || '').trim();
+                if (!normalized || options.has(normalized)) return;
+                options.set(normalized, {
+                    id: normalized,
+                    name: normalized,
+                    color: '',
+                    icon: ''
+                });
+            });
+        });
+        return Array.from(options.values())
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+
+    getLabelSelect() {
+        return document.getElementById('filter-labels');
+    }
+
+    getLabelPicker() {
+        return document.getElementById('filter-labels-picker');
+    }
+
+    getLabelCountEl() {
+        return document.getElementById('filter-labels-count');
+    }
+
+    getLabelEmptyEl() {
+        return document.getElementById('filter-labels-empty');
+    }
+
+    getSelectedLabelValues() {
+        const picker = this.getLabelPicker();
+        if (picker) {
+            return Array.from(picker.querySelectorAll('input[type="checkbox"]:checked'))
+                .map((input) => String(input.value || '').trim())
+                .filter(Boolean);
+        }
+        const labelSelect = this.getLabelSelect();
+        if (!labelSelect) return [];
+        return Array.from(labelSelect.selectedOptions || [])
+            .map(option => String(option.value || '').trim())
+            .filter(Boolean);
+    }
+
+    updateLabelSelectionCount(countOverride) {
+        const countEl = this.getLabelCountEl();
+        if (!countEl) return;
+        const count = Number.isFinite(countOverride) ? countOverride : this.getSelectedLabelValues().length;
+        countEl.textContent = `${count} selected`;
+    }
+
+    setSelectedLabels(values) {
+        const normalized = new Set((values || []).map(value => String(value || '').trim()).filter(Boolean));
+        const labelSelect = this.getLabelSelect();
+        if (labelSelect) {
+            Array.from(labelSelect.options || []).forEach((option) => {
+                option.selected = normalized.has(option.value);
+            });
+        }
+        const picker = this.getLabelPicker();
+        if (picker) {
+            Array.from(picker.querySelectorAll('.label-chip')).forEach((chip) => {
+                const input = chip.querySelector('input[type="checkbox"]');
+                if (!input) return;
+                const isSelected = normalized.has(input.value);
+                input.checked = isSelected;
+                chip.classList.toggle('is-selected', isSelected);
+            });
+            picker.classList.toggle('is-active', normalized.size > 0);
+        }
+        this.updateLabelSelectionCount(normalized.size);
+    }
+
+    bindLabelPickerEvents() {
+        const picker = this.getLabelPicker();
+        if (!picker || picker.dataset.bound === 'true') return;
+        picker.dataset.bound = 'true';
+        picker.addEventListener('change', (event) => {
+            const target = event.target;
+            if (!target || target.type !== 'checkbox') return;
+            this.setSelectedLabels(this.getSelectedLabelValues());
+            this.applyFilters();
+        });
     }
 }
 

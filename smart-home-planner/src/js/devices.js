@@ -5,6 +5,7 @@ let devices = [];
 let areas = [];
 let floors = [];
 let networks = [];
+let labels = [];
 let settings = {};
 
 // Pagination and Sorting
@@ -60,12 +61,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     areas = data.areas;
     floors = data.floors;
     networks = data.networks || [];
+    labels = data.labels || [];
     devices = allDevices;
     applyAreaColumnVisibility();
     
     // Initialize filters
     deviceFilters = new DeviceFilters();
-    deviceFilters.init(devices, areas, floors, networks, settings);
+    deviceFilters.init(devices, areas, floors, networks, settings, labels);
     deviceFilters.onFilterChange = (filtered) => {
         filteredDevices = filtered;
         currentPage = 1;
@@ -230,6 +232,7 @@ async function createDevice(deviceData) {
         brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
         type: normalizeOptionValue(deviceData.type),
+        labels: normalizeLabelList(deviceData.labels),
         ip: deviceData.ip.trim() || '',
         mac: deviceData.mac.trim() || '',
         status: deviceData.status,
@@ -242,7 +245,7 @@ async function createDevice(deviceData) {
     allDevices.push(device);
     devices = allDevices;
     await saveData(await getAllData());
-    deviceFilters.updateData(devices, areas, floors, networks, settings);
+    deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
     }
@@ -269,6 +272,9 @@ async function updateDevice(id, deviceData) {
         device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
         device.type = normalizeOptionValue(deviceData.type);
+        if (deviceData.labels !== undefined) {
+            device.labels = normalizeLabelList(deviceData.labels);
+        }
         device.ip = deviceData.ip.trim() || '';
         device.mac = deviceData.mac.trim() || '';
         device.status = deviceData.status;
@@ -279,7 +285,7 @@ async function updateDevice(id, deviceData) {
         device.updatedAt = new Date().toISOString();
         await saveData(await getAllData());
         devices = allDevices;
-        deviceFilters.updateData(devices, areas, floors, networks, settings);
+        deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
         if (diagramReady && window.DeviceDiagram) {
             window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
         }
@@ -321,7 +327,7 @@ async function deleteDevice(id) {
     });
     
     await saveData(await getAllData());
-    deviceFilters.updateData(devices, areas, floors, networks, settings);
+    deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     if (diagramReady && window.DeviceDiagram) {
         window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
     }
@@ -335,6 +341,8 @@ function renderDevices() {
         const count = filteredDevices.length;
         countLabel.textContent = `${count} device${count !== 1 ? 's' : ''}`;
     }
+    const labelNameMap = buildLabelNameMap(labels);
+    const labelMetaMap = buildLabelMetaMap(labels);
 
     // Sort devices
     let sortedDevices = [...filteredDevices];
@@ -360,6 +368,11 @@ function renderDevices() {
                 if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
                 if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
                 return 0;
+            }
+
+            if (sortColumn === 'labels') {
+                aVal = formatDeviceLabels(a, labelNameMap);
+                bVal = formatDeviceLabels(b, labelNameMap);
             }
             
             // Handle name field
@@ -399,7 +412,7 @@ function renderDevices() {
     if (paginatedDevices.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="11" class="empty-state">
+                <td colspan="10" class="empty-state">
                         <div style="text-align: center; padding: 2rem;">
                         <div class="empty-state-icon">🔌</div>
                         <div class="empty-state-text">No devices found</div>
@@ -415,14 +428,16 @@ function renderDevices() {
             const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType);
             const brandDisplay = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
             const modelDisplay = device.model ? device.model.trim() : '-';
-            const powerDisplay = formatPowerLabel(device.power);
-            const connectivityDisplay = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
+            const labelChips = renderDeviceLabelChips(device, labelMetaMap);
             const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
             const normalizedStatus = normalizeStatusValue(device.status);
             const statusLabel = formatStatusLabel(normalizedStatus);
             return `
                 <tr>
                     <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
+                    <td class="col-optional-lg">
+                        ${labelChips ? `<div class="device-labels-inline">${labelChips}</div>` : '<span class="table-empty-value">-</span>'}
+                    </td>
                     <td class="table-col-ha col-optional-md">
                         ${isHaEnabled
                             ? `<span class="ha-enabled-icon ha-enabled-icon-table" title="Home Assistant enabled" aria-label="Home Assistant enabled">
@@ -432,8 +447,6 @@ function renderDevices() {
                     </td>
                     <td class="col-area-installed">${escapeHtml(areaName)}</td>
                     <td class="col-area-controlled">${escapeHtml(controlledAreaName)}</td>
-                    <td class="col-optional-lg">${escapeHtml(powerDisplay)}</td>
-                    <td class="col-optional-lg">${escapeHtml(connectivityDisplay)}</td>
                     <td>${escapeHtml(brandDisplay)}</td>
                     <td>${escapeHtml(modelDisplay)}</td>
                     <td>${escapeHtml(typeDisplay)}</td>
@@ -475,6 +488,8 @@ function renderDevices() {
 function renderDevicesGrid(devicesToRender) {
     const grid = document.getElementById('devices-grid');
     if (!grid) return;
+    const labelNameMap = buildLabelNameMap(labels);
+    const labelMetaMap = buildLabelMetaMap(labels);
 
     if (!devicesToRender.length) {
         grid.innerHTML = `
@@ -493,7 +508,7 @@ function renderDevicesGrid(devicesToRender) {
         const areaName = device.area ? getAreaName(areas, device.area) : '-';
         const controlledAreaName = device.controlledArea ? getAreaName(areas, device.controlledArea) : '-';
         const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
-        const connectivity = getFriendlyOption(settings.connectivity, device.connectivity, formatConnectivity) || '-';
+        const labelChips = renderDeviceLabelChips(device, labelMetaMap);
         const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
         const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
         const normalizedStatus = normalizeStatusValue(device.status);
@@ -502,6 +517,7 @@ function renderDevicesGrid(devicesToRender) {
             <div class="device-card${isHaEnabled ? ' has-ha' : ''}">
                 <div class="device-card-header">
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
+                    ${labelChips ? `<div class="device-card-labels">${labelChips}</div>` : ''}
                 </div>
                 <div class="device-card-meta">
                     <div class="device-card-meta-row">
@@ -519,10 +535,6 @@ function renderDevicesGrid(devicesToRender) {
                     <div class="device-card-meta-row">
                         <span class="device-card-meta-label">Brand</span>
                         <span class="device-card-meta-value">${escapeHtml(brand)}</span>
-                    </div>
-                    <div class="device-card-meta-row">
-                        <span class="device-card-meta-label">Connectivity</span>
-                        <span class="device-card-meta-value">${escapeHtml(connectivity)}</span>
                     </div>
                 </div>
                 <div class="device-card-actions">
@@ -680,6 +692,7 @@ function updateActiveFilters() {
         'filter-status',
         'filter-type',
         'filter-connectivity',
+        'filter-labels',
         'filter-network',
         'filter-power',
         'filter-ups-protected',
@@ -689,7 +702,18 @@ function updateActiveFilters() {
     selects.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.classList.toggle('is-active', Boolean(el.value));
+        if (el.multiple) {
+            const hasSelection = Array.from(el.selectedOptions || []).length > 0;
+            el.classList.toggle('is-active', hasSelection);
+            if (id === 'filter-labels') {
+                const picker = document.getElementById('filter-labels-picker');
+                if (picker) {
+                    picker.classList.toggle('is-active', hasSelection);
+                }
+            }
+        } else {
+            el.classList.toggle('is-active', Boolean(el.value));
+        }
     });
 
     const checkboxFilters = [
@@ -744,6 +768,84 @@ async function getAllData() {
         ...(await loadData()),
         devices: allDevices
     };
+}
+
+function normalizeLabelId(value) {
+    return String(value || '').trim();
+}
+
+function normalizeLabelList(values) {
+    const result = [];
+    const seen = new Set();
+    (Array.isArray(values) ? values : []).forEach((value) => {
+        const normalized = normalizeLabelId(value);
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        result.push(normalized);
+    });
+    return result;
+}
+
+function buildLabelNameMap(labelItems) {
+    const map = new Map();
+    (labelItems || []).forEach((label) => {
+        if (!label || typeof label !== 'object') return;
+        const id = normalizeLabelId(label.id || label.label_id);
+        if (!id || map.has(id)) return;
+        const name = String(label.name || '').trim() || id;
+        map.set(id, name);
+    });
+    return map;
+}
+
+function formatDeviceLabels(device, labelNameMap) {
+    const labelIds = normalizeLabelList(device && device.labels);
+    if (!labelIds.length) {
+        return '-';
+    }
+    const names = labelIds.map((id) => labelNameMap.get(id) || id);
+    return names.join(', ');
+}
+
+function buildLabelMetaMap(labelItems) {
+    const map = new Map();
+    (labelItems || []).forEach((label) => {
+        if (!label || typeof label !== 'object') return;
+        const id = normalizeLabelId(label.id || label.label_id);
+        if (!id || map.has(id)) return;
+        const name = String(label.name || '').trim() || id;
+        const color = typeof resolveLabelColor === 'function' ? resolveLabelColor(label.color) : String(label.color || '').trim();
+        const icon = String(label.icon || '').trim();
+        map.set(id, {
+            id,
+            name,
+            color,
+            icon
+        });
+    });
+    return map;
+}
+
+function renderDeviceLabelChips(device, labelMetaMap) {
+    const labelIds = normalizeLabelList(device && device.labels);
+    if (!labelIds.length) {
+        return '';
+    }
+    return labelIds
+        .map((id) => {
+            const meta = labelMetaMap.get(id) || { name: id, color: '', icon: '' };
+            const colorStyle = meta.color ? ` style="--label-color: ${meta.color};"` : '';
+            const colorClass = meta.color ? ' has-color' : '';
+            return `
+                <span class="label-chip label-chip-compact label-chip-static${colorClass}"${colorStyle}>
+                    <span class="label-chip-body">
+                        <span class="label-swatch"></span>
+                        <span class="label-name">${escapeHtml(meta.name)}</span>
+                    </span>
+                </span>
+            `;
+        })
+        .join('');
 }
 
 function formatDeviceType(typeSlug) {
