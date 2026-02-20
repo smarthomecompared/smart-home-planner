@@ -375,6 +375,23 @@
     gap: 0.35rem;
 }
 
+.device-labels-inline-table {
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+
+.device-labels-inline-table .label-chip {
+    flex: 0 0 auto;
+}
+
+.device-name-cell strong {
+    display: block;
+}
+
+.device-name-cell .device-labels-inline {
+    margin-top: 0.35rem;
+}
+
 .device-card-ha-icon {
     position: relative;
     flex: 0 0 auto;

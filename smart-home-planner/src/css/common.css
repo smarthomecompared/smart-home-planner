@@ -757,7 +757,7 @@ nav.site-nav a.active .site-nav-icon {
 }
 
 .label-name {
-    font-size: 0.78rem;
+    font-size: 0.6rem;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: none;
@@ -804,6 +804,16 @@ nav.site-nav a.active .site-nav-icon {
 
 .label-chip-static {
     cursor: default;
+}
+
+.label-chip.is-hidden {
+    display: none;
+}
+
+.label-chip-more {
+    background: rgba(148, 163, 184, 0.16);
+    border-style: dashed;
+    color: var(--text-secondary);
 }
 
 .form-field-meta {

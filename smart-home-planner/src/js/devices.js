@@ -866,15 +866,15 @@ function renderDevices() {
                             <input type="checkbox" class="device-select" data-device-id="${device.id}" ${selectedDeviceIds.has(device.id) ? 'checked' : ''} aria-label="Select device">
                         </label>
                     </td>
-                    <td><strong>${escapeHtml(device.name || 'Unnamed')}</strong></td>
-                    <td class="col-optional-lg">
-                        ${labelChips ? `<div class="device-labels-inline">${labelChips}</div>` : '<span class="table-empty-value">-</span>'}
+                    <td class="device-name-cell">
+                        <strong>${escapeHtml(device.name || 'Unnamed')}</strong>
+                        ${labelChips ? `<div class="device-labels-inline device-labels-inline-table">${labelChips}</div>` : ''}
                     </td>
                     <td class="table-col-ha col-optional-md">
                         ${isHaEnabled
                             ? `<span class="ha-enabled-icon ha-enabled-icon-table" title="Home Assistant enabled" aria-label="Home Assistant enabled">
                                 <img src="img/ha.png" alt="Home Assistant" loading="lazy">
-                            </span>`
+                              </span>`
                             : '<span class="table-empty-value">-</span>'}
                     </td>
                     <td class="col-area-installed">${escapeHtml(areaName)}</td>
@@ -916,13 +916,12 @@ function renderDevices() {
     // Update pagination controls
     updatePaginationControls(totalPages, startIndex, endIndex, sortedDevices.length);
     updateBulkEditState();
+    requestAnimationFrame(updateTableLabelOverflow);
 }
 
 function renderDevicesGrid(devicesToRender) {
     const grid = document.getElementById('devices-grid');
     if (!grid) return;
-    const labelNameMap = buildLabelNameMap(labels);
-    const labelMetaMap = buildLabelMetaMap(labels);
 
     if (!devicesToRender.length) {
         grid.innerHTML = `
@@ -941,7 +940,6 @@ function renderDevicesGrid(devicesToRender) {
         const areaName = device.area ? getAreaName(areas, device.area) : '-';
         const controlledAreaName = device.controlledArea ? getAreaName(areas, device.controlledArea) : '-';
         const typeDisplay = getFriendlyOption(settings.types, device.type, formatDeviceType) || '-';
-        const labelChips = renderDeviceLabelChips(device, labelMetaMap);
         const brand = getFriendlyOption(settings.brands, device.brand, formatDeviceType) || '-';
         const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
         const normalizedStatus = normalizeStatusValue(device.status);
@@ -1287,6 +1285,102 @@ function renderDeviceLabelChips(device, labelMetaMap) {
             `;
         })
         .join('');
+}
+
+function renderLimitedLabelChips(device, labelMetaMap, maxItems = 2) {
+    const labelIds = normalizeLabelList(device && device.labels);
+    if (!labelIds.length) {
+        return '';
+    }
+    const ordered = labelIds
+        .map((id) => {
+            const meta = labelMetaMap.get(id) || { name: id, color: '' };
+            return {
+                id,
+                name: meta.name || id,
+                color: meta.color || ''
+            };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    const visible = ordered.slice(0, maxItems);
+    const remaining = ordered.length - visible.length;
+    const chips = visible.map((meta) => {
+        const colorStyle = meta.color ? ` style="--label-color: ${meta.color};"` : '';
+        const colorClass = meta.color ? ' has-color' : '';
+        return `
+            <span class="label-chip label-chip-compact label-chip-static${colorClass}"${colorStyle}>
+                <span class="label-chip-body">
+                    <span class="label-swatch"></span>
+                    <span class="label-name">${escapeHtml(meta.name)}</span>
+                </span>
+            </span>
+        `;
+    });
+    if (remaining > 0) {
+        chips.push(`
+            <span class="label-chip label-chip-compact label-chip-static label-chip-more">
+                <span class="label-chip-body">
+                    <span class="label-name">+${remaining}</span>
+                </span>
+            </span>
+        `);
+    }
+    return chips.join('');
+}
+
+function updateTableLabelOverflow() {
+    const containers = document.querySelectorAll('.device-labels-inline-table');
+    containers.forEach((container) => {
+        if (!container || !(container instanceof HTMLElement)) return;
+        const chips = Array.from(container.querySelectorAll('.label-chip'))
+            .filter(chip => !chip.classList.contains('label-chip-more'));
+        const existingMore = container.querySelector('.label-chip-more');
+        if (existingMore) {
+            existingMore.remove();
+        }
+        chips.forEach(chip => chip.classList.remove('is-hidden'));
+        if (!chips.length || container.clientWidth === 0) return;
+
+        const styles = window.getComputedStyle(container);
+        const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
+        let used = 0;
+        let visibleCount = 0;
+
+        chips.forEach((chip) => {
+            const chipWidth = chip.getBoundingClientRect().width;
+            const nextWidth = visibleCount === 0 ? chipWidth : chipWidth + gap;
+            if (used + nextWidth <= container.clientWidth) {
+                used += nextWidth;
+                visibleCount += 1;
+            } else {
+                chip.classList.add('is-hidden');
+            }
+        });
+
+        let hiddenCount = chips.length - visibleCount;
+        if (hiddenCount <= 0) return;
+
+        const moreChip = document.createElement('span');
+        moreChip.className = 'label-chip label-chip-compact label-chip-static label-chip-more';
+        moreChip.innerHTML = `
+            <span class="label-chip-body">
+                <span class="label-name">+${hiddenCount}</span>
+            </span>
+        `;
+        container.appendChild(moreChip);
+
+        while (container.scrollWidth > container.clientWidth && visibleCount > 0) {
+            const chipToHide = chips[visibleCount - 1];
+            if (!chipToHide) break;
+            chipToHide.classList.add('is-hidden');
+            visibleCount -= 1;
+            hiddenCount += 1;
+            const label = moreChip.querySelector('.label-name');
+            if (label) {
+                label.textContent = `+${hiddenCount}`;
+            }
+        }
+    });
 }
 
 function formatDeviceType(typeSlug) {
