@@ -10,6 +10,56 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 - Visual map to see how devices are connected.
 - Automatic Backup of the data using Home Assisteant Backup system.
 
+## Screenshots
+
+### Dashboard Overview
+![Dashboard Overview](website/img/screenshots/home-stats.png)
+Track device, labels, areas, and floors at a glance. Get insights about the battery used, integrations, power usage, and more.
+
+### Devices Table
+![Devices Table](website/img/screenshots/devices-table.png)
+A dense, sortable inventory for power users. Scan essential details, multi-select devices, and jump straight into edits when you need to move fast.
+
+### Devices Cards
+![Devices Cards](website/img/screenshots/devices-cards.png)
+A readable card layout that works great on mobile and touch screens. Perfect for quick browsing, maintenance checks, and walkthroughs.
+
+### Filters
+![Filters](website/img/screenshots/filters.png)
+Slice the inventory by status, connectivity, labels, and integrations. Filters are optimized for quick audits and for finding the exact devices that need attention.
+
+### Bulk Edit
+![Bulk Edit](website/img/screenshots/bulk-edit.png)
+Apply a single change across many devices in seconds. Great for moving a batch to a new area or adding a shared label after installation.
+
+### Device Basics
+![Device Basics](website/img/screenshots/device-basic-information.png)
+Capture identity, brand, type, and labels for each physical device. This becomes the canonical record even when integrations or platforms change.
+
+### Device Power
+![Device Power](website/img/screenshots/device-power.png)
+Document power source, battery types, and replacement cadence. Keep energy planning and maintenance schedules in one place.
+
+### Device Ports
+![Device Ports](website/img/screenshots/device-ports.png)
+Map physical connections between devices. Build a living topology so it is clear how hubs, switches, and power sources are wired.
+
+### Device Files
+![Device Files](website/img/screenshots/device-files.png)
+Attach manuals, invoices, photos, and setup notes to each device. Everything you need for maintenance and warranty stays with the record.
+
+### Connection Diagram
+![Connection Diagram](website/img/screenshots/diagram.png)
+Visualize device placement and relationships across the home. Use it to plan expansions or share the layout with installers.
+
+### Home Assistant Integration
+![Home Assistant Integration](website/img/screenshots/ha-settings.png)
+Sync devices, labels, areas and floors with Home Assistant while keeping the app focused on physical-device inventory and documentation.
+
+### Networks
+![Networks](website/img/screenshots/networks.png)
+Document which VLAN each device uses so network assignments stay clear across the inventory.
+
 ## Installation
 
 * Go to the **App Store**, click **⋮ → Repositories**, fill in</br> `https://github.com/smarthomecompared/smart-home-planner` and click **Add → Close** or click the **Add repository** button below, click **Add → Close** (You might need to enter the **internal IP address** of your Home Assistant instance first).
@@ -19,54 +69,6 @@ Home Assistant App to plan, document, and visualize your smart home ecosystem. A
 * Click on the Smart Home Planner App and press **Install** and wait till the app is installed.
 * Start the app by going to **Info** and click **Start**
 * Wait a few seconds and press **OPEN WEB UI**, you will now see the onboarding page.
-
-## Tech Stack
-- Home Assistant App with ingress (Python server serves UI + storage API).
-- Vanilla HTML/CSS/JS (no build step).
-- Cytoscape.js (CDN) for the map.
-- `/data` volume for persistence.
-
-## Data and privacy
-- All data is stored in the user's browser (localStorage), inside Home Assistant.
-- No backend and no tracking.
-- The map loads Cytoscape from `unpkg.com`; for 100% offline usage, download the library and update the script tag.
-
-## Structure
-- `config.yaml`: Home Assistant App definition.
-- `website/`: UI served by the app.
-- `website/js/`: data logic, filters, forms, and map.
-- `website/css/`: styles.
-
-## Deploy for Testing in Home Assistant
-
-Use this deploy flow to push local changes to a Home Assistant **testing** instance.
-
-1. From the repository root, run:
-
-```bash
-sh sync-samba.sh
-```
-
-2. The script copies `smart-home-planner/` to the mounted add-ons folder (`/Volumes/addons`).
-3. Restart the app in Home Assistant to load the updated files.
-
-## Import/Export
-From **Settings** you can export a JSON with devices, areas, floors, settings, and map positions, or import a backup.
-
-## License
-MIT. See `LICENSE`.
-
-![Supports aarch64 Architecture][aarch64-shield]
-![Supports amd64 Architecture][amd64-shield]
-![Supports armhf Architecture][armhf-shield]
-![Supports armv7 Architecture][armv7-shield]
-![Supports i386 Architecture][i386-shield]
-
-[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
-[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
-[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
-[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
-[i386-shield]: https://img.shields.io/badge/i386-yes-green.svg
 
 ## Follow Us
 
