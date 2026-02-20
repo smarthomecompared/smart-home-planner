@@ -26,6 +26,10 @@ Plan, document, and visualize your smart home with a Home Assistant app that kee
 ![Dashboard Overview](website/img/screenshots/home-stats.png)
 Track device, labels, areas, and floors at a glance. Get insights about the battery used, integrations, power usage, and more.
 
+### Connection Diagram
+![Connection Diagram](website/img/screenshots/diagram.png)
+Visualize device placement and relationships across the home. Use it to plan expansions or share the layout with installers.
+
 ### Devices Table
 ![Devices Table](website/img/screenshots/devices-table.png)
 A dense, sortable inventory for power users. Scan essential details, multi-select devices, and jump straight into edits when you need to move fast.
@@ -57,10 +61,6 @@ Map physical connections between devices. Build a living topology so it is clear
 ### Device Files
 ![Device Files](website/img/screenshots/device-files.png)
 Attach manuals, invoices, photos, and setup notes to each device. Everything you need for maintenance and warranty stays with the record.
-
-### Connection Diagram
-![Connection Diagram](website/img/screenshots/diagram.png)
-Visualize device placement and relationships across the home. Use it to plan expansions or share the layout with installers.
 
 ### Home Assistant Integration
 ![Home Assistant Integration](website/img/screenshots/ha-settings.png)
