@@ -333,6 +333,7 @@ function buildRestoredDeviceFromHa(haDevice) {
         brand: normalizeHaBrandName(haDevice?.manufacturer),
         model: String(haDevice?.model || '').trim(),
         homeAssistant: true,
+        haDeviceIds: [id],
         status: 'working',
         area: areaId,
         controlledArea: areaId

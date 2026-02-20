@@ -187,6 +187,38 @@ function normalizeString(value) {
   return String(value).trim();
 }
 
+function normalizeHaDeviceIds(values) {
+  const result = [];
+  const seen = new Set();
+  const source = Array.isArray(values) ? values : values ? [values] : [];
+  for (const value of source) {
+    const normalized = normalizeString(value);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function getLinkedHaDeviceIds(device) {
+  if (!device || typeof device !== "object") {
+    return [];
+  }
+  const direct = normalizeHaDeviceIds(device.haDeviceIds || device.homeAssistantDeviceIds);
+  if (direct.length) {
+    return direct;
+  }
+  const hasFlag = Boolean(
+    device.homeAssistant === true ||
+      ["true", "1", "yes"].includes(normalizeString(device.homeAssistant).toLowerCase())
+  );
+  if (hasFlag) {
+    const fallbackId = normalizeString(device.id);
+    return fallbackId ? [fallbackId] : [];
+  }
+  return [];
+}
+
 async function readLabelsRegistry() {
   try {
     const raw = await fs.readFile(LABELS_FILE, "utf8");
@@ -294,14 +326,21 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLa
   }
   const hasExistingDevice = Boolean(existingDevice && typeof existingDevice === "object");
   const base = hasExistingDevice ? { ...existingDevice } : {};
+  const existingId = normalizeString(existingDevice?.id);
+  const deviceId = existingId || id;
+  const linkedHaIds = hasExistingDevice ? getLinkedHaDeviceIds(existingDevice) : [];
+  if (id && !linkedHaIds.includes(id)) {
+    linkedHaIds.push(id);
+  }
 
   const synced = {
     ...base,
-    id,
+    id: deviceId,
     name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
     brand: hasExistingDevice ? normalizeString(base.brand) : manufacturer,
     model: hasExistingDevice ? normalizeString(base.model) : model,
-    homeAssistant: true,
+    homeAssistant: linkedHaIds.length > 0,
+    haDeviceIds: linkedHaIds,
   };
   if (haLabels !== null) {
     synced.labels = haLabels;
@@ -335,6 +374,15 @@ async function syncStorageDevicesFromRegistry(haDevices) {
       .map((device) => [normalizeString(device.id), device])
       .filter(([id]) => Boolean(id))
   );
+  const existingByHaId = new Map();
+  existingDevices.forEach((device) => {
+    if (!device || typeof device !== "object") return;
+    const linkedIds = getLinkedHaDeviceIds(device);
+    linkedIds.forEach((haId) => {
+      if (!haId || existingByHaId.has(haId)) return;
+      existingByHaId.set(haId, device);
+    });
+  });
 
   const sourceDevices = (haDevices || []).filter((device) => device && typeof device === "object");
   const sourceDevicesAfterExclusions = [];
@@ -386,10 +434,30 @@ async function syncStorageDevicesFromRegistry(haDevices) {
       continue;
     }
 
-    const sourceDevice = sourceById.get(id);
+    const linkedHaIds = getLinkedHaDeviceIds(existingDevice);
+    const directSource = sourceById.get(id);
+    let sourceDevice = directSource || null;
+    if (!sourceDevice && linkedHaIds.length > 0) {
+      for (const haId of linkedHaIds) {
+        const candidate = sourceById.get(haId);
+        if (candidate) {
+          sourceDevice = candidate;
+          break;
+        }
+      }
+    }
+
     if (sourceDevice) {
       nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels));
-      syncedIds.add(id);
+      if (directSource) {
+        syncedIds.add(id);
+      }
+      linkedHaIds.forEach((haId) => {
+        if (sourceById.has(haId)) {
+          syncedIds.add(haId);
+        }
+      });
+      syncedIds.add(normalizeString(sourceDevice.id));
       continue;
     }
 
@@ -397,6 +465,7 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     const retainedDevice = {
       ...existingDevice,
       homeAssistant: false,
+      haDeviceIds: [],
     };
     nextDevices.push(retainedDevice);
     if (wasLinkedToHa) {
@@ -407,7 +476,8 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   for (const sourceDevice of sourceDevicesAfterExclusions) {
     const id = normalizeString(sourceDevice?.id);
     if (!id || syncedIds.has(id)) continue;
-    nextDevices.push(buildSyncedDevice(sourceDevice, existingById.get(id), haAreaSyncTarget, allowedLabels));
+    const existingDevice = existingById.get(id) || existingByHaId.get(id);
+    nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels));
     createdDevicesCount += 1;
   }
 

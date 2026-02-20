@@ -108,6 +108,25 @@ function normalizeDeviceId(value) {
     return String(value || '').trim();
 }
 
+function normalizeHaIntegrationFlag(value) {
+    if (value === true) return true;
+    const normalized = String(value || '').trim().toLowerCase();
+    return normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
+function normalizeHaDeviceIds(values) {
+    const result = [];
+    const seen = new Set();
+    const source = Array.isArray(values) ? values : (values ? [values] : []);
+    source.forEach((value) => {
+        const normalized = normalizeDeviceId(value);
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        result.push(normalized);
+    });
+    return result;
+}
+
 async function addDeviceToExcludedListIfInHa(deviceId) {
     const normalizedId = normalizeDeviceId(deviceId);
     if (!normalizedId) return false;
@@ -308,6 +327,27 @@ async function loadData() {
         networks = [buildNetwork('vlan0')];
         didUpdate = true;
     }
+
+    devices.forEach((device) => {
+        if (!device || typeof device !== 'object') return;
+        const currentIds = normalizeHaDeviceIds(device.haDeviceIds || device.homeAssistantDeviceIds);
+        let nextIds = currentIds;
+        if (!nextIds.length && normalizeHaIntegrationFlag(device.homeAssistant)) {
+            const fallbackId = normalizeDeviceId(device.id);
+            nextIds = fallbackId ? [fallbackId] : [];
+        }
+        const shouldUpdateIds = !Array.isArray(device.haDeviceIds) ||
+            currentIds.length !== nextIds.length ||
+            currentIds.some((value, index) => value !== nextIds[index]);
+        if (shouldUpdateIds) {
+            device.haDeviceIds = nextIds;
+            didUpdate = true;
+        }
+        if (device.homeAssistantDeviceIds) {
+            delete device.homeAssistantDeviceIds;
+            didUpdate = true;
+        }
+    });
 
     if (didUpdate) {
         await patchStorage({
