@@ -1202,6 +1202,93 @@ async function getAllData() {
     };
 }
 
+function normalizeLabelId(value) {
+    return String(value || '').trim();
+}
+
+function normalizeLabelList(values) {
+    const result = [];
+    const seen = new Set();
+    (Array.isArray(values) ? values : []).forEach((value) => {
+        const normalized = normalizeLabelId(value);
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        result.push(normalized);
+    });
+    return result;
+}
+
+function buildLabelNameMap(labelItems) {
+    const map = new Map();
+    (labelItems || []).forEach((label) => {
+        if (!label || typeof label !== 'object') return;
+        const id = normalizeLabelId(label.id || label.label_id);
+        if (!id || map.has(id)) return;
+        const name = String(label.name || '').trim() || id;
+        map.set(id, name);
+    });
+    return map;
+}
+
+function formatDeviceLabels(device, labelNameMap) {
+    const labelIds = normalizeLabelList(device && device.labels);
+    if (!labelIds.length) {
+        return '-';
+    }
+    const names = labelIds
+        .map((id) => labelNameMap.get(id) || id)
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    return names.join(', ');
+}
+
+function buildLabelMetaMap(labelItems) {
+    const map = new Map();
+    (labelItems || []).forEach((label) => {
+        if (!label || typeof label !== 'object') return;
+        const id = normalizeLabelId(label.id || label.label_id);
+        if (!id || map.has(id)) return;
+        const name = String(label.name || '').trim() || id;
+        const color = typeof resolveLabelColor === 'function' ? resolveLabelColor(label.color) : String(label.color || '').trim();
+        map.set(id, {
+            id,
+            name,
+            color
+        });
+    });
+    return map;
+}
+
+function renderDeviceLabelChips(device, labelMetaMap) {
+    const labelIds = normalizeLabelList(device && device.labels);
+    if (!labelIds.length) {
+        return '';
+    }
+    const orderedLabels = labelIds
+        .map((id) => {
+            const meta = labelMetaMap.get(id) || { id, name: id, color: '' };
+            return {
+                id,
+                name: meta.name || id,
+                color: meta.color || ''
+            };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    return orderedLabels
+        .map((meta) => {
+            const colorStyle = meta.color ? ` style="--label-color: ${meta.color};"` : '';
+            const colorClass = meta.color ? ' has-color' : '';
+            return `
+                <span class="label-chip label-chip-compact label-chip-static${colorClass}"${colorStyle}>
+                    <span class="label-chip-body">
+                        <span class="label-swatch"></span>
+                        <span class="label-name">${escapeHtml(meta.name)}</span>
+                    </span>
+                </span>
+            `;
+        })
+        .join('');
+}
+
 function formatDeviceType(typeSlug) {
     if (!typeSlug) return '';
     

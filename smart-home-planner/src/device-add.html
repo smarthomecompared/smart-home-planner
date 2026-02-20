@@ -69,9 +69,17 @@
                                     <option value="">Select a type</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label for="device-labels">Labels</label>
-                                <select id="device-labels" class="form-multi-select" multiple size="4"></select>
+                            <div class="form-group form-group-full">
+                                <div class="form-label-row">
+                                    <label for="device-labels">Labels</label>
+                                    <span class="label-picker-count" id="device-labels-count">0 selected</span>
+                                </div>
+                                <select id="device-labels" class="visually-hidden" multiple></select>
+                                <div class="label-picker" id="device-labels-picker" role="listbox" aria-multiselectable="true"></div>
+                                <div class="label-picker-empty" id="device-labels-empty" hidden>No labels available yet.</div>
+                                <div id="device-labels-ha-note" class="form-field-note" hidden>
+                                    This device is linked to Home Assistant. Changing labels here will also update Home Assistant.
+                                </div>
                             </div>
                         </div>
                     </div>
