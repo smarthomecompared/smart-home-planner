@@ -245,19 +245,25 @@ p {
 .gallery {
   margin-top: 1.2rem;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
 }
 
 .shot {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--bg-soft);
-  padding: 0.6rem;
+  padding: 1rem;
   text-align: left;
   color: var(--text);
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease;
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+  margin: 0 auto;
+  max-width: 980px;
+  width: 100%;
 }
 
 .shot:hover {
@@ -266,16 +272,28 @@ p {
 }
 
 .shot img {
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
   border-radius: 10px;
   display: block;
 }
 
-.shot span {
-  display: block;
-  margin-top: 0.65rem;
-  font-size: 0.9rem;
+.shot-body {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shot-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.shot-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--muted);
 }
 
