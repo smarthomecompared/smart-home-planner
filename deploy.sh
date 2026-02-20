@@ -115,4 +115,34 @@ for DEST_DIR in "${DEST_DIRS[@]}"; do
   fi
 done
 
-echo "Done."
+# Generate sample tar file
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_JSON="${SCRIPT_DIR}/smart-home-planner/sample.json"
+OUTPUT_TAR="${SCRIPT_DIR}/sample.tar"
+
+if [[ ! -f "${SOURCE_JSON}" ]]; then
+    echo "Missing source file: ${SOURCE_JSON}" >&2
+    exit 1
+fi
+
+TMP_DIR="$(mktemp -d)"
+cleanup() {
+    rm -rf "${TMP_DIR}"
+}
+trap cleanup EXIT
+
+SOURCE_JSON="${SOURCE_JSON}" TMP_DIR="${TMP_DIR}" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+source = Path(os.environ["SOURCE_JSON"])
+target = Path(os.environ["TMP_DIR"]) / "data.json"
+
+payload = json.loads(source.read_text())
+target.write_text(json.dumps(payload, indent=2) + "\n")
+PY
+
+tar -C "${TMP_DIR}" -cf "${OUTPUT_TAR}" data.json
+
+echo "Generated ${OUTPUT_TAR}"

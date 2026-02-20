@@ -23,7 +23,7 @@
       "storageUnit": "GB",
       "notes": "Main automation hub.",
       "connectivity": "wifi",
-      "area": "area-network",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": true,
       "zigbeeController": false,
@@ -48,7 +48,7 @@
       ],
       "createdAt": "2025-06-01T11:00:00.000Z",
       "updatedAt": "2026-02-03T15:11:08.495Z",
-      "controlledArea": "area-network",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": [
@@ -78,7 +78,7 @@
       "storageUnit": "",
       "notes": "Primary Zigbee controller.",
       "connectivity": "zigbee",
-      "area": "area-network",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": true,
@@ -91,7 +91,7 @@
       "localOnly": true,
       "ports": [],
       "createdAt": "2025-06-01T11:05:00.000Z",
-      "controlledArea": "area-network",
+      "controlledArea": "living_room",
       "labels": [],
       "haDeviceIds": [
         "dev-2"
@@ -120,7 +120,7 @@
       "storageUnit": "",
       "notes": "Primary gateway.",
       "connectivity": "wifi",
-      "area": "area-network",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -144,7 +144,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:10:00.000Z",
-      "controlledArea": "area-network",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -172,7 +172,7 @@
       "storageUnit": "",
       "notes": "Feeds critical wired devices.",
       "connectivity": "wifi",
-      "area": "area-network",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -218,7 +218,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:12:00.000Z",
-      "controlledArea": "area-network",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -246,7 +246,7 @@
       "storageUnit": "TB",
       "notes": "Backups + media.",
       "connectivity": "wifi",
-      "area": "area-office",
+      "area": "office",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -264,7 +264,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:15:00.000Z",
-      "controlledArea": "area-office",
+      "controlledArea": "office",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -292,7 +292,7 @@
       "storageUnit": "",
       "notes": "Main floor Wi-Fi coverage.",
       "connectivity": "wifi",
-      "area": "area-living",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -310,7 +310,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:18:00.000Z",
-      "controlledArea": "area-living",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -338,7 +338,7 @@
       "storageUnit": "",
       "notes": "Waiting to mount.",
       "connectivity": "wifi",
-      "area": "area-patio",
+      "area": "garden",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -356,7 +356,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:22:00.000Z",
-      "controlledArea": "area-patio",
+      "controlledArea": "garden",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": []
@@ -384,7 +384,7 @@
       "storageUnit": "",
       "notes": "Needs battery replacement.",
       "connectivity": "z-wave",
-      "area": "area-entry",
+      "area": "entry",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -397,7 +397,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:25:00.000Z",
-      "controlledArea": "area-entry",
+      "controlledArea": "entry",
       "labels": [],
       "haDeviceIds": [
         "dev-8"
@@ -426,7 +426,7 @@
       "storageUnit": "",
       "notes": "Automations for evening lights.",
       "connectivity": "zigbee",
-      "area": "area-living",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -439,7 +439,7 @@
       "localOnly": true,
       "ports": [],
       "createdAt": "2025-06-01T11:27:00.000Z",
-      "controlledArea": "area-living",
+      "controlledArea": "living_room",
       "labels": [],
       "haDeviceIds": [
         "dev-9"
@@ -468,7 +468,7 @@
       "storageUnit": "",
       "notes": "Covers core network.",
       "connectivity": "wifi",
-      "area": "area-network",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -494,7 +494,7 @@
         }
       ],
       "createdAt": "2025-06-01T11:30:00.000Z",
-      "controlledArea": "area-network",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -522,7 +522,7 @@
       "storageUnit": "",
       "notes": "Coffee station automation.",
       "connectivity": "wifi",
-      "area": "area-kitchen",
+      "area": "kitchen",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -535,7 +535,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:35:00.000Z",
-      "controlledArea": "area-kitchen",
+      "controlledArea": "kitchen",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": [
@@ -565,7 +565,7 @@
       "storageUnit": "",
       "notes": "Schedules synced with weather.",
       "connectivity": "wifi",
-      "area": "area-living",
+      "area": "living_room",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -578,7 +578,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:38:00.000Z",
-      "controlledArea": "area-living",
+      "controlledArea": "living_room",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": []
@@ -606,7 +606,7 @@
       "storageUnit": "",
       "notes": "Evening scenes.",
       "connectivity": "zigbee",
-      "area": "area-patio",
+      "area": "garden",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -619,7 +619,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:40:00.000Z",
-      "controlledArea": "area-patio",
+      "controlledArea": "garden",
       "labels": [],
       "haDeviceIds": [
         "dev-13"
@@ -689,7 +689,7 @@
       "storageUnit": "",
       "notes": "Awaiting installation.",
       "connectivity": "wifi",
-      "area": "area-hall",
+      "area": "hall",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -702,7 +702,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:45:00.000Z",
-      "controlledArea": "area-hall",
+      "controlledArea": "hall",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": []
@@ -730,7 +730,7 @@
       "storageUnit": "",
       "notes": "Laundry protection.",
       "connectivity": "zigbee",
-      "area": "area-laundry",
+      "area": "laundry",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -743,7 +743,7 @@
       "localOnly": true,
       "ports": [],
       "createdAt": "2025-06-01T11:48:00.000Z",
-      "controlledArea": "area-laundry",
+      "controlledArea": "laundry",
       "labels": [],
       "haDeviceIds": [
         "dev-16"
@@ -772,7 +772,7 @@
       "storageUnit": "",
       "notes": "Kitchen dashboard.",
       "connectivity": "wifi",
-      "area": "area-kitchen",
+      "area": "kitchen",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -785,7 +785,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:50:00.000Z",
-      "controlledArea": "area-kitchen",
+      "controlledArea": "kitchen",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": []
@@ -813,7 +813,7 @@
       "storageUnit": "GB",
       "notes": "Home theater hub.",
       "connectivity": "wifi",
-      "area": "area-living",
+      "area": "living_room",
       "threadBorderRouter": true,
       "matterHub": false,
       "zigbeeController": false,
@@ -826,7 +826,7 @@
       "localOnly": true,
       "ports": [],
       "createdAt": "2025-06-01T11:52:00.000Z",
-      "controlledArea": "area-living",
+      "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
       "haDeviceIds": []
@@ -854,7 +854,7 @@
       "storageUnit": "",
       "notes": "Offline after router swap.",
       "connectivity": "wifi",
-      "area": "area-garage",
+      "area": "garage",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -867,7 +867,7 @@
       "localOnly": false,
       "ports": [],
       "createdAt": "2025-06-01T11:55:00.000Z",
-      "controlledArea": "area-garage",
+      "controlledArea": "garage",
       "networkId": "network-iot",
       "labels": [],
       "haDeviceIds": [
