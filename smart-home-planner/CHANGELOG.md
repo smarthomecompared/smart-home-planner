@@ -1,4 +1,4 @@
-## 1.0.0 - 
+## 1.0.0 - 2026-02-21
 
 ### Added
 - More device types
