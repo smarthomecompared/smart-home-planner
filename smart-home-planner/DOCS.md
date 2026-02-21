@@ -40,7 +40,8 @@ Key concepts:
 4. Connectivity captures how the device communicates, along with its network and role flags.
 5. Power captures wired or battery status and energy usage.
 6. Integrations capture which ecosystems the device belongs to.
-7. Files and notes keep manuals, receipts, and maintenance history close to the device.
+7. Purchase information tracks serial numbers, dates, prices, and warranty expiration.
+8. Files and notes keep manuals, receipts, and maintenance history close to the device.
 
 ## Dashboard
 
@@ -80,7 +81,7 @@ Use Clear Filters when you want to return to a full inventory view.
 
 ### Bulk Edit
 
-Bulk Edit lets you apply a single change to multiple devices. Select devices from the table or cards, choose a field, and apply one update at a time. Supported fields include Installed Area, Controlled Area, Add/Remove Labels, Type, Brand, and Status. When the field you edit is synced with Home Assistant, the app updates Home Assistant too.
+Bulk Edit lets you apply a single change to multiple devices. Select devices from the table or cards, choose a field, and apply one update at a time. Supported fields include Installed Area, Controlled Area, Add/Remove Labels, Type, Brand, Status, Purchase Date, and Warranty Expiration. When the field you edit is synced with Home Assistant, the app updates Home Assistant too.
 
 ### Table View
 
@@ -120,13 +121,14 @@ Use Add Device to capture both operational and planning information. The form is
 
 Guidance for each section:
 1. Basic Information identifies the device, including any labels used for filtering.
-2. Installation defines location and status, which drives filters and dashboards.
-3. Power captures energy needs, battery planning, and consumption data.
-4. Storage helps document hubs and servers with disk space.
-5. Connectivity captures how the device communicates and its network identity.
-6. Ports describe connections to other devices for mapping and documentation.
-7. Integrations track ecosystem ownership across platforms.
-8. Notes and Files keep manuals, receipts, and maintenance history in one place.
+2. Purchase Information captures serial numbers, store, price, currency, and warranty expiration.
+3. Installation defines location and status, which drives filters and dashboards.
+4. Power captures energy needs, battery planning, and consumption data.
+5. Storage helps document hubs and servers with disk space.
+6. Connectivity captures how the device communicates and its network identity.
+7. Ports describe connections to other devices for mapping and documentation.
+8. Integrations track ecosystem ownership across platforms.
+9. Notes and Files keep manuals, receipts, and maintenance history in one place.
 
 ## Edit Device
 
@@ -137,8 +139,9 @@ Typical tasks:
 2. Update battery change dates after maintenance.
 3. Add files such as invoices or manuals.
 4. Update connectivity details after a network change.
-5. Adjust labels to keep Home Assistant and the app aligned.
-6. Delete the device if it is permanently removed.
+5. Update purchase info like serial numbers or warranty expiration.
+6. Adjust labels to keep Home Assistant and the app aligned.
+7. Delete the device if it is permanently removed.
 
 The Apply action lets you save changes without leaving the page, which is useful during longer editing sessions.
 

@@ -1352,13 +1352,17 @@ nav.site-nav a.active .site-nav-icon {
     transition: all var(--transition-base);
 }
 
-.form-group input[type="date"] {
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"] {
     color-scheme: dark;
 }
 
-.form-group input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.4) saturate(0);
-    opacity: 0.9;
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(2) saturate(0);
+    opacity: 1;
 }
 
 .form-group input:hover,

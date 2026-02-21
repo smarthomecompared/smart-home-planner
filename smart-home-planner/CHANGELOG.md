@@ -1,7 +1,7 @@
 ## 1.1.0 - 
 
 ### Added
-  
+- More device fields: serial number, purchase date, store, price and Warranty Expiration
 
 ## 1.0.0 - 2026-02-21
 

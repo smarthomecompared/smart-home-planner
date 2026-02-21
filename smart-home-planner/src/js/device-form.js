@@ -125,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     populateConnectivity();
     populateNetworks();
     populateBatteryTypes();
+    populatePurchaseCurrencies();
     populateLabels();
     setAreas();
     handleBrandChange();
@@ -703,6 +704,64 @@ function buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
 }
 
+const FALLBACK_CURRENCY_CODES = [
+    'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'SGD', 'JPY', 'MXN', 'BRL',
+    'ARS', 'CLP', 'COP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CNY', 'HKD',
+    'TWD', 'INR', 'IDR', 'KRW', 'THB', 'VND', 'ZAR', 'AED', 'SAR', 'ILS',
+    'TRY', 'RUB', 'UAH', 'CZK', 'HUF', 'RON', 'BGN', 'HRK', 'ISK', 'MYR'
+];
+
+function getCurrencyCodes() {
+    if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
+        try {
+            const codes = Intl.supportedValuesOf('currency');
+            if (Array.isArray(codes) && codes.length) {
+                return codes;
+            }
+        } catch (error) {
+            console.warn('Failed to load currency codes from Intl:', error);
+        }
+    }
+    return FALLBACK_CURRENCY_CODES;
+}
+
+function resolveCurrencySymbol(code) {
+    if (!code) return code;
+    try {
+        const formatter = new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: code,
+            currencyDisplay: 'symbol'
+        });
+        const parts = formatter.formatToParts(0);
+        const symbolPart = parts.find(part => part.type === 'currency');
+        return symbolPart && symbolPart.value ? symbolPart.value : code;
+    } catch (error) {
+        return code;
+    }
+}
+
+function populatePurchaseCurrencies() {
+    const currencySelect = document.getElementById('device-purchase-currency');
+    if (!currencySelect) return;
+    const currentValue = currencySelect.value || 'USD';
+    const codes = getCurrencyCodes()
+        .map(code => String(code || '').trim().toUpperCase())
+        .filter(Boolean);
+    const uniqueCodes = Array.from(new Set(codes)).sort((a, b) => a.localeCompare(b));
+    currencySelect.innerHTML = uniqueCodes
+        .map(code => {
+            const symbol = resolveCurrencySymbol(code);
+            const label = `${code} (${symbol})`;
+            return `<option value="${code}">${escapeHtml(label)}</option>`;
+        })
+        .join('');
+    currencySelect.value = currentValue;
+    if (!currencySelect.value) {
+        currencySelect.value = 'USD';
+    }
+}
+
 // Populate dropdowns
 function populateBrands() {
     const brandSelect = document.getElementById('device-brand');
@@ -1237,6 +1296,10 @@ function loadDeviceData(device) {
     if (deviceIdReadonly) {
         deviceIdReadonly.textContent = device && device.id ? String(device.id) : '-';
     }
+    const serialNumberInput = document.getElementById('device-serial-number');
+    if (serialNumberInput) {
+        serialNumberInput.value = device.serialNumber || '';
+    }
     document.getElementById('device-name').value = device.name || '';
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
@@ -1255,6 +1318,26 @@ function loadDeviceData(device) {
     document.getElementById('device-mean-consumption').value = device.meanConsumption || '';
     document.getElementById('device-max-consumption').value = device.maxConsumption || '';
     document.getElementById('device-installation-date').value = device.installationDate || '';
+    const purchaseDateInput = document.getElementById('device-purchase-date');
+    if (purchaseDateInput) {
+        purchaseDateInput.value = device.purchaseDate || '';
+    }
+    const purchaseStoreInput = document.getElementById('device-purchase-store');
+    if (purchaseStoreInput) {
+        purchaseStoreInput.value = device.purchaseStore || '';
+    }
+    const purchasePriceInput = document.getElementById('device-purchase-price');
+    if (purchasePriceInput) {
+        purchasePriceInput.value = Number.isFinite(device.purchasePrice) ? device.purchasePrice : '';
+    }
+    const purchaseCurrencySelect = document.getElementById('device-purchase-currency');
+    if (purchaseCurrencySelect) {
+        purchaseCurrencySelect.value = device.purchaseCurrency || 'USD';
+    }
+    const warrantyExpirationInput = document.getElementById('device-warranty-expiration');
+    if (warrantyExpirationInput) {
+        warrantyExpirationInput.value = device.warrantyExpiration || '';
+    }
     document.getElementById('device-storage-size').value = device.storageSize || '';
     document.getElementById('device-storage-unit').value = device.storageUnit || '';
     document.getElementById('device-notes').value = device.notes || '';
@@ -1363,10 +1446,15 @@ async function handleDeviceSubmit(e) {
 
     const statusValue = document.getElementById('device-status').value;
     const isPendingStatus = statusValue === 'pending';
+    const purchasePriceRaw = document.getElementById('device-purchase-price')?.value || '';
+    const purchaseCurrencyValue = document.getElementById('device-purchase-currency')?.value || 'USD';
+    const hasPurchasePrice = purchasePriceRaw.trim() !== '';
+    const purchasePrice = hasPurchasePrice ? parseFloat(purchasePriceRaw) : null;
     const deviceData = {
         name: document.getElementById('device-name').value,
         brand: brandValue,
         model: document.getElementById('device-model').value,
+        serialNumber: document.getElementById('device-serial-number')?.value || '',
         type: typeValue,
         labels: getSelectedLabels(),
         ip: ipValue,
@@ -1382,6 +1470,11 @@ async function handleDeviceSubmit(e) {
         meanConsumption: document.getElementById('device-mean-consumption').value,
         maxConsumption: document.getElementById('device-max-consumption').value,
         installationDate: document.getElementById('device-installation-date').value,
+        purchaseDate: document.getElementById('device-purchase-date')?.value || '',
+        purchaseStore: document.getElementById('device-purchase-store')?.value || '',
+        purchasePrice,
+        purchaseCurrency: hasPurchasePrice ? purchaseCurrencyValue : '',
+        warrantyExpiration: document.getElementById('device-warranty-expiration')?.value || '',
         storageSize: document.getElementById('device-storage-size').value,
         storageUnit: document.getElementById('device-storage-unit').value,
         notes: document.getElementById('device-notes').value,
@@ -2366,6 +2459,12 @@ async function createDevice(deviceData) {
         meanConsumption: deviceData.meanConsumption ? parseFloat(deviceData.meanConsumption) : null,
         maxConsumption: deviceData.maxConsumption ? parseFloat(deviceData.maxConsumption) : null,
         installationDate: deviceData.installationDate || '',
+        serialNumber: deviceData.serialNumber ? deviceData.serialNumber.trim() : '',
+        purchaseDate: deviceData.purchaseDate || '',
+        purchaseStore: deviceData.purchaseStore ? deviceData.purchaseStore.trim() : '',
+        purchasePrice: Number.isFinite(deviceData.purchasePrice) ? deviceData.purchasePrice : null,
+        purchaseCurrency: deviceData.purchaseCurrency || '',
+        warrantyExpiration: deviceData.warrantyExpiration || '',
         storageSize: deviceData.storageSize ? parseFloat(deviceData.storageSize) : null,
         storageUnit: deviceData.storageUnit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
@@ -2438,6 +2537,12 @@ async function updateDevice(id, deviceData, options = {}) {
         device.meanConsumption = deviceData.meanConsumption ? parseFloat(deviceData.meanConsumption) : null;
         device.maxConsumption = deviceData.maxConsumption ? parseFloat(deviceData.maxConsumption) : null;
         device.installationDate = deviceData.installationDate || '';
+        device.serialNumber = deviceData.serialNumber ? deviceData.serialNumber.trim() : '';
+        device.purchaseDate = deviceData.purchaseDate || '';
+        device.purchaseStore = deviceData.purchaseStore ? deviceData.purchaseStore.trim() : '';
+        device.purchasePrice = Number.isFinite(deviceData.purchasePrice) ? deviceData.purchasePrice : null;
+        device.purchaseCurrency = deviceData.purchaseCurrency || '';
+        device.warrantyExpiration = deviceData.warrantyExpiration || '';
         device.storageSize = deviceData.storageSize ? parseFloat(deviceData.storageSize) : null;
         device.storageUnit = deviceData.storageUnit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';

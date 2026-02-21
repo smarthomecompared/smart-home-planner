@@ -8,6 +8,7 @@ Plan, document, and visualize your smart home with a Home Assistant app that kee
 - Simple forms to keep device details, notes, and dates in one place.
 - Organize everything by floors and areas.
 - Visual map to see how devices are connected.
+- Sync devices, labels, areas and floors with Home Assistant
 - Automatic Backup of the data using Home Assisteant Backup system.
 
 ## Installation

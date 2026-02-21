@@ -179,8 +179,9 @@ function initializeBulkEdit() {
         });
     }
 
-    document.querySelectorAll('.bulk-edit-field select').forEach((select) => {
-        select.addEventListener('change', updateBulkEditState);
+    document.querySelectorAll('.bulk-edit-field select, .bulk-edit-field input').forEach((field) => {
+        const eventType = field.tagName === 'INPUT' ? 'input' : 'change';
+        field.addEventListener(eventType, updateBulkEditState);
     });
 
     if (applyBtn) {
@@ -372,6 +373,10 @@ function getBulkEditValue() {
         value = selectValue('bulk-brand');
     } else if (field === 'status') {
         value = selectValue('bulk-status');
+    } else if (field === 'purchase-date') {
+        value = document.getElementById('bulk-purchase-date')?.value || '';
+    } else if (field === 'warranty-expiration') {
+        value = document.getElementById('bulk-warranty-expiration')?.value || '';
     }
     const isValid = Boolean(field && value);
     return { field, value, isValid };
@@ -712,6 +717,10 @@ async function handleBulkApply() {
             next.brand = value === '__clear__' ? '' : normalizeOptionValue(value);
         } else if (field === 'status') {
             next.status = value;
+        } else if (field === 'purchase-date') {
+            next.purchaseDate = value;
+        } else if (field === 'warranty-expiration') {
+            next.warrantyExpiration = value;
         }
         next.updatedAt = new Date().toISOString();
         return next;
