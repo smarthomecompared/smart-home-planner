@@ -865,9 +865,15 @@
                     </div>
                 </div>
             ` : '';
-            renderPieChart('chart-types', buildStats(devices, 'type', value => getFriendlyOption(settings.types, value, formatDeviceType)), 'type');
-            renderPieChart('chart-connectivity', buildStats(devices, 'connectivity', value => getFriendlyOption(settings.connectivity, value, formatConnectivity)), 'connectivity');
-            renderPieChart('chart-brands', buildStats(devices, 'brand', value => getFriendlyOption(settings.brands, value, formatDeviceType)), 'brand');
+            const typeStats = buildStats(devices, 'type', value => getFriendlyOption(settings.types, value, formatDeviceType));
+            const connectivityStats = buildStats(devices, 'connectivity', value => getFriendlyOption(settings.connectivity, value, formatConnectivity));
+            const brandStats = buildStats(devices, 'brand', value => getFriendlyOption(settings.brands, value, formatDeviceType));
+            const filteredTypeStats = isOnlyUnknownStats(typeStats) ? [] : typeStats;
+            const filteredConnectivityStats = isOnlyUnknownStats(connectivityStats) ? [] : connectivityStats;
+            const filteredBrandStats = isOnlyUnknownStats(brandStats) ? [] : brandStats;
+            renderPieChart('chart-types', filteredTypeStats, 'type');
+            renderPieChart('chart-connectivity', filteredConnectivityStats, 'connectivity');
+            renderPieChart('chart-brands', filteredBrandStats, 'brand');
             renderPieChart('chart-batteries', buildBatteryTotalsStats(devices, settings), 'batteryType', {
                 countFormatter: row => row.count
             });
@@ -931,6 +937,10 @@
                     count
                 }))
                 .sort((a, b) => b.count - a.count);
+        }
+
+        function isOnlyUnknownStats(rows) {
+            return rows.length === 1 && !rows[0].value;
         }
 
         function renderPieChart(targetId, rows, filterKey, options = {}) {
@@ -1624,7 +1634,8 @@
                         count,
                         percent: Math.round((count / total) * 100)
                     };
-                });
+                })
+                .filter(row => row.percent > 0);
         }
 
         function renderIntegrationCoverage(targetId, rows) {
