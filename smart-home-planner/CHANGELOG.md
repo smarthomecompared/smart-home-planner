@@ -3,6 +3,7 @@
 ### Added
 - More device fields: serial number, purchase date, store, price and Warranty Expiration
 - Added Global Search
+- Added links to buy needed batteries on Amazon
 
 ## 1.0.0 - 2026-02-21
 

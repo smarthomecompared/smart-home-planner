@@ -22,6 +22,7 @@ const HA_AREAS_API_URL = buildAppUrl('api/ha/areas');
 const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
 const HA_DEVICES_API_URL = buildAppUrl('api/ha/devices');
 const HA_LABELS_API_URL = buildAppUrl('api/ha/labels');
+const HA_CONFIG_API_URL = buildAppUrl('api/ha/config');
 
 function isIngressRuntime() {
     const pathname = window.location.pathname || '';
@@ -102,6 +103,25 @@ async function loadHaRegistry(url) {
         console.error(`Failed to load registry from ${url}:`, error);
         return [];
     }
+}
+
+let haConfigPromise = null;
+
+async function loadHaConfig() {
+    if (!haConfigPromise) {
+        haConfigPromise = fetch(HA_CONFIG_API_URL, { cache: 'no-store' })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Config request failed: ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.error(`Failed to load Home Assistant config:`, error);
+                return {};
+            });
+    }
+    return haConfigPromise;
 }
 
 function normalizeDeviceId(value) {
@@ -385,11 +405,14 @@ function getDefaultSettings() {
         const normalized = normalizeOptionValue(value);
         return value === normalized ? formatConnectivity(value) : value;
     };
+    const batteryDefaults = (DEFAULT_BATTERY_TYPES || [])
+        .map(item => (typeof item === 'string' ? item : item && item.name))
+        .filter(Boolean);
     return {
         brands: [...(DEFAULT_BRANDS || [])],
         types: (DEFAULT_TYPES || []).map(mapType),
         connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
-        batteryTypes: [...(DEFAULT_BATTERY_TYPES || [])],
+        batteryTypes: batteryDefaults,
         haAreaSyncTarget: 'controlled'
     };
 }
@@ -1247,4 +1270,5 @@ window.buildAppUrl = buildAppUrl;
 window.isIngressRuntime = isIngressRuntime;
 window.isLocalAddonRuntime = isLocalAddonRuntime;
 window.getRuntimeInfo = getRuntimeInfo;
+window.loadHaConfig = loadHaConfig;
 window.showToast = showToast;

@@ -14,6 +14,7 @@ import threading
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import parse_qs, unquote, urlparse
+from urllib.request import Request, urlopen
 
 DATA_FILE = os.environ.get("SHP_DATA_FILE", "/data/data.json")
 DATA_DIR = os.path.dirname(DATA_FILE) or "/data"
@@ -27,6 +28,8 @@ HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
 NODE_BIN = os.environ.get("SHP_NODE_BIN", "node")
 HA_DEVICE_UPDATE_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ha-device-update.js")
+SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
+SUPERVISOR_CORE_URL = os.environ.get("SUPERVISOR_CORE_URL", "http://supervisor/core")
 HOSTNAME = os.environ.get("HOSTNAME", "unknown")
 HOSTNAME_NORMALIZED = HOSTNAME.strip().lower()
 IS_LOCAL_RUNTIME = HOSTNAME_NORMALIZED.startswith("local_") or HOSTNAME_NORMALIZED.startswith("local-")
@@ -473,6 +476,23 @@ def _update_ha_device_labels(device_id, labels):
         return {"raw": output}
 
 
+def _fetch_ha_config():
+    if not SUPERVISOR_TOKEN:
+        raise RuntimeError("SUPERVISOR_TOKEN is missing")
+    base_url = str(SUPERVISOR_CORE_URL or "http://supervisor/core").rstrip("/")
+    url = f"{base_url}/api/config"
+    request = Request(url, headers={"Authorization": f"Bearer {SUPERVISOR_TOKEN}"})
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = response.read().decode("utf-8") or "{}"
+    except Exception as error:
+        raise RuntimeError(f"Failed to load Home Assistant config: {error}") from error
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError:
+        return {"raw": payload}
+
+
 class AppHandler(SimpleHTTPRequestHandler):
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -503,6 +523,17 @@ class AppHandler(SimpleHTTPRequestHandler):
                     "isAddonRuntime": not IS_LOCAL_RUNTIME,
                 },
             )
+            return
+
+        if path == "/api/ha/config":
+            try:
+                payload = _fetch_ha_config()
+            except RuntimeError as error:
+                message = str(error)
+                status = 503 if "SUPERVISOR_TOKEN" in message else 502
+                self._send_json(status, {"error": message})
+                return
+            self._send_json(200, payload)
             return
 
         if path == "/api/ha/areas":

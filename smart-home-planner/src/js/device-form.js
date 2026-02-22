@@ -18,6 +18,16 @@ let activeDeviceId = '';
 let deviceFiles = [];
 let deviceFilePreviewModal = null;
 let deviceFileRenameModal = null;
+let haDefaultCurrency = '';
+let haCountryCode = '';
+const amazonBatteryMetaMap = buildAmazonBatteryMetaMap();
+
+const AMAZON_STORE_DOMAINS = {
+    amazon_us: 'amazon.com',
+    amazon_ca: 'amazon.ca',
+    amazon_de: 'amazon.de',
+    amazon_uk: 'amazon.co.uk'
+};
 const HA_DEVICE_NAME_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-name') : '/api/ha/device-name';
 const HA_DEVICE_AREA_SYNC_API_URL =
@@ -110,6 +120,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     allAreas = data.areas;
     allLabels = data.labels || [];
     settings = await loadSettings();
+    const haConfig = typeof loadHaConfig === 'function' ? await loadHaConfig() : {};
+    haDefaultCurrency = String(haConfig?.currency || '').trim().toUpperCase();
+    haCountryCode = String(haConfig?.country || '').trim().toUpperCase();
     networks = data.networks || [];
     devices = allDevices;
     
@@ -704,6 +717,119 @@ function buildFriendlyOptions(configuredValues, deviceValues, fallbackFormatter)
         .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
 }
 
+function buildAmazonBatteryMetaMap() {
+    const map = new Map();
+    (DEFAULT_BATTERY_TYPES || []).forEach(item => {
+        const name = typeof item === 'string' ? item : String(item?.name || '').trim();
+        if (!name) return;
+        const normalized = normalizeOptionValue(name);
+        if (!normalized || map.has(normalized)) return;
+        const asin = typeof item === 'object' ? item.amazonAsin ?? null : null;
+        map.set(normalized, { name, amazonAsin: asin });
+    });
+    return map;
+}
+
+function getContinentCode(countryCode) {
+    const code = String(countryCode || '').trim().toUpperCase();
+    if (!code) return '';
+    const europe = new Set([
+        'AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR',
+        'GB', 'UK', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MC', 'MD', 'ME', 'MK',
+        'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'RU', 'SE', 'SI', 'SK', 'SM', 'UA', 'VA'
+    ]);
+    const northAmerica = new Set(['US', 'CA', 'MX']);
+    if (europe.has(code)) return 'EU';
+    if (northAmerica.has(code)) return 'NA';
+    return '';
+}
+
+function getLocation() {
+    const countryCode = String(haCountryCode || '').trim().toUpperCase();
+    if (!countryCode) return undefined;
+    return {
+        countryCode,
+        continentCode: getContinentCode(countryCode)
+    };
+}
+
+function getDefaultAmazonStore() {
+    let store;
+    if (supportedStores && supportedStores.length) {
+        const locationJson = getLocation();
+        if (locationJson) {
+            for (const each of supportedStores) {
+                if (each.countryCodes?.includes(locationJson.countryCode)) {
+                    store = supportedStores.find(item => item.id === each.id);
+                    if (store !== undefined) {
+                        break;
+                    }
+                }
+
+                if (store === undefined && each.continentCodes?.includes(locationJson.continentCode)) {
+                    store = supportedStores.find(item => item.id === each.id);
+                }
+            }
+        }
+
+        if (store === undefined) {
+            store = supportedStores[0];
+        }
+    }
+    return store;
+}
+
+function resolveAmazonAsin(asinValue, storeId) {
+    if (!asinValue) return '';
+    if (typeof asinValue === 'string') return asinValue;
+    if (typeof asinValue === 'object') {
+        if (!storeId) return '';
+        const resolved = asinValue[storeId];
+        return resolved ? String(resolved) : '';
+    }
+    return '';
+}
+
+function buildAmazonUrl(asin, storeOverride) {
+    if (!asin) return '';
+    const store = storeOverride || getDefaultAmazonStore();
+    const domain = store?.id ? AMAZON_STORE_DOMAINS[store.id] : '';
+    const tag = store?.tag || '';
+    const resolvedDomain = domain || AMAZON_STORE_DOMAINS.amazon_us;
+    if (!resolvedDomain) return '';
+    const base = `https://www.${resolvedDomain}/dp/${encodeURIComponent(asin)}`;
+    if (!tag) return base;
+    return `${base}?tag=${encodeURIComponent(tag)}`;
+}
+
+function updateBatteryBuyButton() {
+    const button = document.getElementById('battery-buy-btn');
+    if (!button) return;
+    const powerType = document.getElementById('device-power')?.value || '';
+    if (powerType !== 'battery') {
+        button.hidden = true;
+        button.setAttribute('href', '#');
+        return;
+    }
+    const batteryType = normalizeOptionValue(document.getElementById('device-battery-type')?.value || '');
+    if (!batteryType) {
+        button.hidden = true;
+        button.setAttribute('href', '#');
+        return;
+    }
+    const meta = amazonBatteryMetaMap.get(batteryType);
+    const store = getDefaultAmazonStore();
+    const asin = resolveAmazonAsin(meta?.amazonAsin, store?.id);
+    const amazonUrl = asin ? buildAmazonUrl(asin, store) : '';
+    if (!amazonUrl) {
+        button.hidden = true;
+        button.setAttribute('href', '#');
+        return;
+    }
+    button.hidden = false;
+    button.setAttribute('href', amazonUrl);
+}
+
 const FALLBACK_CURRENCY_CODES = [
     'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'NZD', 'SGD', 'JPY', 'MXN', 'BRL',
     'ARS', 'CLP', 'COP', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CNY', 'HKD',
@@ -741,10 +867,14 @@ function resolveCurrencySymbol(code) {
     }
 }
 
+function getDefaultCurrency() {
+    return haDefaultCurrency || 'USD';
+}
+
 function populatePurchaseCurrencies() {
     const currencySelect = document.getElementById('device-purchase-currency');
     if (!currencySelect) return;
-    const currentValue = currencySelect.value || 'USD';
+    const currentValue = currencySelect.value || getDefaultCurrency();
     const codes = getCurrencyCodes()
         .map(code => String(code || '').trim().toUpperCase())
         .filter(Boolean);
@@ -758,7 +888,7 @@ function populatePurchaseCurrencies() {
         .join('');
     currencySelect.value = currentValue;
     if (!currencySelect.value) {
-        currencySelect.value = 'USD';
+        currencySelect.value = getDefaultCurrency();
     }
 }
 
@@ -1332,7 +1462,7 @@ function loadDeviceData(device) {
     }
     const purchaseCurrencySelect = document.getElementById('device-purchase-currency');
     if (purchaseCurrencySelect) {
-        purchaseCurrencySelect.value = device.purchaseCurrency || 'USD';
+        purchaseCurrencySelect.value = device.purchaseCurrency || getDefaultCurrency();
     }
     const warrantyExpirationInput = document.getElementById('device-warranty-expiration');
     if (warrantyExpirationInput) {
@@ -1556,6 +1686,7 @@ function handlePowerTypeChange() {
         document.getElementById('device-mean-consumption').value = '';
         document.getElementById('device-max-consumption').value = '';
         document.getElementById('device-ups-protected').checked = false;
+        updateBatteryBuyButton();
     } else if (powerType === 'battery') {
         showGroup(batteryTypeGroup);
         showGroup(batteryCountGroup);
@@ -1589,6 +1720,7 @@ function handlePowerTypeChange() {
         document.getElementById('device-battery-count').value = '';
         document.getElementById('device-last-battery-change').value = '';
         document.getElementById('device-battery-duration').value = '';
+        updateBatteryBuyButton();
     }
 }
 
@@ -1645,17 +1777,26 @@ function handleStatusChange() {
 function handleBatteryTypeChange() {
     const batteryTypeSelect = document.getElementById('device-battery-type');
     if (batteryTypeSelect.value === '__new__') {
+        updateBatteryBuyButton();
         openBatteryTypeModal();
         return;
     }
     const powerType = document.getElementById('device-power').value;
     const batteryType = normalizeOptionValue(document.getElementById('device-battery-type').value || '');
     const batteryCountGroup = document.getElementById('battery-count-group');
-    const hideCount = powerType !== 'battery' || batteryType === 'internal';
+    const batteryCountInput = document.getElementById('device-battery-count');
+    const hideCount = powerType !== 'battery' || batteryType === 'internal' || batteryType === 'usb';
     batteryCountGroup.classList.toggle('is-hidden', hideCount);
     if (hideCount) {
-        document.getElementById('device-battery-count').value = '';
+        batteryCountInput.value = '';
+    } else {
+        const currentValue = batteryCountInput.value;
+        const numericValue = Number(currentValue);
+        if (!currentValue || !Number.isFinite(numericValue) || numericValue <= 0) {
+            batteryCountInput.value = '1';
+        }
     }
+    updateBatteryBuyButton();
 }
 
 function handleBrandChange() {

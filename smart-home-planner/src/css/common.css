@@ -1184,6 +1184,60 @@ nav.site-nav a.active .site-nav-icon {
     gap: 0.75rem;
 }
 
+.battery-type-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.battery-type-row select {
+    flex: 1 1 auto;
+}
+
+.battery-buy-btn {
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    min-height: 42px;
+    padding: 0.5rem 1.05rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fef3c7;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    box-shadow: 0 12px 18px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.battery-buy-btn::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--warning-color);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+.battery-buy-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(245, 158, 11, 0.65);
+    box-shadow: 0 16px 24px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.battery-buy-btn:focus-visible {
+    outline: 2px solid rgba(245, 158, 11, 0.85);
+    outline-offset: 2px;
+}
+
+.battery-buy-btn-compact {
+    min-height: 34px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.72rem;
+}
+
 .form-section-title::after {
     content: '';
     flex: 1;
@@ -2174,6 +2228,15 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     .form-group.is-hidden {
         display: none;
         visibility: hidden;
+    }
+
+    .battery-type-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .battery-buy-btn {
+        width: 100%;
     }
 }
 

@@ -243,9 +243,12 @@
                             </div>
                             <div class="form-group" id="battery-type-group">
                                 <label for="device-battery-type">Battery Type</label>
-                                <select id="device-battery-type">
-                                    <option value="">Select battery type</option>
-                                </select>
+                                <div class="battery-type-row">
+                                    <select id="device-battery-type">
+                                        <option value="">Select battery type</option>
+                                    </select>
+                                    <a class="btn btn-secondary btn-sm battery-buy-btn" id="battery-buy-btn" href="#" target="_blank" rel="noopener noreferrer" hidden>Buy on Amazon</a>
+                                </div>
                             </div>
                             <div class="form-group" id="battery-count-group">
                                 <label for="device-battery-count">Number of Batteries</label>

@@ -223,6 +223,44 @@
             gap: 0.5rem;
         }
 
+        .battery-summary-row {
+            grid-template-columns: 12px minmax(0, 1fr) auto;
+            column-gap: 0.6rem;
+            row-gap: 0.45rem;
+            align-items: center;
+        }
+
+        .battery-buy-btn {
+            justify-self: end;
+        }
+
+        .battery-summary-title {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            min-width: 0;
+        }
+
+        .battery-summary-title .battery-name {
+            min-width: 0;
+            white-space: normal;
+        }
+
+        .battery-summary-title .battery-buy-btn {
+            flex-shrink: 0;
+        }
+
+        .battery-count {
+            white-space: nowrap;
+        }
+
+        @media (max-width: 640px) {
+            .battery-summary-row {
+                grid-template-columns: 12px minmax(0, 1fr) auto;
+            }
+        }
+
         .local-summary {
             font-size: 0.85rem;
             color: var(--text-secondary);
@@ -821,10 +859,14 @@
     <script src="js/common.js"></script>
     <script>
         const chartRegistry = {};
+        let haCountry = '';
+        const batteryTypeMetaMap = buildBatteryTypeMetaMap();
 
         document.addEventListener('DOMContentLoaded', async () => {
             const data = await loadData();
             const settings = await loadSettings();
+            const haConfig = typeof loadHaConfig === 'function' ? await loadHaConfig() : {};
+            haCountry = String(haConfig?.country || '').trim().toUpperCase();
             const dashboard = document.getElementById('dashboard');
             const devices = data.devices || [];
             const floors = data.floors || [];
@@ -1556,15 +1598,16 @@
 
             alerts.sort((a, b) => b.percent - a.percent);
 
-            return {
-                alerts,
-                summary: Array.from(summary.entries())
-                    .map(([value, count]) => ({
-                        value,
-                        label: getFriendlyOption(settings?.batteryTypes, value, formatDeviceType),
-                        count
-                    }))
-                    .sort((a, b) => b.count - a.count)
+                return {
+                    alerts,
+                    summary: Array.from(summary.entries())
+                        .map(([value, count]) => ({
+                            value,
+                            label: getFriendlyOption(settings?.batteryTypes, value, formatDeviceType),
+                            count,
+                            amazonAsin: batteryTypeMetaMap.get(value)?.amazonAsin ?? null
+                        }))
+                        .sort((a, b) => b.count - a.count)
             };
         }
 
@@ -1605,13 +1648,117 @@
             summaryTarget.style.display = 'grid';
             summaryTarget.innerHTML = `
                 <div class="battery-alert-item"><strong>To buy</strong></div>
-            ` + data.summary.map(item => `
-                <div class="legend-item">
+            ` + data.summary.map(item => {
+                const store = getDefaultAmazonStore();
+                const amazonAsin = resolveAmazonAsin(item.amazonAsin, store?.id);
+                const amazonUrl = buildAmazonUrl(amazonAsin, store);
+                const buyButton = amazonUrl
+                    ? `<a class="btn btn-secondary btn-sm battery-buy-btn battery-buy-btn-compact" href="${amazonUrl}" target="_blank" rel="noopener noreferrer">Buy on Amazon</a>`
+                    : '';
+                const rowClass = buyButton ? 'legend-item battery-summary-row' : 'legend-item';
+                return `
+                <div class="${rowClass}">
                     <span class="legend-dot" style="background: var(--warning-color);"></span>
-                    <span>${escapeHtml(item.label)}</span>
-                    <span>${item.count}</span>
+                    <span class="battery-summary-title">
+                        <span class="battery-name">${escapeHtml(item.label)}</span>
+                        ${buyButton}
+                    </span>
+                    <span class="battery-count">${item.count}</span>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+        }
+
+        function buildBatteryTypeMetaMap() {
+            const map = new Map();
+            (DEFAULT_BATTERY_TYPES || []).forEach(item => {
+                const name = typeof item === 'string' ? item : String(item?.name || '').trim();
+                if (!name) return;
+                const normalized = normalizeOptionValue(name);
+                if (!normalized || map.has(normalized)) return;
+                const asin = typeof item === 'object' ? item.amazonAsin ?? null : null;
+                map.set(normalized, { name, amazonAsin: asin });
+            });
+            return map;
+        }
+
+        const AMAZON_STORE_DOMAINS = {
+            amazon_us: 'amazon.com',
+            amazon_ca: 'amazon.ca',
+            amazon_de: 'amazon.de',
+            amazon_uk: 'amazon.co.uk'
+        };
+
+        function getContinentCode(countryCode) {
+            const code = String(countryCode || '').trim().toUpperCase();
+            if (!code) return '';
+            const europe = new Set([
+                'AL', 'AD', 'AT', 'BY', 'BE', 'BA', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR',
+                'GB', 'UK', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV', 'MC', 'MD', 'ME', 'MK',
+                'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'RU', 'SE', 'SI', 'SK', 'SM', 'UA', 'VA'
+            ]);
+            const northAmerica = new Set(['US', 'CA', 'MX']);
+            if (europe.has(code)) return 'EU';
+            if (northAmerica.has(code)) return 'NA';
+            return '';
+        }
+
+        function getLocation() {
+            const countryCode = String(haCountry || '').trim().toUpperCase();
+            if (!countryCode) return undefined;
+            return {
+                countryCode,
+                continentCode: getContinentCode(countryCode)
+            };
+        }
+
+        function getDefaultAmazonStore() {
+            let store;
+            if (supportedStores && supportedStores.length) {
+                const locationJson = getLocation();
+                if (locationJson) {
+                    for (const each of supportedStores) {
+                        if (each.countryCodes?.includes(locationJson.countryCode)) {
+                            store = supportedStores.find(item => item.id === each.id);
+                            if (store !== undefined) {
+                                break;
+                            }
+                        }
+
+                        if (store === undefined && each.continentCodes?.includes(locationJson.continentCode)) {
+                            store = supportedStores.find(item => item.id === each.id);
+                        }
+                    }
+                }
+
+                if (store === undefined) {
+                    store = supportedStores[0];
+                }
+            }
+            return store;
+        }
+
+        function resolveAmazonAsin(asinValue, storeId) {
+            if (!asinValue) return '';
+            if (typeof asinValue === 'string') return asinValue;
+            if (typeof asinValue === 'object') {
+                if (!storeId) return '';
+                const resolved = asinValue[storeId];
+                return resolved ? String(resolved) : '';
+            }
+            return '';
+        }
+
+        function buildAmazonUrl(asin, storeOverride) {
+            if (!asin) return '';
+            const store = storeOverride || getDefaultAmazonStore();
+            const domain = store?.id ? AMAZON_STORE_DOMAINS[store.id] : '';
+            const tag = store?.tag || '';
+            const resolvedDomain = domain || AMAZON_STORE_DOMAINS.amazon_us;
+            if (!resolvedDomain) return '';
+            const base = `https://www.${resolvedDomain}/dp/${encodeURIComponent(asin)}`;
+            if (!tag) return base;
+            return `${base}?tag=${encodeURIComponent(tag)}`;
         }
 
         function buildIntegrationStats(devices) {
