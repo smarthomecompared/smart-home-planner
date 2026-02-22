@@ -2235,7 +2235,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
         align-items: stretch;
     }
 
-    .battery-buy-btn {
+    .battery-type-row .battery-buy-btn {
         width: 100%;
     }
 }

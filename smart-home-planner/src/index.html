@@ -259,6 +259,26 @@
             .battery-summary-row {
                 grid-template-columns: 12px minmax(0, 1fr) auto;
             }
+
+            .battery-summary-title {
+                flex-wrap: nowrap;
+            }
+
+            .battery-summary-title .battery-name {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .battery-summary-title .battery-buy-btn {
+                width: max-content;
+            }
+
+            .battery-buy-btn-compact {
+                min-height: 28px;
+                padding: 0.25rem 0.6rem;
+                font-size: 0.68rem;
+            }
         }
 
         .local-summary {
