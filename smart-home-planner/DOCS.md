@@ -65,6 +65,10 @@ How to use it effectively:
 
 The Devices screen is the heart of the app. It combines search, filtering, and multiple views so you can move from overview to detail quickly.
 
+### Global Search
+
+Use the search bar in the top navigation to find devices from anywhere in the app. Search is real time and scans all text fields on a device, so you can locate items by name, model, serial number, notes, labels, or any other written detail.
+
 ### Filters
 
 Filters let you narrow the inventory without losing context. Use them to answer specific questions such as which battery devices are in a certain area or which devices are Zigbee repeaters.

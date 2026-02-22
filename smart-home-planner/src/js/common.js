@@ -806,6 +806,325 @@ function applyIconTooltip(el) {
     bindTooltipAlignment(el);
 }
 
+let globalSearchIndex = null;
+let globalSearchReady = false;
+let globalSearchLoading = null;
+
+function ensureSiteNavLayout() {
+    const nav = document.querySelector('.site-nav');
+    if (!nav) return null;
+    let links = nav.querySelector('.site-nav-links');
+    if (links) return links;
+    links = document.createElement('div');
+    links.className = 'site-nav-links';
+    const anchors = Array.from(nav.querySelectorAll('a'));
+    anchors.forEach(anchor => links.appendChild(anchor));
+    nav.prepend(links);
+    return links;
+}
+
+function ensureGlobalSearchMarkup() {
+    const nav = document.querySelector('.site-nav');
+    if (!nav) return null;
+    const links = ensureSiteNavLayout();
+    if (!links) return null;
+    let container = links.querySelector('.global-search');
+    if (container) return container;
+
+    container = document.createElement('div');
+    container.className = 'global-search';
+    container.setAttribute('role', 'search');
+    container.innerHTML = `
+        <button type="button" class="global-search-trigger" aria-label="Search devices" title="Search devices">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="M20 20l-3.5-3.5"></path>
+            </svg>
+        </button>
+    `;
+    const firstLink = links.querySelector('a');
+    if (firstLink) {
+        links.insertBefore(container, firstLink);
+    } else {
+        links.appendChild(container);
+    }
+    return container;
+}
+
+function ensureGlobalSearchOverlay() {
+    let overlay = document.getElementById('global-search-overlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.className = 'global-search-overlay';
+    overlay.id = 'global-search-overlay';
+    overlay.hidden = true;
+    overlay.innerHTML = `
+        <div class="global-search-panel" role="dialog" aria-modal="true" aria-label="Global device search">
+            <div class="global-search-panel-header">
+                <div>
+                    <div class="global-search-panel-title">Search Devices</div>
+                    <div class="global-search-panel-subtitle">Type to search across all device details.</div>
+                </div>
+                <button type="button" class="global-search-close" id="global-search-overlay-close" aria-label="Close search">
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M4 4l8 8M12 4l-8 8"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="global-search-overlay-input">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="M20 20l-3.5-3.5"></path>
+                </svg>
+                <input type="search" id="global-search-overlay-input" placeholder="Search by name, model, serial number, notes, labels, and more" autocomplete="off" spellcheck="false">
+                <button type="button" class="global-search-clear" id="global-search-overlay-clear" aria-label="Clear search" hidden>
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M4 4l8 8M12 4l-8 8"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="global-search-results-panel" id="global-search-overlay-results" role="listbox"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+}
+
+function collectSearchTokens(value, output, depth = 0) {
+    if (depth > 4 || value === null || value === undefined) return;
+    if (typeof value === 'string' || typeof value === 'number') {
+        const token = String(value).trim();
+        if (token) output.push(token);
+        return;
+    }
+    if (Array.isArray(value)) {
+        value.forEach(item => collectSearchTokens(item, output, depth + 1));
+        return;
+    }
+    if (typeof value === 'object') {
+        Object.values(value).forEach(item => collectSearchTokens(item, output, depth + 1));
+    }
+}
+
+function buildDeviceSearchIndex(devices, areas, floors, labels, networks) {
+    const labelMap = new Map((labels || []).map(label => [
+        String(label.id || label.label_id || '').trim(),
+        String(label.name || '').trim()
+    ]));
+    const areaMap = new Map((areas || []).map(area => [String(area.id || '').trim(), area]));
+    const floorMap = new Map((floors || []).map(floor => [String(floor.id || '').trim(), floor]));
+    const networkMap = new Map((networks || []).map(network => [String(network.id || '').trim(), network]));
+
+    return (devices || []).map(device => {
+        const tokens = [];
+        collectSearchTokens(device, tokens);
+
+        const deviceLabels = Array.isArray(device?.labels) ? device.labels : [];
+        deviceLabels.forEach(labelId => {
+            const normalized = String(labelId || '').trim();
+            if (!normalized) return;
+            tokens.push(normalized);
+            const labelName = labelMap.get(normalized);
+            if (labelName) tokens.push(labelName);
+        });
+
+        const areaId = String(device?.area || '').trim();
+        const controlledAreaId = String(device?.controlledArea || '').trim();
+        const area = areaId ? areaMap.get(areaId) : null;
+        const controlledArea = controlledAreaId ? areaMap.get(controlledAreaId) : null;
+        if (area?.name) tokens.push(area.name);
+        if (controlledArea?.name) tokens.push(controlledArea.name);
+
+        const areaFloor = area?.floor ? floorMap.get(String(area.floor)) : null;
+        if (areaFloor?.name) tokens.push(areaFloor.name);
+
+        const network = device?.networkId ? networkMap.get(String(device.networkId)) : null;
+        if (network?.name) tokens.push(network.name);
+
+        const uniqueTokens = Array.from(new Set(tokens.map(token => token.trim()).filter(Boolean)));
+        const searchText = uniqueTokens.join(' ').toLowerCase();
+        const name = String(device?.name || device?.model || 'Unnamed Device').trim();
+        const nameLower = name.toLowerCase();
+        const brand = String(device?.brand || '').trim();
+        const type = String(device?.type || '').trim();
+        const status = String(device?.status || '').trim();
+        const metaParts = [brand, type, area?.name, controlledArea?.name, status].filter(Boolean);
+        const meta = metaParts.join(' • ');
+        const metaLower = meta.toLowerCase();
+
+        return {
+            device,
+            searchText,
+            name,
+            nameLower,
+            meta,
+            metaLower
+        };
+    });
+}
+
+function escapeRegExp(value) {
+    return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightMatches(text, terms) {
+    if (!text || !terms.length) return escapeHtml(text || '');
+    const safe = escapeHtml(text);
+    const pattern = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'gi');
+    return safe.replace(pattern, '<mark>$1</mark>');
+}
+
+async function loadGlobalSearchIndex() {
+    if (globalSearchReady && globalSearchIndex) return globalSearchIndex;
+    if (globalSearchLoading) return globalSearchLoading;
+    globalSearchLoading = (async () => {
+        const data = await loadData();
+        globalSearchIndex = buildDeviceSearchIndex(
+            data.devices || [],
+            data.areas || [],
+            data.floors || [],
+            data.labels || [],
+            data.networks || []
+        );
+        globalSearchReady = true;
+        return globalSearchIndex;
+    })();
+    return globalSearchLoading;
+}
+
+function renderGlobalSearchResults(results, query, resultsEl, terms) {
+    if (!resultsEl) return;
+    if (!results.length) {
+        resultsEl.innerHTML = `<div class="global-search-empty">No devices found for "${escapeHtml(query)}".</div>`;
+        return;
+    }
+    resultsEl.innerHTML = results.map(result => {
+        const device = result.device;
+        const title = highlightMatches(result.name || 'Unnamed Device', terms);
+        const meta = result.meta ? `<div class="global-search-meta">${highlightMatches(result.meta, terms)}</div>` : '';
+        const id = encodeURIComponent(String(device.id || ''));
+        const href = `device-edit.html?id=${id}`;
+        return `
+            <a class="global-search-item" href="${href}" role="option">
+                <div class="global-search-title">${title}</div>
+                ${meta}
+            </a>
+        `;
+    }).join('');
+}
+
+function hideGlobalSearchResults(resultsEl) {
+    if (!resultsEl) return;
+    resultsEl.innerHTML = '';
+}
+
+function initGlobalSearch() {
+    const container = ensureGlobalSearchMarkup();
+    if (!container) return;
+    const overlay = ensureGlobalSearchOverlay();
+    const trigger = container.querySelector('.global-search-trigger');
+    if (!overlay || !trigger) return;
+    const overlayInput = overlay.querySelector('#global-search-overlay-input');
+    const overlayResults = overlay.querySelector('#global-search-overlay-results');
+    const overlayClear = overlay.querySelector('#global-search-overlay-clear');
+    const overlayClose = overlay.querySelector('#global-search-overlay-close');
+    if (!overlayInput || !overlayResults || !overlayClear || !overlayClose) return;
+
+    let debounceId = null;
+    let isOpen = false;
+
+    const updateClearButton = () => {
+        overlayClear.hidden = !overlayInput.value.trim();
+    };
+
+    const openOverlay = () => {
+        if (isOpen) return;
+        isOpen = true;
+        overlay.hidden = false;
+        overlay.classList.add('is-open');
+        updateClearButton();
+        setTimeout(() => overlayInput.focus(), 0);
+    };
+
+    const closeOverlay = () => {
+        if (!isOpen) return;
+        isOpen = false;
+        overlay.classList.remove('is-open');
+        overlay.hidden = true;
+        hideGlobalSearchResults(overlayResults);
+    };
+
+    const runSearch = async () => {
+        const query = overlayInput.value.trim();
+        updateClearButton();
+        if (!query) {
+            hideGlobalSearchResults(overlayResults);
+            return;
+        }
+        overlayResults.innerHTML = '<div class="global-search-empty">Searching...</div>';
+        const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+        const index = await loadGlobalSearchIndex();
+        const matches = index
+            .map(item => {
+                const matchAll = terms.every(term => item.searchText.includes(term));
+                if (!matchAll) return null;
+                let score = 0;
+                terms.forEach(term => {
+                    if (item.nameLower.includes(term)) {
+                        score += 3;
+                    } else if (item.metaLower.includes(term)) {
+                        score += 2;
+                    } else if (item.searchText.includes(term)) {
+                        score += 1;
+                    }
+                });
+                return { ...item, score };
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+            .slice(0, 8);
+        renderGlobalSearchResults(matches, query, overlayResults, terms);
+    };
+
+    trigger.addEventListener('click', openOverlay);
+
+    overlayInput.addEventListener('input', () => {
+        if (debounceId) {
+            clearTimeout(debounceId);
+        }
+        debounceId = setTimeout(runSearch, 120);
+    });
+
+    overlayInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeOverlay();
+            return;
+        }
+        if (event.key === 'Enter') {
+            const firstResult = overlayResults.querySelector('.global-search-item');
+            if (firstResult) {
+                event.preventDefault();
+                firstResult.click();
+            }
+        }
+    });
+
+    overlayClear.addEventListener('click', () => {
+        overlayInput.value = '';
+        updateClearButton();
+        hideGlobalSearchResults(overlayResults);
+        overlayInput.focus();
+    });
+
+    overlayClose.addEventListener('click', closeOverlay);
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            closeOverlay();
+        }
+    });
+}
+
 let tooltipMeasureElement = null;
 
 function getTooltipMeasureElement() {
@@ -916,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initPrimaryNavIcons();
     initMobileNav();
     initIconTooltips();
+    initGlobalSearch();
 });
 window.loadMapPositions = loadMapPositions;
 window.saveMapPositions = saveMapPositions;

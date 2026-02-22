@@ -160,7 +160,7 @@ header:hover {
 
 nav.site-nav {
     display: flex;
-    gap: 0.55rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
     background: transparent;
     padding: 0;
@@ -168,6 +168,252 @@ nav.site-nav {
     border: none;
     box-shadow: none;
     align-items: center;
+}
+
+nav.site-nav .site-nav-links {
+    display: flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 0 1 auto;
+}
+
+.global-search {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.global-search-trigger {
+    min-width: 42px;
+    min-height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.65);
+    color: var(--text-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.48rem 0.68rem;
+    cursor: pointer;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.global-search-trigger svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+.global-search-trigger:hover,
+.global-search-trigger:focus-visible {
+    border-color: rgba(96, 165, 250, 0.7);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.25);
+    outline: none;
+}
+
+.global-search-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 6, 12, 0.75);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: clamp(1.25rem, 3vw, 2.5rem);
+    z-index: 120;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+}
+
+.global-search-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.global-search-panel {
+    width: min(920px, 100%);
+    background: var(--card-bg);
+    border-radius: 22px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xl);
+    padding: clamp(1rem, 2vw, 1.75rem);
+    display: grid;
+    gap: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow: hidden;
+}
+
+.global-search-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.global-search-panel-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.global-search-panel-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.global-search-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: rgba(30, 41, 59, 0.85);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.global-search-close svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+.global-search-close:hover {
+    color: var(--text-color);
+    border-color: var(--border-hover);
+}
+
+.global-search-overlay-input {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 0.95rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.75);
+    color: var(--text-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.global-search-overlay-input:focus-within {
+    border-color: rgba(96, 165, 250, 0.7);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.global-search-overlay-input svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    opacity: 0.9;
+}
+
+.global-search-overlay-input input {
+    flex: 1 1 auto;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 1rem;
+    outline: none;
+}
+
+.global-search-overlay-input input[type="search"]::-webkit-search-cancel-button,
+.global-search-overlay-input input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.global-search-overlay-input input::placeholder {
+    color: var(--text-secondary);
+}
+
+.global-search-clear {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.global-search-clear svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+.global-search-clear:hover {
+    color: var(--text-color);
+    border-color: var(--border-hover);
+}
+
+.global-search-results-panel {
+    display: grid;
+    gap: 0.35rem;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    padding-right: 0.1rem;
+}
+
+.global-search-item {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--text-color);
+    border: 1px solid transparent;
+    background: rgba(15, 23, 42, 0.72);
+    transition: all var(--transition-fast);
+}
+
+.global-search-item:hover,
+.global-search-item:focus-visible {
+    border-color: rgba(96, 165, 250, 0.5);
+    background: rgba(30, 41, 59, 0.9);
+    outline: none;
+}
+
+.global-search-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.global-search-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.global-search-title mark,
+.global-search-meta mark {
+    background: rgba(96, 165, 250, 0.25);
+    color: var(--text-color);
+    padding: 0 0.1rem;
+    border-radius: 4px;
+}
+
+.global-search-empty {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
 }
 
 nav.site-nav a {
@@ -1963,6 +2209,33 @@ input[type="month"]::-webkit-calendar-picker-indicator {
         width: 100%;
         text-align: center;
         justify-content: center;
+    }
+
+    nav.site-nav .site-nav-links {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .global-search {
+        width: 100%;
+    }
+
+    .global-search-trigger {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .global-search-panel {
+        border-radius: 16px;
+        padding: 1rem;
+    }
+
+    .global-search-panel-title {
+        font-size: 1.05rem;
+    }
+
+    .global-search-overlay-input {
+        padding: 0.65rem 0.75rem;
     }
 
     .section-header {
