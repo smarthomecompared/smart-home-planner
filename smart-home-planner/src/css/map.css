@@ -435,6 +435,10 @@ body.map-fullscreen .pagination-container {
     display: none;
 }
 
+body.map-fullscreen .container > section > :not(#diagram-section) {
+    display: none !important;
+}
+
 body.map-fullscreen #network-map {
     position: fixed;
     left: 50%;

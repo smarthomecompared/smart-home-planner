@@ -4,6 +4,8 @@ window.DeviceDiagram = (() => {
     const DIAGRAM_BACKGROUND_UI_KEY = 'diagramBackground';
     const DIAGRAM_BACKGROUND_OPACITY_UI_KEY = 'diagramBackgroundOpacity';
     const DIAGRAM_BACKGROUND_DEVICE_ID = 'diagram-background';
+    const DIAGRAM_BACKGROUND_NODE_ID = 'diagram-background-node';
+    const BACKGROUND_MODEL_MAX_DIMENSION = 1800;
     const DEVICE_FILES_UPLOAD_URL = typeof window.buildAppUrl === 'function'
         ? window.buildAppUrl('api/device-files/upload')
         : '/api/device-files/upload';
@@ -34,8 +36,7 @@ window.DeviceDiagram = (() => {
     let diagramBackgroundImageUrl = '';
     let diagramBackgroundImagePath = '';
     let diagramBackgroundImageAspectRatio = null;
-    let diagramBackgroundViewportSnapshot = null;
-    let diagramBackgroundViewportAnchor = null;
+    let diagramBackgroundImageSize = null;
     const BACKGROUND_NORMALIZED_POSITION_SPACE = 'background-normalized';
 
     function init(options = {}) {
@@ -173,124 +174,119 @@ window.DeviceDiagram = (() => {
         }
     }
 
-    function getDiagramBackgroundFrame() {
-        const mapContainer = document.getElementById('network-map');
-        if (!mapContainer) return null;
-        const width = mapContainer.clientWidth;
-        const height = mapContainer.clientHeight;
-        if (!width || !height) return null;
-
-        if (!diagramBackgroundFile || !diagramBackgroundFile.path) {
-            return {
-                x: 0,
-                y: 0,
-                width,
-                height
-            };
-        }
-
-        const ratio = Number(diagramBackgroundImageAspectRatio) > 0
-            ? diagramBackgroundImageAspectRatio
-            : (width / Math.max(height, 1));
-        if (!Number.isFinite(ratio) || ratio <= 0) {
-            return {
-                x: 0,
-                y: 0,
-                width,
-                height
-            };
-        }
-
-        const containerRatio = width / Math.max(height, 1);
-        if (containerRatio > ratio) {
-            const frameWidth = height * ratio;
-            return {
-                x: (width - frameWidth) / 2,
-                y: 0,
-                width: frameWidth,
-                height
-            };
-        }
-
-        const frameHeight = width / ratio;
-        return {
-            x: 0,
-            y: (height - frameHeight) / 2,
-            width,
-            height: frameHeight
-        };
-    }
-
     function hasDiagramBackground() {
         return Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
     }
 
-    function resetDiagramBackgroundViewportAnchor() {
-        if (!cy || !hasDiagramBackground()) {
-            diagramBackgroundViewportAnchor = null;
-            return;
-        }
-        const pan = cy.pan();
-        const zoom = cy.zoom();
-        if (!Number.isFinite(zoom) || zoom <= 0) {
-            diagramBackgroundViewportAnchor = null;
-            return;
-        }
-        diagramBackgroundViewportAnchor = {
-            pan: {
-                x: pan.x,
-                y: pan.y
+    function getBackgroundNode() {
+        if (!cy) return null;
+        const node = cy.getElementById(DIAGRAM_BACKGROUND_NODE_ID);
+        if (!node || node.empty()) return null;
+        return node;
+    }
+
+    function ensureBackgroundNode() {
+        if (!cy) return null;
+        let node = getBackgroundNode();
+        if (node) return node;
+        cy.add({
+            group: 'nodes',
+            data: {
+                id: DIAGRAM_BACKGROUND_NODE_ID,
+                type: 'diagram-background'
             },
-            zoom
+            position: { x: 0, y: 0 },
+            selectable: false,
+            grabbable: false,
+            locked: true
+        });
+        node = getBackgroundNode();
+        if (node) {
+            node.lock();
+            node.ungrabify();
+            if (typeof node.unselectify === 'function') {
+                node.unselectify();
+            }
+        }
+        return node;
+    }
+
+    function buildBackgroundModelSize() {
+        if (diagramBackgroundImageSize) {
+            const width = Number(diagramBackgroundImageSize.width);
+            const height = Number(diagramBackgroundImageSize.height);
+            if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+                const maxDim = Math.max(width, height);
+                const scale = maxDim > BACKGROUND_MODEL_MAX_DIMENSION
+                    ? (BACKGROUND_MODEL_MAX_DIMENSION / maxDim)
+                    : 1;
+                return {
+                    width: width * scale,
+                    height: height * scale
+                };
+            }
+        }
+        const mapContainer = document.getElementById('network-map');
+        if (!mapContainer) return null;
+        const containerWidth = mapContainer.clientWidth;
+        const containerHeight = mapContainer.clientHeight;
+        if (!Number.isFinite(containerWidth) || !Number.isFinite(containerHeight) || containerWidth <= 0 || containerHeight <= 0) {
+            return null;
+        }
+        const ratio = Number(diagramBackgroundImageAspectRatio) > 0
+            ? diagramBackgroundImageAspectRatio
+            : (containerWidth / Math.max(containerHeight, 1));
+        if (!Number.isFinite(ratio) || ratio <= 0) {
+            return {
+                width: containerWidth,
+                height: containerHeight
+            };
+        }
+        const containerRatio = containerWidth / Math.max(containerHeight, 1);
+        if (containerRatio > ratio) {
+            const width = containerHeight * ratio;
+            return {
+                width,
+                height: containerHeight
+            };
+        }
+        const height = containerWidth / ratio;
+        return {
+            width: containerWidth,
+            height
         };
     }
 
-    function applyDiagramBackgroundViewportTransform() {
-        const backgroundLayer = document.getElementById('network-map-background');
-        if (!backgroundLayer) return;
-        if (!cy || !hasDiagramBackground()) {
-            backgroundLayer.style.transformOrigin = '';
-            return;
+    function updateBackgroundNodeGeometry() {
+        const node = getBackgroundNode();
+        if (!node) return null;
+        const size = buildBackgroundModelSize();
+        if (!size) return null;
+        node.data('width', size.width);
+        node.data('height', size.height);
+        node.position({ x: 0, y: 0 });
+        node.lock();
+        node.ungrabify();
+        if (typeof node.unselectify === 'function') {
+            node.unselectify();
         }
-        if (!diagramBackgroundViewportAnchor) {
-            resetDiagramBackgroundViewportAnchor();
-        }
-        const anchor = diagramBackgroundViewportAnchor;
-        if (!anchor || !Number.isFinite(anchor.zoom) || anchor.zoom <= 0) {
-            return;
-        }
-        const pan = cy.pan();
-        const zoom = cy.zoom();
-        if (!Number.isFinite(zoom) || zoom <= 0) {
-            return;
-        }
-        const scale = zoom / anchor.zoom;
-        const translateX = pan.x - anchor.pan.x * scale;
-        const translateY = pan.y - anchor.pan.y * scale;
-        backgroundLayer.style.transformOrigin = '0 0';
-        backgroundLayer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        return size;
     }
 
-    function captureDiagramBackgroundViewportSnapshot() {
-        if (!cy) {
-            diagramBackgroundViewportSnapshot = null;
-            return;
+    function getBackgroundModelFrame() {
+        const node = getBackgroundNode();
+        if (!node) return null;
+        const width = Number(node.data('width')) || node.width();
+        const height = Number(node.data('height')) || node.height();
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+            return null;
         }
-        const frame = getDiagramBackgroundFrame();
-        if (!frame) return;
-        const pan = cy.pan();
-        diagramBackgroundViewportSnapshot = {
-            frame: {
-                x: frame.x,
-                y: frame.y,
-                width: frame.width,
-                height: frame.height
-            },
-            pan: {
-                x: pan.x,
-                y: pan.y
-            },
-            zoom: cy.zoom()
+        const pos = node.position();
+        return {
+            x: pos.x - width / 2,
+            y: pos.y - height / 2,
+            width,
+            height
         };
     }
 
@@ -326,14 +322,14 @@ window.DeviceDiagram = (() => {
 
     function buildCurrentBackgroundNormalizedPositions() {
         if (!cy || !diagramBackgroundFile || !diagramBackgroundFile.path) return null;
-        const frame = getDiagramBackgroundFrame();
+        const frame = getBackgroundModelFrame();
         if (!frame || frame.width <= 0 || frame.height <= 0) return null;
 
         const positions = new Map();
         cy.nodes('[type="device"]').forEach((node) => {
-            const rendered = node.renderedPosition();
-            const normalizedX = clampNumber((rendered.x - frame.x) / frame.width, 0, 1);
-            const normalizedY = clampNumber((rendered.y - frame.y) / frame.height, 0, 1);
+            const pos = node.position();
+            const normalizedX = clampNumber((pos.x - frame.x) / frame.width, 0, 1);
+            const normalizedY = clampNumber((pos.y - frame.y) / frame.height, 0, 1);
             positions.set(node.id(), {
                 x: normalizedX,
                 y: normalizedY
@@ -346,22 +342,16 @@ window.DeviceDiagram = (() => {
         if (!cy || !positionsByDeviceId || positionsByDeviceId.size === 0) return false;
         if (!diagramBackgroundFile || !diagramBackgroundFile.path) return false;
 
-        const frame = getDiagramBackgroundFrame();
+        const frame = getBackgroundModelFrame();
         if (!frame || frame.width <= 0 || frame.height <= 0) return false;
-
-        const zoom = cy.zoom();
-        const pan = cy.pan();
-        if (!Number.isFinite(zoom) || zoom <= 0) return false;
 
         cy.batch(() => {
             positionsByDeviceId.forEach((normalizedPosition, deviceId) => {
                 const node = cy.getElementById(deviceId);
                 if (!node || node.empty()) return;
-                const renderedX = frame.x + normalizedPosition.x * frame.width;
-                const renderedY = frame.y + normalizedPosition.y * frame.height;
                 node.position({
-                    x: (renderedX - pan.x) / zoom,
-                    y: (renderedY - pan.y) / zoom
+                    x: frame.x + normalizedPosition.x * frame.width,
+                    y: frame.y + normalizedPosition.y * frame.height
                 });
             });
         });
@@ -375,15 +365,15 @@ window.DeviceDiagram = (() => {
             return node.position();
         }
 
-        const frame = getDiagramBackgroundFrame();
+        const frame = getBackgroundModelFrame();
         if (!frame || frame.width <= 0 || frame.height <= 0) {
             return node.position();
         }
 
-        const rendered = node.renderedPosition();
+        const pos = node.position();
         return {
-            x: clampNumber((rendered.x - frame.x) / frame.width, 0, 1),
-            y: clampNumber((rendered.y - frame.y) / frame.height, 0, 1),
+            x: clampNumber((pos.x - frame.x) / frame.width, 0, 1),
+            y: clampNumber((pos.y - frame.y) / frame.height, 0, 1),
             coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE
         };
     }
@@ -422,7 +412,11 @@ window.DeviceDiagram = (() => {
                     reject(new Error('Invalid background image size.'));
                     return;
                 }
-                resolve(width / height);
+                resolve({
+                    ratio: width / height,
+                    width,
+                    height
+                });
             };
             image.onerror = () => {
                 reject(new Error('Unable to load background image.'));
@@ -431,64 +425,83 @@ window.DeviceDiagram = (() => {
         });
     }
 
+    function ensureBackgroundImageUrl() {
+        if (!diagramBackgroundFile || !diagramBackgroundFile.path) return '';
+        const backgroundPath = String(diagramBackgroundFile.path);
+        if (!diagramBackgroundImageUrl || backgroundPath !== diagramBackgroundImagePath) {
+            const cacheToken = Date.now();
+            diagramBackgroundImageUrl = `${DEVICE_FILES_CONTENT_URL}?path=${encodeURIComponent(backgroundPath)}&t=${cacheToken}`;
+            diagramBackgroundImagePath = backgroundPath;
+        }
+        return diagramBackgroundImageUrl;
+    }
+
     async function refreshDiagramBackgroundAspectRatio(imageUrl) {
         if (!imageUrl) {
             diagramBackgroundImageAspectRatio = null;
-            diagramBackgroundViewportSnapshot = null;
+            diagramBackgroundImageSize = null;
             return;
         }
         try {
-            const ratio = await loadDiagramBackgroundAspectRatio(imageUrl);
+            const sizeInfo = await loadDiagramBackgroundAspectRatio(imageUrl);
             if (imageUrl !== diagramBackgroundImageUrl) {
                 return;
             }
-            diagramBackgroundImageAspectRatio = ratio;
+            diagramBackgroundImageAspectRatio = sizeInfo.ratio;
+            diagramBackgroundImageSize = {
+                width: sizeInfo.width,
+                height: sizeInfo.height
+            };
         } catch (_error) {
             if (imageUrl !== diagramBackgroundImageUrl) {
                 return;
             }
             diagramBackgroundImageAspectRatio = null;
+            diagramBackgroundImageSize = null;
         }
-        captureDiagramBackgroundViewportSnapshot();
+        updateBackgroundNodeGeometry();
+    }
+
+    async function ensureBackgroundImageReady() {
+        if (!hasDiagramBackground()) return false;
+        if (diagramBackgroundImageSize && diagramBackgroundImageAspectRatio) return true;
+        const url = ensureBackgroundImageUrl();
+        if (!url) return false;
+        await refreshDiagramBackgroundAspectRatio(url);
+        return Boolean(diagramBackgroundImageSize);
     }
 
     function applyDiagramBackground(options = {}) {
         const refreshImage = Boolean(options && options.refreshImage);
         const mapContainer = document.getElementById('network-map');
-        const backgroundLayer = document.getElementById('network-map-background');
-        if (!mapContainer || !backgroundLayer) return;
+        if (!mapContainer) return;
 
         if (!diagramBackgroundFile || !diagramBackgroundFile.path) {
             mapContainer.classList.remove('has-background');
-            backgroundLayer.classList.remove('has-background');
-            backgroundLayer.style.backgroundImage = '';
-            backgroundLayer.style.opacity = '0';
             diagramBackgroundImageUrl = '';
             diagramBackgroundImagePath = '';
             diagramBackgroundImageAspectRatio = null;
-            diagramBackgroundViewportSnapshot = null;
-            diagramBackgroundViewportAnchor = null;
-            backgroundLayer.style.transformOrigin = '';
-            backgroundLayer.style.transform = '';
+            diagramBackgroundImageSize = null;
+            const existingNode = getBackgroundNode();
+            if (existingNode) {
+                cy.remove(existingNode);
+            }
             return;
         }
 
         const backgroundPath = String(diagramBackgroundFile.path);
         const shouldRefreshImage = refreshImage || !diagramBackgroundImageUrl || backgroundPath !== diagramBackgroundImagePath;
         if (shouldRefreshImage) {
-            const cacheToken = Date.now();
-            diagramBackgroundImageUrl = `${DEVICE_FILES_CONTENT_URL}?path=${encodeURIComponent(backgroundPath)}&t=${cacheToken}`;
-            diagramBackgroundImagePath = backgroundPath;
-            backgroundLayer.style.backgroundImage = `url("${diagramBackgroundImageUrl}")`;
+            ensureBackgroundImageUrl();
             void refreshDiagramBackgroundAspectRatio(diagramBackgroundImageUrl);
         }
         mapContainer.classList.add('has-background');
-        backgroundLayer.classList.add('has-background');
-        backgroundLayer.style.opacity = String(diagramBackgroundOpacity / 100);
-        if (refreshImage || !diagramBackgroundViewportAnchor) {
-            resetDiagramBackgroundViewportAnchor();
+        const backgroundNode = ensureBackgroundNode();
+        if (backgroundNode) {
+            backgroundNode.data('image', ensureBackgroundImageUrl() || '');
+            backgroundNode.data('opacity', diagramBackgroundOpacity / 100);
+            updateBackgroundNodeGeometry();
         }
-        applyDiagramBackgroundViewportTransform();
     }
 
     async function persistDiagramBackgroundTuning() {
@@ -522,12 +535,12 @@ window.DeviceDiagram = (() => {
                 getUiPreference(DIAGRAM_BACKGROUND_OPACITY_UI_KEY)
             ]);
             diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(storedOpacity);
-            await setDiagramBackgroundState(storedFile, false, false);
+            await setDiagramBackgroundState(storedFile, false, true);
             updateDiagramBackgroundControls();
         } catch (error) {
             console.error('Failed to load diagram background preference:', error);
             diagramBackgroundOpacity = 55;
-            await setDiagramBackgroundState(null, false, false);
+            await setDiagramBackgroundState(null, false, true);
             updateDiagramBackgroundControls();
         }
     }
@@ -794,10 +807,6 @@ function initializeEventListeners() {
     rememberMapAspectRatio();
     updateDiagramBackgroundControls();
     updateLayoutButtons();
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('fullscreenerror', () => {
-        setMapFullscreen(false);
-    });
     document.addEventListener('keydown', handleFullscreenEscape);
     document.addEventListener('keydown', handlePowerDialogEscape);
 }
@@ -882,32 +891,8 @@ function setMapFullscreen(isFullscreen) {
 }
 
 function toggleMapFullscreen() {
-    const isFullscreen = Boolean(document.fullscreenElement);
-    if (isFullscreen) {
-        document.exitFullscreen();
-        return;
-    }
-
-    const mapSection = document.getElementById('diagram-section') || document.getElementById('map-section');
-    if (mapSection && mapSection.requestFullscreen) {
-        mapSection.requestFullscreen().catch(() => {
-            setMapFullscreen(false);
-        });
-    } else {
-        // Fallback: avoid hiding the header if fullscreen API is unavailable
-        setMapFullscreen(false);
-    }
-}
-
-function handleFullscreenChange() {
-    if (document.fullscreenElement) {
-        setMapFullscreen(true);
-        return;
-    }
-
-    if (document.body.classList.contains('map-fullscreen')) {
-        setMapFullscreen(false);
-    }
+    const isFullscreen = document.body.classList.contains('map-fullscreen');
+    setMapFullscreen(!isFullscreen);
 }
 
 function handleFullscreenEscape(event) {
@@ -919,65 +904,15 @@ function handleFullscreenEscape(event) {
 
 function resizeCytoscape() {
     if (!cy) return;
-    const previousSnapshot = diagramBackgroundViewportSnapshot
-        ? {
-            frame: {
-                x: diagramBackgroundViewportSnapshot.frame.x,
-                y: diagramBackgroundViewportSnapshot.frame.y,
-                width: diagramBackgroundViewportSnapshot.frame.width,
-                height: diagramBackgroundViewportSnapshot.frame.height
-            },
-            pan: {
-                x: diagramBackgroundViewportSnapshot.pan.x,
-                y: diagramBackgroundViewportSnapshot.pan.y
-            },
-            zoom: diagramBackgroundViewportSnapshot.zoom
-        }
-        : null;
-
+    const savedNormalized = buildCurrentBackgroundNormalizedPositions();
     requestAnimationFrame(() => {
         cy.resize();
-        const finalizeResize = () => {
-            captureDiagramBackgroundViewportSnapshot();
-            resetDiagramBackgroundViewportAnchor();
-            applyDiagramBackgroundViewportTransform();
-        };
-        if (!previousSnapshot) {
-            finalizeResize();
-            return;
+        if (hasDiagramBackground()) {
+            updateBackgroundNodeGeometry();
+            if (savedNormalized) {
+                applyBackgroundNormalizedPositions(savedNormalized);
+            }
         }
-
-        const currentFrame = getDiagramBackgroundFrame();
-        if (!currentFrame) {
-            finalizeResize();
-            return;
-        }
-
-        const previousFrame = previousSnapshot.frame;
-        const scaleX = currentFrame.width / Math.max(previousFrame.width, 1);
-        const scaleY = currentFrame.height / Math.max(previousFrame.height, 1);
-        if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) || scaleX <= 0 || scaleY <= 0) {
-            finalizeResize();
-            return;
-        }
-
-        const averageScale = (scaleX + scaleY) / 2;
-        let nextZoom = previousSnapshot.zoom * averageScale;
-        if (!Number.isFinite(nextZoom) || nextZoom <= 0) {
-            finalizeResize();
-            return;
-        }
-        nextZoom = Math.max(cy.minZoom(), Math.min(cy.maxZoom(), nextZoom));
-        const nextPan = {
-            x: currentFrame.x + (previousSnapshot.pan.x - previousFrame.x) * scaleX,
-            y: currentFrame.y + (previousSnapshot.pan.y - previousFrame.y) * scaleY
-        };
-
-        cy.viewport({
-            zoom: nextZoom,
-            pan: nextPan
-        });
-        finalizeResize();
     });
 }
 
@@ -1011,6 +946,26 @@ function initializeCytoscape() {
         container: container,
         
         style: [
+            {
+                selector: 'node[type="diagram-background"]',
+                style: {
+                    'shape': 'rectangle',
+                    'width': 'data(width)',
+                    'height': 'data(height)',
+                    'background-color': '#0f172a',
+                    'background-image': 'data(image)',
+                    'background-fit': 'contain',
+                    'background-repeat': 'no-repeat',
+                    'background-position-x': '50%',
+                    'background-position-y': '50%',
+                    'background-opacity': 'data(opacity)',
+                    'border-width': 0,
+                    'label': '',
+                    'text-opacity': 0,
+                    'z-index': 0,
+                    'z-compound-depth': 'bottom'
+                }
+            },
             // Floor style
             {
                 selector: 'node[type="floor"]',
@@ -1219,10 +1174,7 @@ function initializeCytoscape() {
         markLayoutDirty();
     });
 
-    cy.on('pan zoom', () => {
-        applyDiagramBackgroundViewportTransform();
-        captureDiagramBackgroundViewportSnapshot();
-    });
+
 
     // Allow panning by dragging on nodes when not in edit mode
     cy.on('tapstart', 'node[type="device"], node[type="area"], node[type="floor"]', (event) => {
@@ -1378,19 +1330,43 @@ async function renderNetwork() {
         ? filteredDevices
         : (deviceFilters ? deviceFilters.getFilteredDevices() : devices);
     const filteredDevicesList = sourceDevices.filter(device => device.status !== 'wishlist');
+    const hasBackground = hasDiagramBackground();
 
     const mapCountLabel = document.getElementById('map-devices-count');
     if (mapCountLabel) {
         mapCountLabel.textContent = `${filteredDevicesList.length} device${filteredDevicesList.length !== 1 ? 's' : ''}`;
     }
-    
+
     console.log('Rendering map with devices:', filteredDevicesList.length);
+
+    if (hasBackground) {
+        await ensureBackgroundImageReady();
+    }
     
     // Check if there are devices to show
     if (filteredDevicesList.length === 0) {
         cy.elements().remove();
+        if (hasBackground) {
+            const backgroundSize = buildBackgroundModelSize();
+            cy.add({
+                group: 'nodes',
+                data: {
+                    id: DIAGRAM_BACKGROUND_NODE_ID,
+                    type: 'diagram-background',
+                    width: backgroundSize ? backgroundSize.width : 0,
+                    height: backgroundSize ? backgroundSize.height : 0,
+                    image: diagramBackgroundImageUrl || '',
+                    opacity: diagramBackgroundOpacity / 100
+                },
+                position: { x: 0, y: 0 },
+                selectable: false,
+                grabbable: false,
+                locked: true
+            });
+            applyDiagramBackground();
+            fitNetwork();
+        }
         showEmptyMapMessage();
-        captureDiagramBackgroundViewportSnapshot();
         return;
     }
     
@@ -1406,7 +1382,6 @@ async function renderNetwork() {
     const floorIds = [...new Set(filteredAreas.map(a => a.floor).filter(Boolean))];
     const filteredFloors = floors.filter(f => floorIds.includes(f.id));
     const unassignedDevices = filteredDevicesList.filter(d => !d[areaKey] || !validAreaIds.has(d[areaKey]));
-    const hasDiagramBackground = Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
     
     console.log('Map data:', {
         devices: filteredDevicesList.length,
@@ -1423,7 +1398,7 @@ async function renderNetwork() {
     let hasLegacyAbsoluteBackgroundPositions = false;
     const resolveSavedPosition = (deviceId, defaultPosition) => {
         const savedPosition = savedPositions[deviceId];
-        if (hasDiagramBackground) {
+        if (hasBackground) {
             const normalized = parseSavedNormalizedPosition(savedPosition);
             if (normalized) {
                 backgroundNormalizedPositions.set(deviceId, normalized);
@@ -1432,7 +1407,7 @@ async function renderNetwork() {
         }
         const absolute = parseSavedAbsolutePosition(savedPosition);
         if (absolute) {
-            if (hasDiagramBackground) {
+            if (hasBackground) {
                 hasLegacyAbsoluteBackgroundPositions = true;
             }
             return absolute;
@@ -1442,6 +1417,24 @@ async function renderNetwork() {
     
     // Build elements array
     const elements = [];
+    if (hasBackground) {
+        const backgroundSize = buildBackgroundModelSize();
+        elements.push({
+            group: 'nodes',
+            data: {
+                id: DIAGRAM_BACKGROUND_NODE_ID,
+                type: 'diagram-background',
+                width: backgroundSize ? backgroundSize.width : 0,
+                height: backgroundSize ? backgroundSize.height : 0,
+                image: diagramBackgroundImageUrl || '',
+                opacity: diagramBackgroundOpacity / 100
+            },
+            position: { x: 0, y: 0 },
+            selectable: false,
+            grabbable: false,
+            locked: true
+        });
+    }
     
     // Sort floors by level (highest first)
     const sortedFloors = [...filteredFloors].sort((a, b) => (b.level || 0) - (a.level || 0));
@@ -1466,7 +1459,7 @@ async function renderNetwork() {
                 label: floor.name,
                 type: 'floor',
                 level: floor.level || 0,
-                transparentBackground: hasDiagramBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false'
             }
         });
         
@@ -1483,7 +1476,7 @@ async function renderNetwork() {
                     label: area.name,
                     type: 'area',
                     parent: `floor-${floor.id}`,
-                    transparentBackground: hasDiagramBackground ? 'true' : 'false'
+                    transparentBackground: hasBackground ? 'true' : 'false'
                 }
             });
             
@@ -1550,7 +1543,7 @@ async function renderNetwork() {
                 label: 'Unassigned',
                 type: 'floor',
                 level: -9999,
-                transparentBackground: hasDiagramBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false'
             }
         });
 
@@ -1561,7 +1554,7 @@ async function renderNetwork() {
                 label: 'No Area',
                 type: 'area',
                 parent: floorId,
-                transparentBackground: hasDiagramBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false'
             }
         });
 
@@ -1670,19 +1663,18 @@ async function renderNetwork() {
     // Run layout
     cy.layout({
         name: 'preset',
-        fit: true,
+        fit: !hasBackground,
         padding: 80
     }).run();
 
-    if (hasDiagramBackground) {
+    applyDiagramBackground();
+    if (hasBackground) {
         applyBackgroundNormalizedPositions(backgroundNormalizedPositions);
+        fitNetwork();
     }
 
     await setLayoutEditable(isLayoutEditable);
-    captureDiagramBackgroundViewportSnapshot();
-    resetDiagramBackgroundViewportAnchor();
-    applyDiagramBackgroundViewportTransform();
-    if (hasLegacyAbsoluteBackgroundPositions) {
+    if (hasLegacyAbsoluteBackgroundPositions && diagramBackgroundImageSize) {
         void migratePositionsToBackgroundNormalized(savedPositions);
     }
 }
@@ -1893,14 +1885,16 @@ function handlePowerDialogEscape(event) {
 
 // Fit network to screen
 function fitNetwork() {
-    if (cy) {
-        const backgroundNormalizedBeforeFit = buildCurrentBackgroundNormalizedPositions();
+    if (!cy) return;
+    const backgroundNormalizedBeforeFit = buildCurrentBackgroundNormalizedPositions();
+    const backgroundNode = getBackgroundNode();
+    if (backgroundNode) {
+        cy.fit(backgroundNode, 80);
+    } else {
         cy.fit(null, 80);
-        if (backgroundNormalizedBeforeFit) {
-            applyBackgroundNormalizedPositions(backgroundNormalizedBeforeFit);
-        }
-        applyDiagramBackgroundViewportTransform();
-        captureDiagramBackgroundViewportSnapshot();
+    }
+    if (backgroundNormalizedBeforeFit) {
+        applyBackgroundNormalizedPositions(backgroundNormalizedBeforeFit);
     }
 }
 
@@ -1940,6 +1934,10 @@ async function savePositions() {
         return;
     }
     if (!cy) return;
+    if (hasDiagramBackground()) {
+        await ensureBackgroundImageReady();
+        updateBackgroundNodeGeometry();
+    }
     
     const existingPositions = await loadPositions();
     const positions = existingPositions && typeof existingPositions === 'object'
