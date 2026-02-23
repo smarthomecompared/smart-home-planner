@@ -1,3 +1,10 @@
+## 1.2.0 - 
+
+### Added
+
+### Fixes
+- Fixed cahing of js and css resources
+
 ## 1.1.0 - 2026-02-22
 
 ### Added

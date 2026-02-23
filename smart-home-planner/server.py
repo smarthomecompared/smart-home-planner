@@ -494,6 +494,15 @@ def _fetch_ha_config():
 
 
 class AppHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        parsed = urlparse(self.path)
+        path = parsed.path or ""
+        if not path.startswith("/api/"):
+            ext = os.path.splitext(path)[1].lower()
+            if ext in {".js", ".css", ".html"} or path in {"", "/"} or path.endswith("/"):
+                self.send_header("Cache-Control", "no-cache, must-revalidate")
+        super().end_headers()
+
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
