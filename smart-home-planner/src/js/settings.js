@@ -369,9 +369,17 @@ async function renderExcludedDevicesManagement() {
             .filter(([id]) => Boolean(id))
     );
 
+    const filteredExcludedIds = excludedIds.filter((deviceId) => haById.has(deviceId));
+    if (filteredExcludedIds.length !== excludedIds.length) {
+        await patchStorage({
+            excluded_devices: filteredExcludedIds
+        });
+    }
+    excludedIds = filteredExcludedIds;
+
     excludedDevicesRows = excludedIds.map((deviceId) => {
         const haDevice = haById.get(deviceId);
-        const name = haDevice ? (pickHaDeviceName(haDevice) || deviceId) : 'Device not found in Home Assistant';
+        const name = haDevice ? (pickHaDeviceName(haDevice) || deviceId) : deviceId;
         const manufacturer = formatExcludedDeviceField(normalizeHaBrandName(haDevice?.manufacturer));
         const model = formatExcludedDeviceField(haDevice?.model);
         return {
@@ -568,7 +576,8 @@ async function restoreExcludedDevice(deviceId) {
         const haDevices = await loadHaRegistry(getHaDevicesApiUrl());
         const haDevice = haDevices.find(device => normalizeExcludedDeviceId(device?.id) === normalizedId);
         if (!haDevice) {
-            showMessage('Device not found in Home Assistant registry.', 'error');
+            const nextExcluded = excludedIds.filter(id => id !== normalizedId);
+            await patchStorage({ excluded_devices: nextExcluded });
             await renderExcludedDevicesManagement();
             return;
         }
