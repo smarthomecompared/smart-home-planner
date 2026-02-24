@@ -24,51 +24,55 @@ Plan, document, and visualize your smart home with a Home Assistant app that kee
 ## Screenshots
 
 ### Dashboard Overview
-![Dashboard Overview](website/img/screenshots/home-stats.png)
+![Dashboard Overview](website/img/screenshots/home-stats.webp)
 Track device, labels, areas, and floors at a glance. Get insights about the battery used, integrations, power usage, and more.
 
 ### Connection Diagram
-![Connection Diagram](website/img/screenshots/diagram.png)
+![Connection Diagram](website/img/screenshots/diagram.webp)
 Visualize device placement and relationships across the home. Use it to plan expansions or share the layout with installers.
 
+### Floor Plan Diagram
+![Floor Plan Diagram](website/img/screenshots/diagram-map.webp)
+Upload a house plan image and pin each device to its physical location. The diagram stays aligned across zoom, pan, and fullscreen.
+
 ### Devices Table
-![Devices Table](website/img/screenshots/devices-table.png)
+![Devices Table](website/img/screenshots/devices-table.webp)
 A dense, sortable inventory for power users. Scan essential details, multi-select devices, and jump straight into edits when you need to move fast.
 
 ### Devices Cards
-![Devices Cards](website/img/screenshots/devices-cards.png)
+![Devices Cards](website/img/screenshots/devices-cards.webp)
 A readable card layout that works great on mobile and touch screens. Perfect for quick browsing, maintenance checks, and walkthroughs.
 
 ### Filters
-![Filters](website/img/screenshots/filters.png)
+![Filters](website/img/screenshots/filters.webp)
 Slice the inventory by status, connectivity, labels, and integrations. Filters are optimized for quick audits and for finding the exact devices that need attention.
 
 ### Bulk Edit
-![Bulk Edit](website/img/screenshots/bulk-edit.png)
+![Bulk Edit](website/img/screenshots/bulk-edit.webp)
 Apply a single change across many devices in seconds. Great for moving a batch to a new area or adding a shared label after installation.
 
 ### Device Basics
-![Device Basics](website/img/screenshots/device-basic-information.png)
+![Device Basics](website/img/screenshots/device-basic-information.webp)
 Capture identity, brand, type, and labels for each physical device. This becomes the canonical record even when integrations or platforms change.
 
 ### Device Power
-![Device Power](website/img/screenshots/device-power.png)
+![Device Power](website/img/screenshots/device-power.webp)
 Document power source, battery types, and replacement cadence. Keep energy planning and maintenance schedules in one place.
 
 ### Device Ports
-![Device Ports](website/img/screenshots/device-ports.png)
+![Device Ports](website/img/screenshots/device-ports.webp)
 Map physical connections between devices. Build a living topology so it is clear how hubs, switches, and power sources are wired.
 
 ### Device Files
-![Device Files](website/img/screenshots/device-files.png)
+![Device Files](website/img/screenshots/device-files.webp)
 Attach manuals, invoices, photos, and setup notes to each device. Everything you need for maintenance and warranty stays with the record.
 
 ### Home Assistant Integration
-![Home Assistant Integration](website/img/screenshots/ha-settings.png)
+![Home Assistant Integration](website/img/screenshots/ha-settings.webp)
 Sync devices, labels, areas and floors with Home Assistant while keeping the app focused on physical-device inventory and documentation.
 
 ### Networks
-![Networks](website/img/screenshots/networks.png)
+![Networks](website/img/screenshots/networks.webp)
 Document which VLAN each device uses so network assignments stay clear across the inventory.
 
 ## Follow Us
