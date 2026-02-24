@@ -33,7 +33,7 @@ Visualize device placement and relationships across the home. Use it to plan exp
 
 ### Floor Plan Diagram
 ![Floor Plan Diagram](website/img/screenshots/diagram-map.webp)
-Upload a house plan image and pin each device to its physical location. The diagram stays aligned across zoom, pan, and fullscreen.
+Upload a house plan image and pin each device to its physical location.
 
 ### Devices Table
 ![Devices Table](website/img/screenshots/devices-table.webp)
