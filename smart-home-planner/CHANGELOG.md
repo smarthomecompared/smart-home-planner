@@ -1,4 +1,4 @@
-## 1.2.0 - 
+## 1.2.0 - 2026-02-24
 
 ### Added
 - Overlaying devices on a floor plan image for spatial context.
