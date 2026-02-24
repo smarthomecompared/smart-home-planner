@@ -57,7 +57,7 @@
     },
     {
       "id": "dev-2",
-      "name": "Zigbee USB Coordinator",
+      "name": "Zigbee Coordinator",
       "brand": "sonoff",
       "model": "ZBDongle-P",
       "type": "dongles",
@@ -95,7 +95,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-2"
-      ]
+      ],
+      "serialNumber": "",
+      "purchaseDate": "",
+      "purchaseStore": "",
+      "purchasePrice": null,
+      "purchaseCurrency": "",
+      "warrantyExpiration": "",
+      "networkId": "",
+      "files": [],
+      "updatedAt": "2026-02-24T22:06:16.139Z"
     },
     {
       "id": "dev-3",
@@ -196,12 +205,6 @@
         },
         {
           "type": "ethernet-output",
-          "connectedTo": "dev-6",
-          "cableType": "cat6",
-          "speed": "1Gbps"
-        },
-        {
-          "type": "ethernet-output",
           "connectedTo": "dev-7",
           "cableType": "cat6",
           "speed": "1Gbps"
@@ -271,10 +274,10 @@
     },
     {
       "id": "dev-6",
-      "name": "Ceiling Access Point",
+      "name": "Access Point",
       "brand": "ubiquiti",
       "model": "U6 Lite",
-      "type": "routers",
+      "type": "access-points",
       "ip": "192.168.1.3",
       "mac": "AA:BB:CC:DD:EE:04",
       "status": "working",
@@ -292,7 +295,7 @@
       "storageUnit": "",
       "notes": "Main floor Wi-Fi coverage.",
       "connectivity": "wifi",
-      "area": "living_room",
+      "area": "office",
       "threadBorderRouter": false,
       "matterHub": false,
       "zigbeeController": false,
@@ -303,17 +306,20 @@
       "appleHomeKit": false,
       "samsungSmartThings": false,
       "localOnly": true,
-      "ports": [
-        {
-          "type": "ethernet-input",
-          "connectedTo": "dev-4"
-        }
-      ],
+      "ports": [],
       "createdAt": "2025-06-01T11:18:00.000Z",
-      "controlledArea": "living_room",
+      "controlledArea": "office",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "serialNumber": "",
+      "purchaseDate": "",
+      "purchaseStore": "",
+      "purchasePrice": null,
+      "purchaseCurrency": "",
+      "warrantyExpiration": "",
+      "files": [],
+      "updatedAt": "2026-02-24T22:02:39.236Z"
     },
     {
       "id": "dev-7",
@@ -405,7 +411,7 @@
     },
     {
       "id": "dev-9",
-      "name": "Living Room Motion Sensor",
+      "name": "Motion Sensor",
       "brand": "aqara",
       "model": "P1",
       "type": "motion-sensors",
@@ -443,7 +449,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-9"
-      ]
+      ],
+      "serialNumber": "",
+      "purchaseDate": "",
+      "purchaseStore": "",
+      "purchasePrice": null,
+      "purchaseCurrency": "",
+      "warrantyExpiration": "",
+      "networkId": "",
+      "files": [],
+      "updatedAt": "2026-02-24T22:05:47.287Z"
     },
     {
       "id": "dev-10",
@@ -809,7 +824,7 @@
       "meanConsumption": 3.9,
       "maxConsumption": 7.1,
       "installationDate": "2024-07-12",
-      "storageSize": 128,
+      "storageSize": null,
       "storageUnit": "GB",
       "notes": "Home theater hub.",
       "connectivity": "wifi",
@@ -829,7 +844,15 @@
       "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "serialNumber": "",
+      "purchaseDate": "",
+      "purchaseStore": "",
+      "purchasePrice": null,
+      "purchaseCurrency": "",
+      "warrantyExpiration": "",
+      "files": [],
+      "updatedAt": "2026-02-24T22:05:02.976Z"
     },
     {
       "id": "dev-19",
@@ -928,6 +951,7 @@
       "createdAt": "2025-06-01T10:07:00.000Z"
     }
   ],
+  "excluded_devices": [],
   "settings": {
     "brands": [
       "Aeotec",
@@ -1148,6 +1172,195 @@
       "y": 1124.6449463282681
     }
   },
-  "excluded_devices": [],
-  "ui": {}
+  "mapImagePositions": {
+    "dev-5": {
+      "x": 0.21946333396820192,
+      "y": 0.7811030464617402,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-6": {
+      "x": 0.7351648144148343,
+      "y": 0.29198346621189164,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-9": {
+      "x": 0.48889494982287,
+      "y": 0.5971244860135383,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-12": {
+      "x": 0.5426458547316603,
+      "y": 0.4181835165069465,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-18": {
+      "x": 0.7294120667236145,
+      "y": 0.6643603503636151,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 373.7865847761007,
+        "height": 260
+      },
+      "rotation": 88
+    },
+    "dev-11": {
+      "x": 0.297071963729284,
+      "y": 0.16604114722763244,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-17": {
+      "x": 0.3722384738012253,
+      "y": 0.3224697949534326,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-8": {
+      "x": 0.7758702091201519,
+      "y": 0.5015397848888289,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-19": {
+      "x": 0.8353502332393752,
+      "y": 0.29898150892198094,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-7": {
+      "x": 0.22043214997438254,
+      "y": 0.9261608484233158,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-13": {
+      "x": 0.147900139531136,
+      "y": 0.45115302208372715,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-15": {
+      "x": 0.25265864008368,
+      "y": 0.26568890703716147,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-4": {
+      "x": 0.39729853195336345,
+      "y": 0.768171236489471,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-3": {
+      "x": 0.21864388350390582,
+      "y": 0.8629477825910952,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-10": {
+      "x": 0.39499818513896373,
+      "y": 0.8602079715102489,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-1": {
+      "x": 0.21982902740985014,
+      "y": 0.823357504320668,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-2": {
+      "x": 0.7350688864710042,
+      "y": 0.5497797671228902,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    },
+    "dev-16": {
+      "x": 0.4808117957190979,
+      "y": 0.23369811715963504,
+      "coordinateSpace": "background-normalized",
+      "size": {
+        "width": 140,
+        "height": 60
+      },
+      "rotation": 0
+    }
+  },
+  "ui": {
+    "smartHomeDevicesViewDesktop": "diagram",
+    "diagramBackground": {
+      "path": "device-files/diagram-background/about-us-banner.jpg-1771977451-4d8bdf.webp",
+      "name": "about-us-banner.jpg.webp",
+      "mimeType": "image/webp"
+    },
+    "diagramBackgroundOpacity": 100
+  }
 }
