@@ -69,6 +69,7 @@ function buildDefaultStorage() {
         excluded_devices: [],
         settings: null,
         mapPositions: null,
+        mapImagePositions: null,
         ui: {}
     };
 }
@@ -87,6 +88,7 @@ function mergeStorage(raw) {
             .filter(Boolean),
         settings: source.settings || base.settings,
         mapPositions: source.mapPositions || base.mapPositions,
+        mapImagePositions: source.mapImagePositions || base.mapImagePositions,
         ui: source.ui && typeof source.ui === 'object' ? { ...base.ui, ...source.ui } : base.ui
     };
 }
@@ -1253,6 +1255,19 @@ async function clearMapPositions() {
     await patchStorage({ mapPositions: null });
 }
 
+async function loadMapImagePositions() {
+    const storage = await loadStorage();
+    return storage.mapImagePositions || {};
+}
+
+async function saveMapImagePositions(positions) {
+    await patchStorage({ mapImagePositions: positions || {} });
+}
+
+async function clearMapImagePositions() {
+    await patchStorage({ mapImagePositions: null });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await initDebugSettingsNav();
     initPrimaryNavIcons();
@@ -1263,6 +1278,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.loadMapPositions = loadMapPositions;
 window.saveMapPositions = saveMapPositions;
 window.clearMapPositions = clearMapPositions;
+window.loadMapImagePositions = loadMapImagePositions;
+window.saveMapImagePositions = saveMapImagePositions;
+window.clearMapImagePositions = clearMapImagePositions;
 window.getUiPreference = getUiPreference;
 window.setUiPreference = setUiPreference;
 window.APP_BASE_PATH = APP_BASE_PATH;

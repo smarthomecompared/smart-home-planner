@@ -54,6 +54,7 @@ window.DeviceDiagram = (() => {
     let isPanningFromNode = false;
     let lastPanPosition = null;
     let cachedPositions = null;
+    let cachedPositionsUseBackground = false;
     let isInitialized = false;
     let diagramBackgroundFile = null;
     let diagramBackgroundOpacity = 55;
@@ -77,6 +78,8 @@ window.DeviceDiagram = (() => {
     let rotationUpdateRaf = null;
     const pendingRotationNodes = new Set();
     const cardSvgCache = new Set();
+    let pendingBackgroundSeedPositions = null;
+    let lastPositionsSource = 'map';
 
     function init(options = {}) {
         if (isInitialized) return;
@@ -349,6 +352,7 @@ window.DeviceDiagram = (() => {
         const replaceBtn = document.getElementById('diagram-background-replace-btn');
         const removeBtn = document.getElementById('diagram-background-remove-btn');
         const uploadBtn = document.getElementById('diagram-background-upload-btn');
+        const tuningPanel = document.getElementById('diagram-background-tuning');
         const opacityInput = document.getElementById('diagram-background-opacity');
         const opacityValue = document.getElementById('diagram-background-opacity-value');
         const hasBackground = Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
@@ -364,6 +368,9 @@ window.DeviceDiagram = (() => {
         }
         if (removeBtn) {
             removeBtn.hidden = !hasBackground;
+        }
+        if (tuningPanel) {
+            tuningPanel.hidden = !hasBackground;
         }
         if (opacityInput) {
             opacityInput.value = String(diagramBackgroundOpacity);
@@ -400,6 +407,21 @@ window.DeviceDiagram = (() => {
         if (!value || typeof value !== 'object') return null;
         if (value.rotation === undefined || value.rotation === null) return null;
         return normalizeDeviceRotation(value.rotation);
+    }
+
+    function hasSavedPositions(savedPositions) {
+        if (!savedPositions || typeof savedPositions !== 'object') return false;
+        return Object.keys(savedPositions).length > 0;
+    }
+
+    function collectCurrentDevicePositions() {
+        if (!cy) return null;
+        const positions = new Map();
+        cy.nodes('[type="device"]').forEach((node) => {
+            const pos = node.position();
+            positions.set(node.id(), { x: pos.x, y: pos.y });
+        });
+        return positions;
     }
 
     function getBackgroundNode() {
@@ -538,10 +560,7 @@ window.DeviceDiagram = (() => {
         const x = Number(value.x);
         const y = Number(value.y);
         if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-        return {
-            x: clampNumber(x, 0, 1),
-            y: clampNumber(y, 0, 1)
-        };
+        return { x, y };
     }
 
     function resolveSavedSize(savedPositions, deviceId, useBackground) {
@@ -834,14 +853,70 @@ window.DeviceDiagram = (() => {
         const positions = new Map();
         cy.nodes('[type="device"]').forEach((node) => {
             const pos = node.position();
-            const normalizedX = clampNumber((pos.x - frame.x) / frame.width, 0, 1);
-            const normalizedY = clampNumber((pos.y - frame.y) / frame.height, 0, 1);
+            const normalizedX = (pos.x - frame.x) / frame.width;
+            const normalizedY = (pos.y - frame.y) / frame.height;
             positions.set(node.id(), {
                 x: normalizedX,
                 y: normalizedY
             });
         });
         return positions;
+    }
+
+    function buildSeedPositionsFromSavedPositions(savedPositions) {
+        if (!savedPositions || typeof savedPositions !== 'object') return null;
+        const positions = new Map();
+        Object.keys(savedPositions).forEach((deviceId) => {
+            const absolute = parseSavedAbsolutePosition(savedPositions[deviceId]);
+            if (!absolute) return;
+            positions.set(deviceId, absolute);
+        });
+        return positions.size ? positions : null;
+    }
+
+    function normalizeSeedPositionsToBackground(seedPositions, frame) {
+        if (!seedPositions || !seedPositions.size || !frame) return null;
+        const bounds = {
+            minX: Number.POSITIVE_INFINITY,
+            maxX: Number.NEGATIVE_INFINITY,
+            minY: Number.POSITIVE_INFINITY,
+            maxY: Number.NEGATIVE_INFINITY
+        };
+
+        seedPositions.forEach((pos) => {
+            if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
+            bounds.minX = Math.min(bounds.minX, pos.x);
+            bounds.maxX = Math.max(bounds.maxX, pos.x);
+            bounds.minY = Math.min(bounds.minY, pos.y);
+            bounds.maxY = Math.max(bounds.maxY, pos.y);
+        });
+
+        if (!Number.isFinite(bounds.minX) || !Number.isFinite(bounds.maxX) ||
+            !Number.isFinite(bounds.minY) || !Number.isFinite(bounds.maxY)) {
+            return null;
+        }
+
+        const layoutWidth = Math.max(1, bounds.maxX - bounds.minX);
+        const layoutHeight = Math.max(1, bounds.maxY - bounds.minY);
+        const layoutCenterX = bounds.minX + layoutWidth / 2;
+        const layoutCenterY = bounds.minY + layoutHeight / 2;
+        const frameCenterX = frame.x + frame.width / 2;
+        const frameCenterY = frame.y + frame.height / 2;
+        const offsetX = frameCenterX - layoutCenterX;
+        const offsetY = frameCenterY - layoutCenterY;
+
+        const normalized = new Map();
+        seedPositions.forEach((pos, deviceId) => {
+            if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
+            const mappedX = pos.x + offsetX;
+            const mappedY = pos.y + offsetY;
+            normalized.set(deviceId, {
+                x: (mappedX - frame.x) / frame.width,
+                y: (mappedY - frame.y) / frame.height
+            });
+        });
+
+        return normalized.size ? normalized : null;
     }
 
     function applyBackgroundNormalizedPositions(positionsByDeviceId) {
@@ -891,8 +966,8 @@ window.DeviceDiagram = (() => {
 
         const pos = node.position();
         return {
-            x: clampNumber((pos.x - frame.x) / frame.width, 0, 1),
-            y: clampNumber((pos.y - frame.y) / frame.height, 0, 1),
+            x: (pos.x - frame.x) / frame.width,
+            y: (pos.y - frame.y) / frame.height,
             coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE,
             size: size || undefined,
             rotation
@@ -922,7 +997,7 @@ window.DeviceDiagram = (() => {
         });
 
         try {
-            await saveMapPositions(next);
+            await savePositionsToStore(next, true);
         } catch (error) {
             console.warn('Unable to migrate map positions to normalized background coordinates:', error);
         }
@@ -1042,6 +1117,12 @@ window.DeviceDiagram = (() => {
         const nextPath = diagramBackgroundFile && diagramBackgroundFile.path
             ? String(diagramBackgroundFile.path)
             : '';
+        if (!previousPath && nextPath && cy && rerender) {
+            const savedPositions = await loadPositions(true);
+            if (!hasSavedPositions(savedPositions)) {
+                pendingBackgroundSeedPositions = collectCurrentDevicePositions();
+            }
+        }
         const shouldRefreshImage = Boolean(nextPath) && (nextPath !== previousPath || persist);
         updateDiagramBackgroundControls();
         applyDiagramBackground({ refreshImage: shouldRefreshImage });
@@ -1446,7 +1527,8 @@ function updateAreaFloorSelectability() {
         const floorsAndAreas = cy.nodes('node[type="floor"], node[type="area"]');
         if (isLayoutEditable) {
             if (!cachedPositions) {
-                cachedPositions = await loadPositions();
+                cachedPositionsUseBackground = hasDiagramBackground();
+                cachedPositions = await loadPositions(cachedPositionsUseBackground);
             }
             nodes.unlock();
             nodes.grabify();
@@ -2132,7 +2214,10 @@ async function renderNetwork() {
     });
     
     // Load saved positions
-    const savedPositions = await loadPositions();
+    const savedPositions = await loadPositions(hasBackground);
+    if (hasBackground && lastPositionsSource === 'map' && hasSavedPositions(savedPositions) && !pendingBackgroundSeedPositions) {
+        pendingBackgroundSeedPositions = buildSeedPositionsFromSavedPositions(savedPositions);
+    }
     const backgroundNormalizedPositions = new Map();
     let hasLegacyAbsoluteBackgroundPositions = false;
     const resolveSavedPosition = (deviceId, defaultPosition) => {
@@ -2440,6 +2525,24 @@ async function renderNetwork() {
     if (hasBackground) {
         applyBackgroundNormalizedPositions(backgroundNormalizedPositions);
         fitNetwork();
+        if (pendingBackgroundSeedPositions && pendingBackgroundSeedPositions.size) {
+            const frame = getBackgroundModelFrame();
+            if (frame && frame.width > 0 && frame.height > 0) {
+                const normalized = normalizeSeedPositionsToBackground(pendingBackgroundSeedPositions, frame);
+                if (normalized) {
+                    applyBackgroundNormalizedPositions(normalized);
+                }
+                const positions = {};
+                cy.nodes('[type="device"]').forEach((node) => {
+                    const serialized = serializeDevicePosition(node);
+                    if (serialized) {
+                        positions[node.id()] = serialized;
+                    }
+                });
+                void savePositionsToStore(positions, true);
+            }
+            pendingBackgroundSeedPositions = null;
+        }
     }
 
     await setLayoutEditable(isLayoutEditable);
@@ -2776,7 +2879,7 @@ async function resetLayout() {
     if (!confirmed) {
         return;
     }
-    await clearMapPositions();
+    await clearPositionsStore(hasDiagramBackground());
     hasUnsavedLayoutChanges = true;
     renderNetwork();
     
@@ -2804,7 +2907,8 @@ async function savePositions() {
         updateBackgroundNodeGeometry();
     }
     
-    const existingPositions = await loadPositions();
+    const useBackground = hasDiagramBackground();
+    const existingPositions = await loadPositions(useBackground);
     const positions = existingPositions && typeof existingPositions === 'object'
         ? { ...existingPositions }
         : {};
@@ -2814,9 +2918,10 @@ async function savePositions() {
         positions[node.id()] = serialized;
     });
     
-    await saveMapPositions(positions);
+    await savePositionsToStore(positions, useBackground);
     hasUnsavedLayoutChanges = false;
     cachedPositions = null;
+    cachedPositionsUseBackground = false;
     updateLayoutButtons();
     
     // Show feedback
@@ -2839,27 +2944,60 @@ async function cancelLayoutChanges() {
     }
     if (!hasUnsavedLayoutChanges) {
         cachedPositions = null;
+        cachedPositionsUseBackground = false;
         await setLayoutEditable(false);
         return;
     }
+    const useBackground = cachedPositionsUseBackground;
     if (cachedPositions) {
-        await saveMapPositions(cachedPositions);
+        await savePositionsToStore(cachedPositions, useBackground);
     } else {
-        await clearMapPositions();
+        await clearPositionsStore(useBackground);
     }
     hasUnsavedLayoutChanges = false;
     cachedPositions = null;
+    cachedPositionsUseBackground = false;
     renderNetwork();
     await setLayoutEditable(false);
 }
 
 // Load positions
-async function loadPositions() {
+async function loadPositions(useBackground = hasDiagramBackground()) {
+    if (useBackground && typeof loadMapImagePositions === 'function') {
+        const imagePositions = await loadMapImagePositions();
+        if (hasSavedPositions(imagePositions)) {
+            lastPositionsSource = 'image';
+            return imagePositions;
+        }
+        const basePositions = await loadMapPositions();
+        lastPositionsSource = 'map';
+        if (hasSavedPositions(basePositions)) {
+            return basePositions;
+        }
+        return {};
+    }
+    lastPositionsSource = 'map';
     const saved = await loadMapPositions();
     if (!saved || typeof saved !== 'object') {
         return {};
     }
     return saved;
+}
+
+async function savePositionsToStore(positions, useBackground = hasDiagramBackground()) {
+    if (useBackground && typeof saveMapImagePositions === 'function') {
+        await saveMapImagePositions(positions || {});
+        return;
+    }
+    await saveMapPositions(positions || {});
+}
+
+async function clearPositionsStore(useBackground = hasDiagramBackground()) {
+    if (useBackground && typeof clearMapImagePositions === 'function') {
+        await clearMapImagePositions();
+        return;
+    }
+    await clearMapPositions();
 }
 
 // Sort devices by connections to group connected devices together
