@@ -57,8 +57,11 @@
                     <ul class="debug-files-list" id="debug-file-list"></ul>
                 </aside>
                 <div class="debug-viewer-panel">
-                    <div class="debug-file-meta" id="debug-file-meta">Select a file to preview.</div>
-                    <pre class="debug-content" id="debug-file-content"></pre>
+                    <div class="debug-file-meta-row">
+                        <div class="debug-file-meta" id="debug-file-meta">Select a file to preview.</div>
+                        <button class="btn btn-secondary btn-sm debug-json-toggle" type="button" id="debug-json-toggle" hidden>Plain text</button>
+                    </div>
+                    <div class="debug-content" id="debug-file-content"></div>
                 </div>
             </div>
         </section>
