@@ -28,6 +28,9 @@ window.DeviceDiagram = (() => {
         minPadding: 3,
         maxPadding: 10
     };
+    const DEVICE_ROTATION_OFFSET = 90;
+    const DEVICE_ROTATION_MAX = 359;
+    const DEVICE_ROTATION_SENSITIVITY = 0.6;
     const DEVICE_FILES_UPLOAD_URL = typeof window.buildAppUrl === 'function'
         ? window.buildAppUrl('api/device-files/upload')
         : '/api/device-files/upload';
@@ -60,12 +63,20 @@ window.DeviceDiagram = (() => {
     let diagramBackgroundImageAspectRatio = null;
     let diagramBackgroundImageSize = null;
     const BACKGROUND_NORMALIZED_POSITION_SPACE = 'background-normalized';
+    let tooltipDismissHandler = null;
+    let tooltipDismissTimer = null;
     let resizeOverlay = null;
     let resizeOutline = null;
     let resizeHandles = null;
+    let rotateHandle = null;
+    let rotateLine = null;
     let activeResizeNodeId = null;
     let resizeState = null;
+    let rotateState = null;
     let resizeOverlayRaf = null;
+    let rotationUpdateRaf = null;
+    const pendingRotationNodes = new Set();
+    const cardSvgCache = new Set();
 
     function init(options = {}) {
         if (isInitialized) return;
@@ -241,6 +252,90 @@ window.DeviceDiagram = (() => {
         return { width, height };
     }
 
+    function normalizeDeviceRotation(value) {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return 0;
+        const normalized = ((parsed % 360) + 360) % 360;
+        return Math.round(Math.min(DEVICE_ROTATION_MAX, Math.max(0, normalized)));
+    }
+
+    function getDeviceNodeRotation(node) {
+        if (!node) return 0;
+        const rotation = Number(node.data('rotation'));
+        return normalizeDeviceRotation(rotation);
+    }
+
+    function applyDeviceRotationToNode(node, rotation) {
+        if (!node) return 0;
+        const normalized = normalizeDeviceRotation(rotation);
+        node.data('rotation', normalized);
+        scheduleDeviceCardSvgUpdate(node);
+        return normalized;
+    }
+
+    function scheduleDeviceCardSvgUpdate(node) {
+        if (!node || !cy) return;
+        pendingRotationNodes.add(node.id());
+        if (rotationUpdateRaf) return;
+        rotationUpdateRaf = requestAnimationFrame(() => {
+            rotationUpdateRaf = null;
+            const ids = Array.from(pendingRotationNodes);
+            pendingRotationNodes.clear();
+            ids.forEach((nodeId) => {
+                const target = cy.getElementById(nodeId);
+                if (!target || target.empty()) return;
+                updateDeviceCardSvg(target);
+            });
+        });
+    }
+
+    function updateDeviceCardSvg(node) {
+        if (!node) return;
+        const label = String(node.data('cardLabel') || node.data('label') || '').trim();
+        const status = node.data('cardStatus') || node.data('status') || '';
+        const storageLabel = node.data('cardStorageLabel') || '';
+        const rotation = getDeviceNodeRotation(node);
+        const lastRotation = Number(node.data('cardSvgRotation'));
+        if (Number.isFinite(lastRotation) && lastRotation === rotation) {
+            return;
+        }
+        node.data('cardSvgTargetRotation', rotation);
+        const url = buildDeviceCardSvg({
+            label,
+            status,
+            storageLabel,
+            rotation
+        });
+        if (cardSvgCache.has(url)) {
+            node.data('cardSvg', url);
+            node.data('cardSvgRotation', rotation);
+            return;
+        }
+
+        const img = new Image();
+        img.onload = () => {
+            cardSvgCache.add(url);
+            if (!cy) return;
+            const target = cy.getElementById(node.id());
+            if (!target || target.empty()) return;
+            const targetRotation = Number(target.data('cardSvgTargetRotation'));
+            if (!Number.isFinite(targetRotation) || targetRotation !== rotation) return;
+            target.data('cardSvg', url);
+            target.data('cardSvgRotation', rotation);
+        };
+        img.onerror = () => {
+            cardSvgCache.add(url);
+            if (!cy) return;
+            const target = cy.getElementById(node.id());
+            if (!target || target.empty()) return;
+            const targetRotation = Number(target.data('cardSvgTargetRotation'));
+            if (!Number.isFinite(targetRotation) || targetRotation !== rotation) return;
+            target.data('cardSvg', url);
+            target.data('cardSvgRotation', rotation);
+        };
+        img.src = url;
+    }
+
     function getDiagramBackgroundDisplayName(file) {
         if (!file) return 'No background image';
         const name = String(file.name || '').trim();
@@ -299,6 +394,12 @@ window.DeviceDiagram = (() => {
             ? value.size
             : { width: value.width, height: value.height };
         return normalizeDeviceSize(size);
+    }
+
+    function parseSavedRotation(value) {
+        if (!value || typeof value !== 'object') return null;
+        if (value.rotation === undefined || value.rotation === null) return null;
+        return normalizeDeviceRotation(value.rotation);
     }
 
     function getBackgroundNode() {
@@ -449,6 +550,14 @@ window.DeviceDiagram = (() => {
         return parseSavedSize(saved);
     }
 
+    function resolveSavedRotation(savedPositions, deviceId, useBackground) {
+        const saved = savedPositions ? savedPositions[deviceId] : null;
+        if (!useBackground) {
+            return parseSavedRotation(saved);
+        }
+        return parseSavedRotation(saved);
+    }
+
     function canResizeDevices() {
         return isLayoutEditable && hasDiagramBackground();
     }
@@ -474,6 +583,17 @@ window.DeviceDiagram = (() => {
         outline.className = 'device-resize-outline';
         overlay.appendChild(outline);
 
+        const line = document.createElement('div');
+        line.className = 'device-rotate-line';
+        overlay.appendChild(line);
+
+        const rotateBtn = document.createElement('button');
+        rotateBtn.type = 'button';
+        rotateBtn.className = 'device-rotate-handle';
+        rotateBtn.setAttribute('aria-label', 'Rotate device');
+        rotateBtn.addEventListener('pointerdown', handleRotatePointerDown);
+        overlay.appendChild(rotateBtn);
+
         const handles = {};
         ['nw', 'ne', 'sw', 'se'].forEach((handle) => {
             const btn = document.createElement('button');
@@ -490,6 +610,8 @@ window.DeviceDiagram = (() => {
         resizeOverlay = overlay;
         resizeOutline = outline;
         resizeHandles = handles;
+        rotateHandle = rotateBtn;
+        rotateLine = line;
         return overlay;
     }
 
@@ -513,6 +635,9 @@ window.DeviceDiagram = (() => {
         }
         if (resizeState) {
             handleResizePointerUp();
+        }
+        if (rotateState) {
+            handleRotatePointerUp();
         }
         resizeOverlay.classList.add('is-hidden');
         resizeOverlay.setAttribute('aria-hidden', 'true');
@@ -546,6 +671,7 @@ window.DeviceDiagram = (() => {
         const top = position.y - height / 2;
         const right = position.x + width / 2;
         const bottom = position.y + height / 2;
+        const rotateOffset = 38;
 
         resizeOutline.style.left = `${left}px`;
         resizeOutline.style.top = `${top}px`;
@@ -560,6 +686,17 @@ window.DeviceDiagram = (() => {
         resizeHandles.sw.style.top = `${bottom}px`;
         resizeHandles.se.style.left = `${right}px`;
         resizeHandles.se.style.top = `${bottom}px`;
+
+        if (rotateHandle && rotateLine) {
+            const centerX = position.x;
+            const lineTop = top - rotateOffset;
+            const lineHeight = rotateOffset;
+            rotateLine.style.left = `${centerX}px`;
+            rotateLine.style.top = `${lineTop}px`;
+            rotateLine.style.height = `${lineHeight}px`;
+            rotateHandle.style.left = `${centerX}px`;
+            rotateHandle.style.top = `${lineTop}px`;
+        }
     }
 
     function handleResizePointerDown(event) {
@@ -621,6 +758,7 @@ window.DeviceDiagram = (() => {
             applyDeviceSizeToNode(node, nextWidth, nextHeight);
             node.position({ x: nextCenterX, y: nextCenterY });
         });
+        scheduleDeviceCardSvgUpdate(node);
         markLayoutDirty();
         scheduleResizeOverlayUpdate();
         event.preventDefault();
@@ -633,6 +771,59 @@ window.DeviceDiagram = (() => {
         window.removeEventListener('pointermove', handleResizePointerMove);
         window.removeEventListener('pointerup', handleResizePointerUp);
         window.removeEventListener('pointercancel', handleResizePointerUp);
+    }
+
+    function handleRotatePointerDown(event) {
+        if (!canResizeDevices()) return;
+        const node = getActiveResizeNode();
+        if (!node) return;
+        const center = node.renderedPosition();
+        const startAngle = Math.atan2(
+            event.clientY - center.y,
+            event.clientX - center.x
+        );
+        rotateState = {
+            nodeId: node.id(),
+            centerX: center.x,
+            centerY: center.y,
+            startAngle,
+            startRotation: getDeviceNodeRotation(node)
+        };
+        event.preventDefault();
+        event.stopPropagation();
+        window.addEventListener('pointermove', handleRotatePointerMove);
+        window.addEventListener('pointerup', handleRotatePointerUp);
+        window.addEventListener('pointercancel', handleRotatePointerUp);
+    }
+
+    function handleRotatePointerMove(event) {
+        if (!rotateState || !cy) return;
+        const node = cy.getElementById(rotateState.nodeId);
+        if (!node || node.empty()) {
+            handleRotatePointerUp();
+            return;
+        }
+        const angle = Math.atan2(
+            event.clientY - rotateState.centerY,
+            event.clientX - rotateState.centerX
+        );
+        const degrees = ((angle - rotateState.startAngle) * 180) / Math.PI;
+        const rotation = normalizeDeviceRotation(
+            rotateState.startRotation + degrees * DEVICE_ROTATION_SENSITIVITY
+        );
+        applyDeviceRotationToNode(node, rotation);
+        markLayoutDirty();
+        scheduleResizeOverlayUpdate();
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    function handleRotatePointerUp() {
+        if (!rotateState) return;
+        rotateState = null;
+        window.removeEventListener('pointermove', handleRotatePointerMove);
+        window.removeEventListener('pointerup', handleRotatePointerUp);
+        window.removeEventListener('pointercancel', handleRotatePointerUp);
     }
 
     function buildCurrentBackgroundNormalizedPositions() {
@@ -676,13 +867,15 @@ window.DeviceDiagram = (() => {
     function serializeDevicePosition(node) {
         if (!node) return null;
         const size = getDeviceNodeSize(node);
+        const rotation = getDeviceNodeRotation(node);
         const hasBackground = Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
         if (!hasBackground) {
             const pos = node.position();
             return {
                 x: pos.x,
                 y: pos.y,
-                size: size || undefined
+                size: size || undefined,
+                rotation
             };
         }
 
@@ -701,7 +894,8 @@ window.DeviceDiagram = (() => {
             x: clampNumber((pos.x - frame.x) / frame.width, 0, 1),
             y: clampNumber((pos.y - frame.y) / frame.height, 0, 1),
             coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE,
-            size: size || undefined
+            size: size || undefined,
+            rotation
         };
     }
 
@@ -717,11 +911,13 @@ window.DeviceDiagram = (() => {
         normalizedPositions.forEach((position, deviceId) => {
             const node = cy ? cy.getElementById(deviceId) : null;
             const size = node && !node.empty() ? getDeviceNodeSize(node) : null;
+            const rotation = node && !node.empty() ? getDeviceNodeRotation(node) : 0;
             next[deviceId] = {
                 x: position.x,
                 y: position.y,
                 coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE,
-                size: size || undefined
+                size: size || undefined,
+                rotation
             };
         });
 
@@ -829,7 +1025,7 @@ window.DeviceDiagram = (() => {
         const backgroundNode = ensureBackgroundNode();
         if (backgroundNode) {
             backgroundNode.data('image', ensureBackgroundImageUrl() || '');
-            backgroundNode.data('opacity', diagramBackgroundOpacity / 100);
+            backgroundNode.data('imageOpacity', diagramBackgroundOpacity / 100);
             updateBackgroundNodeGeometry();
         }
     }
@@ -1095,6 +1291,14 @@ window.DeviceDiagram = (() => {
     if (fullscreenBtn) {
         fullscreenBtn.addEventListener('click', toggleMapFullscreen);
     }
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    if (zoomOutBtn) {
+        zoomOutBtn.addEventListener('click', () => adjustZoom(-0.15));
+    }
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    if (zoomInBtn) {
+        zoomInBtn.addEventListener('click', () => adjustZoom(0.15));
+    }
     const backgroundInput = document.getElementById('diagram-background-input');
     if (backgroundInput) {
         backgroundInput.addEventListener('change', handleDiagramBackgroundInputChange);
@@ -1148,11 +1352,58 @@ async function toggleLayoutEdit() {
     await setLayoutEditable(!isLayoutEditable);
 }
 
+function adjustZoom(delta) {
+    if (!cy) return;
+    const current = cy.zoom();
+    const minZoom = cy.minZoom();
+    const maxZoom = cy.maxZoom();
+    const next = Math.min(maxZoom, Math.max(minZoom, current + delta));
+    if (next === current) return;
+
+    const container = document.getElementById('network-map');
+    const rect = container ? container.getBoundingClientRect() : null;
+    const center = rect
+        ? { x: rect.width / 2, y: rect.height / 2 }
+        : { x: 0, y: 0 };
+    cy.zoom({
+        level: next,
+        renderedPosition: center
+    });
+    scheduleResizeOverlayUpdate();
+}
+
 function markLayoutDirty() {
     if (!isLayoutEditable) return;
     if (hasUnsavedLayoutChanges) return;
     hasUnsavedLayoutChanges = true;
     updateLayoutButtons();
+}
+
+function lockBackgroundNode() {
+    if (!cy) return;
+    cy.nodes('node[type="diagram-background"]').forEach((node) => {
+        node.lock();
+        node.ungrabify();
+        if (typeof node.unselectify === 'function') {
+            node.unselectify();
+        }
+    });
+}
+
+function updateAreaFloorSelectability() {
+    if (!cy) return;
+    const nodes = cy.nodes('node[type="floor"], node[type="area"]');
+    nodes.forEach((node) => {
+        if (typeof node.selectify !== 'function' || typeof node.unselectify !== 'function') return;
+        if (isLayoutEditable) {
+            node.selectify();
+            node.data('noHighlight', 'false');
+        } else {
+            node.unselectify();
+            node.unselect();
+            node.data('noHighlight', 'true');
+        }
+    });
 }
 
     function updateLayoutButtons() {
@@ -1192,16 +1443,23 @@ function markLayoutDirty() {
 
     if (cy) {
         const nodes = cy.nodes('[type="device"]');
+        const floorsAndAreas = cy.nodes('node[type="floor"], node[type="area"]');
         if (isLayoutEditable) {
             if (!cachedPositions) {
                 cachedPositions = await loadPositions();
             }
             nodes.unlock();
             nodes.grabify();
+            floorsAndAreas.unlock();
+            floorsAndAreas.grabify();
         } else {
             nodes.lock();
             nodes.ungrabify();
+            floorsAndAreas.lock();
+            floorsAndAreas.ungrabify();
         }
+        lockBackgroundNode();
+        updateAreaFloorSelectability();
     }
 
     const editBtn = document.getElementById('toggle-edit-layout-btn');
@@ -1307,12 +1565,24 @@ function initializeCytoscape() {
                     'background-repeat': 'no-repeat',
                     'background-position-x': '50%',
                     'background-position-y': '50%',
-                    'background-opacity': 'data(opacity)',
+                    'background-opacity': 1,
+                    'background-image-opacity': 'data(imageOpacity)',
+                    'background-blacken': 0,
                     'border-width': 0,
+                    'overlay-opacity': 0,
+                    'underlay-opacity': 0,
                     'label': '',
                     'text-opacity': 0,
                     'z-index': 0,
                     'z-compound-depth': 'bottom'
+                }
+            },
+            {
+                selector: 'node[type="diagram-background"]:active',
+                style: {
+                    'background-blacken': 0,
+                    'overlay-opacity': 0,
+                    'underlay-opacity': 0
                 }
             },
             // Floor style
@@ -1376,46 +1646,88 @@ function initializeCytoscape() {
                 selector: 'node[type="floor"][hideOutline="true"]',
                 style: {
                     'border-width': 0,
-                    'text-background-opacity': 0
+                    'text-background-opacity': 0,
+                    'text-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="floor"][noHighlight="true"]',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-blacken': 0,
+                    'underlay-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="floor"][noHighlight="true"]:active',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-blacken': 0,
+                    'underlay-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="floor"]:selected',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-opacity': 0
                 }
             },
             {
                 selector: 'node[type="area"][hideOutline="true"]',
                 style: {
                     'border-width': 0,
-                    'text-background-opacity': 0
+                    'text-background-opacity': 0,
+                    'text-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="area"][noHighlight="true"]',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-blacken': 0,
+                    'underlay-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="area"][noHighlight="true"]:active',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-blacken': 0,
+                    'underlay-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="area"]:selected',
+                style: {
+                    'overlay-opacity': 0,
+                    'background-opacity': 0
                 }
             },
             // Device style
             {
                 selector: 'node[type="device"]',
                 style: {
-                    'background-color': '#1e293b',
-                    'border-color': '#3b82f6',
-                    'border-width': 2,
-                    'label': 'data(label)',
-                    'text-valign': 'center',
-                    'text-halign': 'center',
-                    'text-wrap': 'wrap',
-                    'text-max-width': 'data(textMaxWidth)',
-                    'font-size': 'data(fontSize)',
-                    'color': '#f1f5f9',
-                    'shape': 'roundrectangle',
+                    'background-color': 'rgba(0, 0, 0, 0)',
+                    'background-opacity': 0,
+                    'background-blacken': 0,
+                    'border-width': 0,
+                    'overlay-opacity': 0,
+                    'background-image': 'data(cardSvg)',
+                    'background-fit': 'contain',
+                    'background-repeat': 'no-repeat',
+                    'background-position-x': '50%',
+                    'background-position-y': '50%',
+                    'label': '',
+                    'text-opacity': 0,
+                    'shape': 'rectangle',
                     'width': 'data(width)',
-                    'height': 'data(height)',
-                    'padding': 'data(padding)'
+                    'height': 'data(height)'
                 }
             },
             {
                 selector: 'node[type="device"][hasStorage = "true"]',
                 style: {
-                    'background-image': 'data(storageIcon)',
-                    'background-fit': 'none',
-                    'background-repeat': 'no-repeat',
-                    'background-position-x': '95%',
-                    'background-position-y': '85%',
-                    'background-width': 'data(storageWidth)',
-                    'background-height': 'data(storageHeight)',
                     'text-margin-y': 'data(storageTextOffset)'
                 }
             },
@@ -1522,6 +1834,7 @@ function initializeCytoscape() {
     });
     
     cy.on('dbltap', 'node[type="device"]', function(evt) {
+        if (isLayoutEditable) return;
         const node = evt.target;
         const deviceId = node.id();
         void navigateToDeviceEdit(deviceId);
@@ -1549,16 +1862,23 @@ function initializeCytoscape() {
 
 
 
-    // Allow panning by dragging on nodes when not in edit mode
-    cy.on('tapstart', 'node[type="device"], node[type="area"], node[type="floor"], node[type="diagram-background"]', (event) => {
+    // Allow panning by dragging on nodes when not in edit mode (devices), always for background/areas/floors
+    cy.on('tapstart', 'node[type="device"]', (event) => {
         if (isLayoutEditable) return;
+        isPanningFromNode = true;
+        lastPanPosition = event.renderedPosition;
+    });
+
+    cy.on('tapstart', 'node[type="area"], node[type="floor"], node[type="diagram-background"]', (event) => {
+        if (isLayoutEditable && event.target && event.target.data('type') !== 'diagram-background') {
+            return;
+        }
         isPanningFromNode = true;
         lastPanPosition = event.renderedPosition;
     });
 
     cy.on('tapstart', (event) => {
         if (event.target !== cy) return;
-        if (isLayoutEditable) return;
         isPanningFromNode = true;
         lastPanPosition = event.renderedPosition;
     });
@@ -1624,7 +1944,6 @@ function showDeviceTooltip(node) {
     const type = device.type ? getFriendlyOption(settings?.types, device.type, formatDeviceType) : 'N/A';
     const brand = device.brand ? getFriendlyOption(settings?.brands, device.brand, formatDeviceType) : 'N/A';
     const status = device.status || 'N/A';
-    const connectivity = device.connectivity ? getFriendlyOption(settings?.connectivity, device.connectivity, formatConnectivity) : 'N/A';
     
     tooltip.innerHTML = `
         <div class="tooltip-header">
@@ -1656,10 +1975,6 @@ function showDeviceTooltip(node) {
                 <span class="tooltip-label">Status:</span>
                 <span class="tooltip-value status-${status}">${escapeHtml(status)}</span>
             </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Connectivity:</span>
-                <span class="tooltip-value">${escapeHtml(connectivity)}</span>
-            </div>
         </div>
         <div class="tooltip-footer">
             <button class="tooltip-edit-btn" data-device-id="${escapeHtml(device.id)}">
@@ -1678,6 +1993,8 @@ function showDeviceTooltip(node) {
             void navigateToDeviceEdit(targetDeviceId);
         });
     }
+
+    bindTooltipDismiss(tooltip);
     
     // Position tooltip
     if (window.innerWidth <= 640) {
@@ -1697,6 +2014,36 @@ function hideDeviceTooltip() {
     const tooltip = document.getElementById('device-tooltip');
     if (tooltip) {
         tooltip.remove();
+    }
+    unbindTooltipDismiss();
+}
+
+function bindTooltipDismiss(tooltipEl) {
+    if (!tooltipEl) return;
+    if (tooltipDismissTimer) {
+        clearTimeout(tooltipDismissTimer);
+        tooltipDismissTimer = null;
+    }
+    unbindTooltipDismiss();
+    tooltipDismissHandler = (event) => {
+        if (!tooltipEl || tooltipEl.contains(event.target)) return;
+        hideDeviceTooltip();
+    };
+    tooltipDismissTimer = setTimeout(() => {
+        document.addEventListener('mousedown', tooltipDismissHandler);
+        document.addEventListener('touchstart', tooltipDismissHandler, { passive: true });
+        tooltipDismissTimer = null;
+    }, 0);
+}
+
+function unbindTooltipDismiss() {
+    if (!tooltipDismissHandler) return;
+    document.removeEventListener('mousedown', tooltipDismissHandler);
+    document.removeEventListener('touchstart', tooltipDismissHandler);
+    tooltipDismissHandler = null;
+    if (tooltipDismissTimer) {
+        clearTimeout(tooltipDismissTimer);
+        tooltipDismissTimer = null;
     }
 }
 
@@ -1748,7 +2095,7 @@ async function renderNetwork() {
                     width: backgroundSize ? backgroundSize.width : 0,
                     height: backgroundSize ? backgroundSize.height : 0,
                     image: diagramBackgroundImageUrl || '',
-                    opacity: diagramBackgroundOpacity / 100
+                    imageOpacity: diagramBackgroundOpacity / 100
                 },
                 position: { x: 0, y: 0 },
                 selectable: false,
@@ -1807,6 +2154,7 @@ async function renderNetwork() {
         return defaultPosition;
     };
     const resolveDeviceSize = (deviceId) => resolveSavedSize(savedPositions, deviceId, hasBackground);
+    const resolveDeviceRotation = (deviceId) => resolveSavedRotation(savedPositions, deviceId, hasBackground);
     
     // Build elements array
     const elements = [];
@@ -1820,7 +2168,7 @@ async function renderNetwork() {
                 width: backgroundSize ? backgroundSize.width : 0,
                 height: backgroundSize ? backgroundSize.height : 0,
                 image: diagramBackgroundImageUrl || '',
-                opacity: diagramBackgroundOpacity / 100
+                imageOpacity: diagramBackgroundOpacity / 100
             },
             position: { x: 0, y: 0 },
             selectable: false,
@@ -1901,9 +2249,20 @@ async function renderNetwork() {
                 };
                 if (storageLabel) {
                     deviceData.hasStorage = 'true';
-                    deviceData.storageIcon = buildStorageIconDataUri(storageLabel);
                 }
                 applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
+                deviceData.rotation = resolveDeviceRotation(device.id) ?? 0;
+                deviceData.cardLabel = deviceLabel;
+                deviceData.cardStatus = device.status || '';
+                deviceData.cardStorageLabel = storageLabel || '';
+                deviceData.cardSvgRotation = deviceData.rotation;
+                deviceData.cardSvgTargetRotation = deviceData.rotation;
+                deviceData.cardSvg = buildDeviceCardSvg({
+                    label: deviceLabel,
+                    status: device.status,
+                    storageLabel,
+                    rotation: deviceData.rotation
+                });
 
                 elements.push({
                     group: 'nodes',
@@ -1973,9 +2332,20 @@ async function renderNetwork() {
             };
             if (storageLabel) {
                 deviceData.hasStorage = 'true';
-                deviceData.storageIcon = buildStorageIconDataUri(storageLabel);
             }
             applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
+            deviceData.rotation = resolveDeviceRotation(device.id) ?? 0;
+            deviceData.cardLabel = deviceLabel;
+            deviceData.cardStatus = device.status || '';
+            deviceData.cardStorageLabel = storageLabel || '';
+            deviceData.cardSvgRotation = deviceData.rotation;
+            deviceData.cardSvgTargetRotation = deviceData.rotation;
+            deviceData.cardSvg = buildDeviceCardSvg({
+                label: deviceLabel,
+                status: device.status,
+                storageLabel,
+                rotation: deviceData.rotation
+            });
 
             elements.push({
                 group: 'nodes',
@@ -2073,6 +2443,8 @@ async function renderNetwork() {
     }
 
     await setLayoutEditable(isLayoutEditable);
+    lockBackgroundNode();
+    updateAreaFloorSelectability();
     if (hasLegacyAbsoluteBackgroundPositions && diagramBackgroundImageSize) {
         void migratePositionsToBackgroundNormalized(savedPositions);
     }
@@ -2141,13 +2513,106 @@ function formatStorageLabel(device) {
     return unit ? `${size} ${unit}` : size;
 }
 
-function buildStorageIconDataUri(label) {
-    const safeLabel = escapeSvgText(label);
+function getDeviceStatusColor(status) {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'pending') return '#f59e0b';
+    if (normalized === 'not-working') return '#ef4444';
+    if (normalized === 'working') return '#10b981';
+    return '#3b82f6';
+}
+
+function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
+    const raw = String(text || '').trim();
+    if (!raw) return [''];
+    const approxCharWidth = fontSize * 0.55;
+    const maxChars = Math.max(4, Math.floor(maxWidth / Math.max(approxCharWidth, 1)));
+    const words = raw.split(/\s+/);
+    const lines = [];
+    let current = '';
+
+    words.forEach((word) => {
+        const next = current ? `${current} ${word}` : word;
+        if (next.length <= maxChars) {
+            current = next;
+            return;
+        }
+        if (current) {
+            lines.push(current);
+            current = word;
+        } else {
+            lines.push(word.slice(0, maxChars));
+            current = word.slice(maxChars);
+        }
+    });
+
+    if (current) {
+        lines.push(current);
+    }
+
+    if (lines.length <= maxLines) {
+        return lines;
+    }
+    const trimmed = lines.slice(0, maxLines);
+    const last = trimmed[maxLines - 1];
+    if (last.length > 3) {
+        trimmed[maxLines - 1] = `${last.slice(0, Math.max(1, last.length - 3))}...`;
+    }
+    return trimmed;
+}
+
+function buildDeviceCardSvg({ label, status, storageLabel, rotation }) {
+    const width = DEVICE_BASE_METRICS.width;
+    const height = DEVICE_BASE_METRICS.height;
+    const strokeColor = getDeviceStatusColor(status);
+    const fillColor = '#1e293b';
+    const rx = 12;
+    const fontSize = DEVICE_BASE_METRICS.fontSize;
+    const textMaxWidth = width - 24;
+    const lines = buildSvgTextLines(label, textMaxWidth, fontSize, 2);
+    const lineHeight = fontSize * 1.25;
+    const totalHeight = lineHeight * lines.length;
+    let startY = (height - totalHeight) / 2 + fontSize;
+    const angle = normalizeDeviceRotation(rotation || 0);
+    const radians = (angle * Math.PI) / 180;
+    const rotatedWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
+    const rotatedHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
+    const scale = angle
+        ? Math.min(width / rotatedWidth, height / rotatedHeight, 1)
+        : 1;
+    const transform = angle
+        ? `transform="translate(${width / 2} ${height / 2}) rotate(${angle}) scale(${scale}) translate(${-width / 2} ${-height / 2})"`
+        : '';
+
+    if (storageLabel) {
+        startY -= 6;
+    }
+
+    const textMarkup = lines.map((line, index) => {
+        const y = startY + index * lineHeight;
+        return `<tspan x="${width / 2}" y="${y}">${escapeSvgText(line)}</tspan>`;
+    }).join('');
+
+    let storageMarkup = '';
+    if (storageLabel) {
+        const badgeWidth = 56;
+        const badgeHeight = 24;
+        const badgeX = width - badgeWidth - 6;
+        const badgeY = height - badgeHeight - 6;
+        const safeLabel = escapeSvgText(storageLabel);
+        storageMarkup = [
+            `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="4" ry="4" fill="none" stroke="#94a3b8" stroke-width="1.2"/>`,
+            `<rect x="${badgeX + 3}" y="${badgeY + 6}" width="${badgeWidth - 6}" height="2" fill="#94a3b8" opacity="0.6"/>`,
+            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="9" font-family="Arial, sans-serif" fill="#94a3b8">${safeLabel}</text>`
+        ].join('');
+    }
+
     const svg = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="24" viewBox="0 0 56 24">',
-        '<rect x="1" y="3" width="54" height="18" rx="4" ry="4" fill="none" stroke="#94a3b8" stroke-width="1.2"/>',
-        '<rect x="4" y="8" width="48" height="2" fill="#94a3b8" opacity="0.6"/>',
-        `<text x="28" y="18" text-anchor="middle" font-size="9" font-family="Arial, sans-serif" fill="#94a3b8">${safeLabel}</text>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+        `<g ${transform}>`,
+        `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${rx}" ry="${rx}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/>`,
+        `<text x="${width / 2}" y="${height / 2}" text-anchor="middle" font-size="${fontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
+        storageMarkup,
+        '</g>',
         '</svg>'
     ].join('');
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;

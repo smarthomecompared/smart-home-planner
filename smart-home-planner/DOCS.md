@@ -116,8 +116,11 @@ Best use cases:
 2. Understanding how devices are grouped by Installed or Controlled Area.
 3. Refining layout by dragging devices into a meaningful arrangement.
 4. Entering full screen for deep review sessions.
+5. Overlaying devices on a floor plan image for spatial context.
 
 The layout editor lets you position devices in a way that matches your real-world setup, then save the layout so it stays consistent.
+
+You can upload a background image such as a floor plan in the Diagram Settings panel. Device positions are stored relative to the background image, so they stay aligned regardless of zoom, pan, fullscreen, or window resize. Use the opacity slider to adjust the background visibility.
 
 ## Add Device
 

@@ -1,6 +1,7 @@
 ## 1.2.0 - 
 
 ### Added
+- Overlaying devices on a floor plan image for spatial context.
 
 ### Fixes
 - Fixed cahing of js and css resources

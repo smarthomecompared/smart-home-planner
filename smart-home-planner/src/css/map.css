@@ -485,6 +485,40 @@ body.map-fullscreen .map-controls-overlay {
     pointer-events: none;
 }
 
+.device-rotate-line {
+    position: absolute;
+    width: 2px;
+    background: rgba(59, 130, 246, 0.65);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.device-rotate-handle {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.45);
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    touch-action: none;
+    cursor: grab;
+}
+
+.device-rotate-handle::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 999px;
+    border: 2px solid rgba(56, 189, 248, 0.95);
+}
+
+.device-rotate-handle:active {
+    cursor: grabbing;
+}
+
 .device-resize-handle {
     position: absolute;
     width: 14px;
@@ -813,6 +847,15 @@ body.map-fullscreen .map-controls-overlay {
 
     .device-resize-handle::after {
         inset: 4px;
+    }
+
+    .device-rotate-handle {
+        width: 24px;
+        height: 24px;
+    }
+
+    .device-rotate-handle::after {
+        inset: 6px;
     }
 }
 
