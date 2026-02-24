@@ -466,6 +466,56 @@ body.map-fullscreen .map-controls-overlay {
     z-index: 1002;
 }
 
+.device-resize-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    pointer-events: none;
+}
+
+.device-resize-overlay.is-hidden {
+    display: none;
+}
+
+.device-resize-outline {
+    position: absolute;
+    border: 1px dashed rgba(59, 130, 246, 0.65);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.45);
+    pointer-events: none;
+}
+
+.device-resize-handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    border: 1px solid rgba(148, 163, 184, 0.9);
+    background: rgba(15, 23, 42, 0.95);
+    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.45);
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.device-resize-handle::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-radius: 2px;
+    background: rgba(56, 189, 248, 0.9);
+}
+
+.device-resize-handle[data-handle="nw"],
+.device-resize-handle[data-handle="se"] {
+    cursor: nwse-resize;
+}
+
+.device-resize-handle[data-handle="ne"],
+.device-resize-handle[data-handle="sw"] {
+    cursor: nesw-resize;
+}
+
 /* Empty Map Message */
 .empty-map-message {
     position: absolute;
@@ -754,6 +804,15 @@ body.map-fullscreen .map-controls-overlay {
     
     .tooltip-edit-btn {
         width: 100%;
+    }
+
+    .device-resize-handle {
+        width: 18px;
+        height: 18px;
+    }
+
+    .device-resize-handle::after {
+        inset: 4px;
     }
 }
 

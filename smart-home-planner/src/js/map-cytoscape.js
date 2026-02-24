@@ -6,6 +6,28 @@ window.DeviceDiagram = (() => {
     const DIAGRAM_BACKGROUND_DEVICE_ID = 'diagram-background';
     const DIAGRAM_BACKGROUND_NODE_ID = 'diagram-background-node';
     const BACKGROUND_MODEL_MAX_DIMENSION = 1800;
+    const DEVICE_BASE_METRICS = {
+        width: 140,
+        height: 60,
+        fontSize: 12,
+        textMaxWidth: 100,
+        padding: 5,
+        storageWidth: 56,
+        storageHeight: 24,
+        storageTextOffset: -6
+    };
+    const DEVICE_SIZE_LIMITS = {
+        minWidth: 90,
+        maxWidth: 420,
+        minHeight: 45,
+        maxHeight: 260
+    };
+    const DEVICE_FONT_LIMITS = {
+        minFontSize: 10,
+        maxFontSize: 18,
+        minPadding: 3,
+        maxPadding: 10
+    };
     const DEVICE_FILES_UPLOAD_URL = typeof window.buildAppUrl === 'function'
         ? window.buildAppUrl('api/device-files/upload')
         : '/api/device-files/upload';
@@ -38,6 +60,12 @@ window.DeviceDiagram = (() => {
     let diagramBackgroundImageAspectRatio = null;
     let diagramBackgroundImageSize = null;
     const BACKGROUND_NORMALIZED_POSITION_SPACE = 'background-normalized';
+    let resizeOverlay = null;
+    let resizeOutline = null;
+    let resizeHandles = null;
+    let activeResizeNodeId = null;
+    let resizeState = null;
+    let resizeOverlayRaf = null;
 
     function init(options = {}) {
         if (isInitialized) return;
@@ -137,6 +165,82 @@ window.DeviceDiagram = (() => {
         return Math.min(100, Math.max(0, Math.round(parsed)));
     }
 
+    function buildDeviceSizeData(size) {
+        const normalized = normalizeDeviceSize(size);
+        const width = normalized ? normalized.width : DEVICE_BASE_METRICS.width;
+        const height = normalized ? normalized.height : DEVICE_BASE_METRICS.height;
+        const scale = Math.min(
+            width / DEVICE_BASE_METRICS.width,
+            height / DEVICE_BASE_METRICS.height
+        );
+        const safeScale = clampNumber(scale, 0.6, 2.2);
+        const fontSize = clampNumber(
+            DEVICE_BASE_METRICS.fontSize * safeScale,
+            DEVICE_FONT_LIMITS.minFontSize,
+            DEVICE_FONT_LIMITS.maxFontSize
+        );
+        const padding = clampNumber(
+            DEVICE_BASE_METRICS.padding * safeScale,
+            DEVICE_FONT_LIMITS.minPadding,
+            DEVICE_FONT_LIMITS.maxPadding
+        );
+        const textMaxWidth = Math.max(
+            70,
+            Math.min(
+                width - 18,
+                DEVICE_BASE_METRICS.textMaxWidth * (width / DEVICE_BASE_METRICS.width)
+            )
+        );
+
+        return {
+            width,
+            height,
+            fontSize,
+            textMaxWidth,
+            padding,
+            storageWidth: DEVICE_BASE_METRICS.storageWidth * safeScale,
+            storageHeight: DEVICE_BASE_METRICS.storageHeight * safeScale,
+            storageTextOffset: DEVICE_BASE_METRICS.storageTextOffset * safeScale
+        };
+    }
+
+    function applyDeviceSizeData(target, size) {
+        const data = buildDeviceSizeData(size);
+        target.width = data.width;
+        target.height = data.height;
+        target.fontSize = data.fontSize;
+        target.textMaxWidth = data.textMaxWidth;
+        target.padding = data.padding;
+        target.storageWidth = data.storageWidth;
+        target.storageHeight = data.storageHeight;
+        target.storageTextOffset = data.storageTextOffset;
+        return data;
+    }
+
+    function applyDeviceSizeToNode(node, width, height) {
+        if (!node) return null;
+        const data = buildDeviceSizeData({ width, height });
+        node.data({
+            width: data.width,
+            height: data.height,
+            fontSize: data.fontSize,
+            textMaxWidth: data.textMaxWidth,
+            padding: data.padding,
+            storageWidth: data.storageWidth,
+            storageHeight: data.storageHeight,
+            storageTextOffset: data.storageTextOffset
+        });
+        return data;
+    }
+
+    function getDeviceNodeSize(node) {
+        if (!node) return null;
+        const width = Number(node.data('width')) || node.width();
+        const height = Number(node.data('height')) || node.height();
+        if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+        return { width, height };
+    }
+
     function getDiagramBackgroundDisplayName(file) {
         if (!file) return 'No background image';
         const name = String(file.name || '').trim();
@@ -176,6 +280,25 @@ window.DeviceDiagram = (() => {
 
     function hasDiagramBackground() {
         return Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
+    }
+
+    function normalizeDeviceSize(size) {
+        if (!size || typeof size !== 'object') return null;
+        const width = Number(size.width);
+        const height = Number(size.height);
+        if (!Number.isFinite(width) || !Number.isFinite(height)) return null;
+        return {
+            width: clampNumber(width, DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth),
+            height: clampNumber(height, DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight)
+        };
+    }
+
+    function parseSavedSize(value) {
+        if (!value || typeof value !== 'object') return null;
+        const size = value.size && typeof value.size === 'object'
+            ? value.size
+            : { width: value.width, height: value.height };
+        return normalizeDeviceSize(size);
     }
 
     function getBackgroundNode() {
@@ -320,6 +443,198 @@ window.DeviceDiagram = (() => {
         };
     }
 
+    function resolveSavedSize(savedPositions, deviceId, useBackground) {
+        if (!useBackground) return null;
+        const saved = savedPositions ? savedPositions[deviceId] : null;
+        return parseSavedSize(saved);
+    }
+
+    function canResizeDevices() {
+        return isLayoutEditable && hasDiagramBackground();
+    }
+
+    function getActiveResizeNode() {
+        if (!cy || !activeResizeNodeId) return null;
+        const node = cy.getElementById(activeResizeNodeId);
+        if (!node || node.empty()) return null;
+        return node;
+    }
+
+    function ensureResizeOverlay() {
+        if (resizeOverlay) return resizeOverlay;
+        const mapContainer = document.getElementById('network-map');
+        if (!mapContainer) return null;
+
+        const overlay = document.createElement('div');
+        overlay.id = 'device-resize-overlay';
+        overlay.className = 'device-resize-overlay is-hidden';
+        overlay.setAttribute('aria-hidden', 'true');
+
+        const outline = document.createElement('div');
+        outline.className = 'device-resize-outline';
+        overlay.appendChild(outline);
+
+        const handles = {};
+        ['nw', 'ne', 'sw', 'se'].forEach((handle) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'device-resize-handle';
+            btn.dataset.handle = handle;
+            btn.setAttribute('aria-label', 'Resize device');
+            btn.addEventListener('pointerdown', handleResizePointerDown);
+            overlay.appendChild(btn);
+            handles[handle] = btn;
+        });
+
+        mapContainer.appendChild(overlay);
+        resizeOverlay = overlay;
+        resizeOutline = outline;
+        resizeHandles = handles;
+        return overlay;
+    }
+
+    function showResizeHandles(node) {
+        if (!node || !canResizeDevices()) {
+            hideResizeHandles();
+            return;
+        }
+        ensureResizeOverlay();
+        if (!resizeOverlay) return;
+        activeResizeNodeId = node.id();
+        resizeOverlay.classList.remove('is-hidden');
+        resizeOverlay.setAttribute('aria-hidden', 'false');
+        scheduleResizeOverlayUpdate();
+    }
+
+    function hideResizeHandles() {
+        if (!resizeOverlay) {
+            activeResizeNodeId = null;
+            return;
+        }
+        if (resizeState) {
+            handleResizePointerUp();
+        }
+        resizeOverlay.classList.add('is-hidden');
+        resizeOverlay.setAttribute('aria-hidden', 'true');
+        activeResizeNodeId = null;
+    }
+
+    function scheduleResizeOverlayUpdate() {
+        if (!activeResizeNodeId) return;
+        if (resizeOverlayRaf) return;
+        resizeOverlayRaf = requestAnimationFrame(() => {
+            resizeOverlayRaf = null;
+            updateResizeOverlayPosition();
+        });
+    }
+
+    function updateResizeOverlayPosition() {
+        if (!resizeOverlay || !resizeOutline || !resizeHandles) return;
+        const node = getActiveResizeNode();
+        if (!node) {
+            hideResizeHandles();
+            return;
+        }
+        const position = node.renderedPosition();
+        const width = node.renderedWidth();
+        const height = node.renderedHeight();
+        if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !width || !height) {
+            hideResizeHandles();
+            return;
+        }
+        const left = position.x - width / 2;
+        const top = position.y - height / 2;
+        const right = position.x + width / 2;
+        const bottom = position.y + height / 2;
+
+        resizeOutline.style.left = `${left}px`;
+        resizeOutline.style.top = `${top}px`;
+        resizeOutline.style.width = `${width}px`;
+        resizeOutline.style.height = `${height}px`;
+
+        resizeHandles.nw.style.left = `${left}px`;
+        resizeHandles.nw.style.top = `${top}px`;
+        resizeHandles.ne.style.left = `${right}px`;
+        resizeHandles.ne.style.top = `${top}px`;
+        resizeHandles.sw.style.left = `${left}px`;
+        resizeHandles.sw.style.top = `${bottom}px`;
+        resizeHandles.se.style.left = `${right}px`;
+        resizeHandles.se.style.top = `${bottom}px`;
+    }
+
+    function handleResizePointerDown(event) {
+        if (!canResizeDevices()) return;
+        const handle = event.currentTarget && event.currentTarget.dataset
+            ? event.currentTarget.dataset.handle
+            : '';
+        if (!handle) return;
+        const node = getActiveResizeNode();
+        if (!node) return;
+        const size = getDeviceNodeSize(node);
+        if (!size) return;
+        const position = node.position();
+        const halfWidth = size.width / 2;
+        const halfHeight = size.height / 2;
+        resizeState = {
+            nodeId: node.id(),
+            handle,
+            startX: event.clientX,
+            startY: event.clientY,
+            startWidth: size.width,
+            startHeight: size.height,
+            fixedCorner: {
+                x: position.x + (handle.includes('w') ? halfWidth : -halfWidth),
+                y: position.y + (handle.includes('n') ? halfHeight : -halfHeight)
+            }
+        };
+        event.preventDefault();
+        event.stopPropagation();
+        window.addEventListener('pointermove', handleResizePointerMove);
+        window.addEventListener('pointerup', handleResizePointerUp);
+        window.addEventListener('pointercancel', handleResizePointerUp);
+    }
+
+    function handleResizePointerMove(event) {
+        if (!resizeState || !cy) return;
+        const node = cy.getElementById(resizeState.nodeId);
+        if (!node || node.empty()) {
+            handleResizePointerUp();
+            return;
+        }
+        const zoom = cy.zoom() || 1;
+        const dx = (event.clientX - resizeState.startX) / zoom;
+        const dy = (event.clientY - resizeState.startY) / zoom;
+        const signX = resizeState.handle.includes('e') ? 1 : -1;
+        const signY = resizeState.handle.includes('s') ? 1 : -1;
+        let nextWidth = resizeState.startWidth + dx * signX;
+        let nextHeight = resizeState.startHeight + dy * signY;
+
+        nextWidth = clampNumber(nextWidth, DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
+        nextHeight = clampNumber(nextHeight, DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
+
+        const halfWidth = nextWidth / 2;
+        const halfHeight = nextHeight / 2;
+        const nextCenterX = resizeState.fixedCorner.x + (resizeState.handle.includes('w') ? -halfWidth : halfWidth);
+        const nextCenterY = resizeState.fixedCorner.y + (resizeState.handle.includes('n') ? -halfHeight : halfHeight);
+
+        cy.batch(() => {
+            applyDeviceSizeToNode(node, nextWidth, nextHeight);
+            node.position({ x: nextCenterX, y: nextCenterY });
+        });
+        markLayoutDirty();
+        scheduleResizeOverlayUpdate();
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    function handleResizePointerUp() {
+        if (!resizeState) return;
+        resizeState = null;
+        window.removeEventListener('pointermove', handleResizePointerMove);
+        window.removeEventListener('pointerup', handleResizePointerUp);
+        window.removeEventListener('pointercancel', handleResizePointerUp);
+    }
+
     function buildCurrentBackgroundNormalizedPositions() {
         if (!cy || !diagramBackgroundFile || !diagramBackgroundFile.path) return null;
         const frame = getBackgroundModelFrame();
@@ -360,21 +675,33 @@ window.DeviceDiagram = (() => {
 
     function serializeDevicePosition(node) {
         if (!node) return null;
+        const size = getDeviceNodeSize(node);
         const hasBackground = Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
         if (!hasBackground) {
-            return node.position();
+            const pos = node.position();
+            return {
+                x: pos.x,
+                y: pos.y,
+                size: size || undefined
+            };
         }
 
         const frame = getBackgroundModelFrame();
         if (!frame || frame.width <= 0 || frame.height <= 0) {
-            return node.position();
+            const pos = node.position();
+            return {
+                x: pos.x,
+                y: pos.y,
+                size: size || undefined
+            };
         }
 
         const pos = node.position();
         return {
             x: clampNumber((pos.x - frame.x) / frame.width, 0, 1),
             y: clampNumber((pos.y - frame.y) / frame.height, 0, 1),
-            coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE
+            coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE,
+            size: size || undefined
         };
     }
 
@@ -388,10 +715,13 @@ window.DeviceDiagram = (() => {
             : {};
 
         normalizedPositions.forEach((position, deviceId) => {
+            const node = cy ? cy.getElementById(deviceId) : null;
+            const size = node && !node.empty() ? getDeviceNodeSize(node) : null;
             next[deviceId] = {
                 x: position.x,
                 y: position.y,
-                coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE
+                coordinateSpace: BACKGROUND_NORMALIZED_POSITION_SPACE,
+                size: size || undefined
             };
         });
 
@@ -519,6 +849,9 @@ window.DeviceDiagram = (() => {
         const shouldRefreshImage = Boolean(nextPath) && (nextPath !== previousPath || persist);
         updateDiagramBackgroundControls();
         applyDiagramBackground({ refreshImage: shouldRefreshImage });
+        if (!diagramBackgroundFile || !diagramBackgroundFile.path) {
+            hideResizeHandles();
+        }
 
         if (rerender && cy) {
             await renderNetwork();
@@ -693,7 +1026,7 @@ window.DeviceDiagram = (() => {
     }
 
 // Event listeners
-function initializeEventListeners() {
+    function initializeEventListeners() {
     const ethernetToggle = document.getElementById('show-ethernet-connections');
     if (ethernetToggle) {
         ethernetToggle.addEventListener('change', renderNetwork);
@@ -784,18 +1117,18 @@ function initializeEventListeners() {
             void removeDiagramBackground();
         });
     }
-    const backgroundOpacityInput = document.getElementById('diagram-background-opacity');
-    if (backgroundOpacityInput) {
-        backgroundOpacityInput.addEventListener('input', () => {
-            diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(backgroundOpacityInput.value);
-            updateDiagramBackgroundControls();
-            applyDiagramBackground();
-        });
-        backgroundOpacityInput.addEventListener('change', () => {
-            diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(backgroundOpacityInput.value);
-            void persistDiagramBackgroundTuning();
-        });
-    }
+        const backgroundOpacityInput = document.getElementById('diagram-background-opacity');
+        if (backgroundOpacityInput) {
+            backgroundOpacityInput.addEventListener('input', () => {
+                diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(backgroundOpacityInput.value);
+                updateDiagramBackgroundControls();
+                applyDiagramBackground();
+            });
+            backgroundOpacityInput.addEventListener('change', () => {
+                diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(backgroundOpacityInput.value);
+                void persistDiagramBackgroundTuning();
+            });
+        }
     window.addEventListener('resize', () => {
         if (document.body.classList.contains('map-fullscreen')) {
             updateFullscreenMapFrame();
@@ -804,12 +1137,12 @@ function initializeEventListeners() {
         }
         resizeCytoscape();
     });
-    rememberMapAspectRatio();
-    updateDiagramBackgroundControls();
-    updateLayoutButtons();
-    document.addEventListener('keydown', handleFullscreenEscape);
-    document.addEventListener('keydown', handlePowerDialogEscape);
-}
+        rememberMapAspectRatio();
+        updateDiagramBackgroundControls();
+        updateLayoutButtons();
+        document.addEventListener('keydown', handleFullscreenEscape);
+        document.addEventListener('keydown', handlePowerDialogEscape);
+    }
 
 async function toggleLayoutEdit() {
     await setLayoutEditable(!isLayoutEditable);
@@ -822,7 +1155,7 @@ function markLayoutDirty() {
     updateLayoutButtons();
 }
 
-function updateLayoutButtons() {
+    function updateLayoutButtons() {
     const saveBtn = document.getElementById('save-positions-btn');
     if (saveBtn) {
         saveBtn.disabled = !(isLayoutEditable && hasUnsavedLayoutChanges);
@@ -842,10 +1175,20 @@ function updateLayoutButtons() {
     if (secondaryRow) {
         secondaryRow.style.display = isLayoutEditable ? 'flex' : 'none';
     }
-}
+    }
 
-async function setLayoutEditable(editable) {
-    isLayoutEditable = Boolean(editable);
+    function updateOutlineVisibility() {
+        if (!cy || !hasDiagramBackground()) return;
+        const hideOutline = !isLayoutEditable ? 'true' : 'false';
+        cy.batch(() => {
+            cy.nodes('node[type="floor"], node[type="area"]').forEach((node) => {
+                node.data('hideOutline', hideOutline);
+            });
+        });
+    }
+
+    async function setLayoutEditable(editable) {
+        isLayoutEditable = Boolean(editable);
 
     if (cy) {
         const nodes = cy.nodes('[type="device"]');
@@ -868,6 +1211,10 @@ async function setLayoutEditable(editable) {
         editBtn.classList.toggle('btn-secondary', !isLayoutEditable);
     }
     updateLayoutButtons();
+    updateOutlineVisibility();
+    if (!isLayoutEditable) {
+        hideResizeHandles();
+    }
 }
 
 function setMapFullscreen(isFullscreen) {
@@ -913,6 +1260,7 @@ function resizeCytoscape() {
                 applyBackgroundNormalizedPositions(savedNormalized);
             }
         }
+        scheduleResizeOverlayUpdate();
     });
 }
 
@@ -922,6 +1270,7 @@ async function navigateToDeviceEdit(deviceId) {
 
     hideDeviceTooltip();
     hidePowerConnectionDialog();
+    hideResizeHandles();
 
     if (document.fullscreenElement && document.exitFullscreen) {
         try {
@@ -1023,6 +1372,20 @@ function initializeCytoscape() {
                     'background-opacity': 0
                 }
             },
+            {
+                selector: 'node[type="floor"][hideOutline="true"]',
+                style: {
+                    'border-width': 0,
+                    'text-background-opacity': 0
+                }
+            },
+            {
+                selector: 'node[type="area"][hideOutline="true"]',
+                style: {
+                    'border-width': 0,
+                    'text-background-opacity': 0
+                }
+            },
             // Device style
             {
                 selector: 'node[type="device"]',
@@ -1034,13 +1397,13 @@ function initializeCytoscape() {
                     'text-valign': 'center',
                     'text-halign': 'center',
                     'text-wrap': 'wrap',
-                    'text-max-width': 100,
-                    'font-size': 12,
+                    'text-max-width': 'data(textMaxWidth)',
+                    'font-size': 'data(fontSize)',
                     'color': '#f1f5f9',
                     'shape': 'roundrectangle',
-                    'width': 140,
-                    'height': 60,
-                    'padding': 5
+                    'width': 'data(width)',
+                    'height': 'data(height)',
+                    'padding': 'data(padding)'
                 }
             },
             {
@@ -1051,9 +1414,9 @@ function initializeCytoscape() {
                     'background-repeat': 'no-repeat',
                     'background-position-x': '95%',
                     'background-position-y': '85%',
-                    'background-width': 56,
-                    'background-height': 24,
-                    'text-margin-y': -6
+                    'background-width': 'data(storageWidth)',
+                    'background-height': 'data(storageHeight)',
+                    'text-margin-y': 'data(storageTextOffset)'
                 }
             },
             // Device pending status
@@ -1145,13 +1508,16 @@ function initializeCytoscape() {
         maxZoom: 3,
         wheelSensitivity: 0.2
     });
-    
+
     // Event handlers
     cy.on('tap', 'node[type="device"]', function(evt) {
         const node = evt.target;
-        const deviceId = node.id();
-        
-        // Show tooltip on click
+        if (canResizeDevices()) {
+            hideDeviceTooltip();
+            showResizeHandles(node);
+            return;
+        }
+        hideResizeHandles();
         showDeviceTooltip(node);
     });
     
@@ -1170,14 +1536,28 @@ function initializeCytoscape() {
         }
     });
 
+    cy.on('drag', 'node[type="device"]', (event) => {
+        if (activeResizeNodeId && event.target.id() === activeResizeNodeId) {
+            scheduleResizeOverlayUpdate();
+        }
+    });
+
     cy.on('dragfree', 'node[type="device"]', () => {
         markLayoutDirty();
+        scheduleResizeOverlayUpdate();
     });
 
 
 
     // Allow panning by dragging on nodes when not in edit mode
-    cy.on('tapstart', 'node[type="device"], node[type="area"], node[type="floor"]', (event) => {
+    cy.on('tapstart', 'node[type="device"], node[type="area"], node[type="floor"], node[type="diagram-background"]', (event) => {
+        if (isLayoutEditable) return;
+        isPanningFromNode = true;
+        lastPanPosition = event.renderedPosition;
+    });
+
+    cy.on('tapstart', (event) => {
+        if (event.target !== cy) return;
         if (isLayoutEditable) return;
         isPanningFromNode = true;
         lastPanPosition = event.renderedPosition;
@@ -1202,7 +1582,18 @@ function initializeCytoscape() {
         if (evt.target === cy) {
             hideDeviceTooltip();
             hidePowerConnectionDialog();
+            hideResizeHandles();
         }
+    });
+
+    cy.on('tap', 'node[type="diagram-background"], node[type="area"], node[type="floor"]', () => {
+        hideDeviceTooltip();
+        hidePowerConnectionDialog();
+        hideResizeHandles();
+    });
+
+    cy.on('viewport', () => {
+        scheduleResizeOverlayUpdate();
     });
 }
 
@@ -1317,6 +1708,7 @@ async function renderNetwork() {
     }
     
     hideDeviceTooltip();
+    hideResizeHandles();
     
     // Get display settings
     const ethernetToggle = document.getElementById('show-ethernet-connections');
@@ -1414,6 +1806,7 @@ async function renderNetwork() {
         }
         return defaultPosition;
     };
+    const resolveDeviceSize = (deviceId) => resolveSavedSize(savedPositions, deviceId, hasBackground);
     
     // Build elements array
     const elements = [];
@@ -1459,7 +1852,8 @@ async function renderNetwork() {
                 label: floor.name,
                 type: 'floor',
                 level: floor.level || 0,
-                transparentBackground: hasBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false',
+                hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
             }
         });
         
@@ -1476,7 +1870,8 @@ async function renderNetwork() {
                     label: area.name,
                     type: 'area',
                     parent: `floor-${floor.id}`,
-                    transparentBackground: hasBackground ? 'true' : 'false'
+                    transparentBackground: hasBackground ? 'true' : 'false',
+                    hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
                 }
             });
             
@@ -1508,6 +1903,7 @@ async function renderNetwork() {
                     deviceData.hasStorage = 'true';
                     deviceData.storageIcon = buildStorageIconDataUri(storageLabel);
                 }
+                applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
 
                 elements.push({
                     group: 'nodes',
@@ -1543,7 +1939,8 @@ async function renderNetwork() {
                 label: 'Unassigned',
                 type: 'floor',
                 level: -9999,
-                transparentBackground: hasBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false',
+                hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
             }
         });
 
@@ -1554,7 +1951,8 @@ async function renderNetwork() {
                 label: 'No Area',
                 type: 'area',
                 parent: floorId,
-                transparentBackground: hasBackground ? 'true' : 'false'
+                transparentBackground: hasBackground ? 'true' : 'false',
+                hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
             }
         });
 
@@ -1577,6 +1975,7 @@ async function renderNetwork() {
                 deviceData.hasStorage = 'true';
                 deviceData.storageIcon = buildStorageIconDataUri(storageLabel);
             }
+            applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
 
             elements.push({
                 group: 'nodes',
@@ -1896,6 +2295,7 @@ function fitNetwork() {
     if (backgroundNormalizedBeforeFit) {
         applyBackgroundNormalizedPositions(backgroundNormalizedBeforeFit);
     }
+    scheduleResizeOverlayUpdate();
 }
 
 // Reset layout
