@@ -50,7 +50,16 @@
                         <h3 class="form-section-title">Basic Information</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="device-name">Name *</label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label for="device-name">Name</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="name-help-btn" aria-label="Name guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <input type="text" id="device-name" required placeholder="Unique device name">
                             </div>
                             <div class="form-group">
@@ -69,6 +78,8 @@
                                     <option value="">Select a type</option>
                                 </select>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group form-group-full">
                                 <div class="form-label-row">
                                     <label for="device-labels">Labels</label>
@@ -141,7 +152,7 @@
                             <div class="form-group">
                                 <div class="form-label-row">
                                     <label for="device-status">Status *</label>
-                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Status info" title="Working: active and operating. Pending: not installed yet. Not Working: installed but not functioning. Wishlist: planned or desired device.">
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="status-help-btn" aria-label="Status info" title="More Info">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <circle cx="12" cy="12" r="9"></circle>
                                             <path d="M12 16v-4"></path>
@@ -159,7 +170,7 @@
                             <div class="form-group" id="device-area-group">
                                 <div class="form-label-row">
                                     <label for="device-area">Installed Area</label>
-                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Installed area info" title="Installed area is where the device is physically located.">
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="installed-area-help-btn" aria-label="Installed area info" title="More Info">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <circle cx="12" cy="12" r="9"></circle>
                                             <path d="M12 16v-4"></path>
@@ -174,7 +185,7 @@
                             <div class="form-group" id="device-controlled-area-group">
                                 <div class="form-label-row">
                                     <label for="device-controlled-area">Controlled Area</label>
-                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" aria-label="Controlled area info" title="Controlled area is the space this device controls, even if it is installed elsewhere.">
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="controlled-area-help-btn" aria-label="Controlled area info" title="More Info">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <circle cx="12" cy="12" r="9"></circle>
                                             <path d="M12 16v-4"></path>
@@ -199,7 +210,16 @@
                         <h3 class="form-section-title">Power</h3>
                         <div class="form-row power-row">
                             <div class="form-group">
-                                <label for="device-power">Power</label>
+                                <div class="form-label-row">
+                                    <label for="device-power">Power</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="power-help-btn" aria-label="Power guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <select id="device-power">
                                     <option value="">Select power type</option>
                                     <option value="battery">Battery</option>
@@ -209,10 +229,19 @@
                         </div>
                         <div class="form-row power-details-row">
                             <div class="form-group checkbox-group is-hidden" id="ups-protected-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-ups-protected">
-                                    <span>UPS Protected</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-ups-protected">
+                                        <span>UPS Protected</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="ups-help-btn" aria-label="UPS protected guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group" id="battery-type-group">
                                 <label for="device-battery-type">Battery Type</label>
@@ -284,19 +313,46 @@
                         <h3 class="form-section-title">Connectivity</h3>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="device-connectivity">Connectivity</label>
+                                <div class="form-label-row">
+                                    <label for="device-connectivity">Connectivity</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="connectivity-help-btn" aria-label="Connectivity guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <select id="device-connectivity">
                                     <option value="">Select connectivity</option>
                                 </select>
                             </div>
                             <div class="form-group is-hidden" id="network-group">
-                                <label for="device-network">Network</label>
+                                <div class="form-label-row">
+                                    <label for="device-network">Network</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="network-help-btn" aria-label="Network guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <select id="device-network">
                                     <option value="">Select network</option>
                                 </select>
                             </div>
                             <div class="form-group" id="ip-address-group">
-                                <label for="device-ip">IP Address</label>
+                                <div class="form-label-row">
+                                    <label for="device-ip">IP Address</label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="ip-help-btn" aria-label="IP address guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <input type="text" id="device-ip" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$" placeholder="e.g., 192.168.1.100">
                             </div>
                             <div class="form-group" id="mac-address-group">
@@ -306,28 +362,79 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-thread-border-router">
-                                    <span>Thread Border Router</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-thread-border-router">
+                                        <span>Thread Border Router</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="thread-border-router-help-btn" aria-label="Thread Border Router guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-matter-hub">
-                                    <span>Matter Hub</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-matter-hub">
+                                        <span>Matter Bridge</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="matter-bridge-help-btn" aria-label="Matter Bridge guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-zigbee-controller">
-                                    <span>Zigbee Controller</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-zigbee-controller">
+                                        <span>Zigbee Coordinator</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="zigbee-coordinator-help-btn" aria-label="Zigbee Coordinator guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-zigbee-repeater">
-                                    <span>Zigbee Repeater</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-zigbee-repeater">
+                                        <span>Zigbee Router</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="zigbee-router-help-btn" aria-label="Zigbee Router guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-zwave-controller">
+                                        <span>Z-Wave Controller</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="zwave-controller-help-btn" aria-label="Z-Wave Controller guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -380,10 +487,19 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="device-local-only">
-                                    <span>100% local</span>
-                                </label>
+                                <div class="form-label-row form-label-row-compact">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" id="device-local-only">
+                                        <span>100% local</span>
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="local-only-help-btn" aria-label="100% local guidance" title="More Info">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9"></circle>
+                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                            <circle cx="12" cy="17" r="1"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -437,7 +553,7 @@
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="brand-modal-title">
             <div class="modal-header">
                 <div class="modal-title" id="brand-modal-title">Add Brand</div>
-                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="brand-modal-close" aria-label="Close dialog" title="Close dialog">
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="brand-modal-close">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 6l12 12"></path>
                         <path d="M18 6l-12 12"></path>
@@ -459,7 +575,7 @@
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="type-modal-title">
             <div class="modal-header">
                 <div class="modal-title" id="type-modal-title">Add Type</div>
-                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="type-modal-close" aria-label="Close dialog" title="Close dialog">
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="type-modal-close">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 6l12 12"></path>
                         <path d="M18 6l-12 12"></path>
@@ -481,7 +597,7 @@
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="battery-type-modal-title">
             <div class="modal-header">
                 <div class="modal-title" id="battery-type-modal-title">Add Battery Type</div>
-                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="battery-type-modal-close" aria-label="Close dialog" title="Close dialog">
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="battery-type-modal-close">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 6l12 12"></path>
                         <path d="M18 6l-12 12"></path>
@@ -503,7 +619,7 @@
         <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="connectivity-modal-title">
             <div class="modal-header">
                 <div class="modal-title" id="connectivity-modal-title">Add Connectivity Option</div>
-                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="connectivity-modal-close" aria-label="Close dialog" title="Close dialog">
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="connectivity-modal-close">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 6l12 12"></path>
                         <path d="M18 6l-12 12"></path>
@@ -517,6 +633,291 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" type="button" id="connectivity-modal-cancel">Cancel</button>
                 <button class="btn btn-primary" type="button" id="connectivity-modal-save">Save Connectivity</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="connectivity-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="connectivity-help-overlay"></div>
+        <div class="modal-content help-modal-content help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="connectivity-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="connectivity-help-title">Connectivity</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="connectivity-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Avoid putting every device on Wi-Fi. While Wi-Fi works well for high-bandwidth devices like cameras, TVs, or speakers, it does not scale efficiently for dozens of small IoT devices. Each Wi-Fi device consumes airtime, increases contention, and adds overhead to your access points. As your network grows, this can lead to congestion, higher latency, and unstable connections.</p>
+                <p>For battery-powered devices, Wi-Fi is especially inefficient. Maintaining a Wi-Fi connection requires significantly more power than low-bandwidth IoT protocols, which leads to shorter battery life and more frequent replacements.</p>
+                <p>Instead, use protocols like <a href="https://smarthomecompared.com/connectivity/zigbee" target="_blank" rel="noreferrer">Zigbee</a>, <a href="https://smarthomecompared.com/connectivity/z-wave" target="_blank" rel="noreferrer">Z-Wave</a>, or <a href="https://smarthomecompared.com/connectivity/thread" target="_blank" rel="noreferrer">Thread</a> for most smart home devices. These technologies are specifically designed for IoT: they use low bandwidth, form self-healing mesh networks, and keep traffic off your main Wi-Fi infrastructure. This improves overall stability, extends battery life, and prevents your wireless network from being overloaded.</p>
+                <p>Reserve Wi-Fi for devices that truly need it, such as <a href="https://smarthomecompared.com/cameras" target="_blank" rel="noreferrer">cameras</a>, media devices, or high-data equipment. Everything else belongs on a dedicated mesh.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="local-only-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="local-only-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="local-only-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="local-only-help-title">100% Local</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="local-only-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Design your smart home to operate entirely within your local network, without depending on external cloud services. Keeping automations, device control, and data processing local dramatically reduces your attack surface and protects your privacy. Every cloud dependency is another company storing your data, another account that can be breached, and another external service that could fail or disappear. A local-first system keeps sensitive information like camera feeds, presence data, and daily routines inside your home, where you control it. The cloud should be optional convenience, not a requirement.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="network-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="network-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="network-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="network-help-title">Network</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="network-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Never run your entire home on a single flat network. Segment devices into separate VLANs to improve both security and performance. At minimum, create dedicated networks for trusted devices (LAN), IoT devices, cameras, guests, and management interfaces. If an IoT device gets compromised, segmentation prevents it from accessing your personal computers or servers.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="status-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="status-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="status-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="status-help-title">Status</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="status-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <ul class="help-modal-list">
+                    <li>
+                        <span class="status-badge status-working">Working</span>
+                        <span>active and operating.</span>
+                    </li>
+                    <li>
+                        <span class="status-badge status-pending">Pending</span>
+                        <span>not installed yet.</span>
+                    </li>
+                    <li>
+                        <span class="status-badge status-not-working">Not Working</span>
+                        <span>installed but not functioning.</span>
+                    </li>
+                    <li>
+                        <span class="status-badge status-wishlist">Wishlist</span>
+                        <span>planned or desired device.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="installed-area-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="installed-area-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="installed-area-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="installed-area-help-title">Installed Area</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="installed-area-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Installed area is where the device is physically located.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="controlled-area-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="controlled-area-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="controlled-area-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="controlled-area-help-title">Controlled Area</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="controlled-area-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Controlled area is the space this device controls, even if it is installed elsewhere.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="ip-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="ip-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="ip-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="ip-help-title">IP Address</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="ip-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Assign predictable IP addresses to important devices like servers, cameras, controllers, and infrastructure hardware. Stable addressing makes troubleshooting, monitoring, firewall rules, and integrations much easier. Random IP changes are a common source of “mysterious” smart home issues.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="ups-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="ups-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="ups-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="ups-help-title">UPS Protected</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="ups-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Connect your core network and automation equipment to an uninterruptible power supply. Routers, switches, servers, PoE cameras, and your modem should remain online during short outages. This maintains security recording, remote access, and automations when they matter most. A few minutes of backup power can make a huge difference.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="zigbee-router-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="zigbee-router-help-overlay"></div>
+        <div class="modal-content help-modal-content help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="zigbee-router-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="zigbee-router-help-title">Zigbee Router</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="zigbee-router-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>A Zigbee Router is a Zigbee device that stays powered all the time and helps extend and stabilize your Zigbee network by relaying messages between devices. It acts as a repeating node in the Zigbee mesh, allowing signals to travel farther through multi-hop routing. Common examples are smart plugs, in-wall switches, and dedicated repeaters, which can also host nearby battery devices as their “parent.”</p>
+                <p>Compare and discover the best devices that work as Zigbee routers:</p>
+                <ul class="help-modal-links">
+                    <li><a href="https://smarthomecompared.com/relays" target="_blank" rel="noreferrer">Relays</a></li>
+                    <li><a href="https://smarthomecompared.com/plugs" target="_blank" rel="noreferrer">Plugs</a></li>
+                    <li><a href="https://smarthomecompared.com/led-bulbs" target="_blank" rel="noreferrer">LED Bulbs</a></li>
+                    <li><a href="https://smarthomecompared.com/displays" target="_blank" rel="noreferrer">Displays</a></li>
+                    <li><a href="https://smarthomecompared.com/presence-sensors" target="_blank" rel="noreferrer">Presence Sensors</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="zigbee-coordinator-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="zigbee-coordinator-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="zigbee-coordinator-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="zigbee-coordinator-help-title">Zigbee Coordinator</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="zigbee-coordinator-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>A Zigbee Coordinator or Controller is the central device that creates and manages a Zigbee network. It starts the network, selects the Zigbee channel, handles security keys, and acts as the main bridge between your hub and all Zigbee devices.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="thread-border-router-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="thread-border-router-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="thread-border-router-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="thread-border-router-help-title">Thread Border Router</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="thread-border-router-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>A Thread Border Router is a device that connects your Thread mesh network to your home IP network (Ethernet or Wi-Fi), letting Thread devices communicate with apps, hubs, and the internet. It doesn’t control Thread by itself, it acts as the bridge that enables setup, remote access, and cross-network communication.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="zwave-controller-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="zwave-controller-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="zwave-controller-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="zwave-controller-help-title">Z-Wave Controller</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="zwave-controller-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>A Z-Wave controller is the central device that creates and manages a Z-Wave network. It includes devices, routes commands through the mesh, and enforces network security so your hub or app can reliably control Z-Wave devices.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="matter-bridge-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="matter-bridge-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="matter-bridge-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="matter-bridge-help-title">Matter Bridge</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="matter-bridge-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>A Matter Bridge is a device or software component that makes non-Matter devices (like Zigbee, Z-Wave, or proprietary ones) appear and behave like Matter devices. It translates commands and status between the original network and Matter, so you can control those devices from any Matter-compatible platform without replacing the hardware.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="power-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="power-help-overlay"></div>
+        <div class="modal-content help-modal-content help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="power-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="power-help-title">Power</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="power-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Battery-powered devices are convenient, but they silently introduce a maintenance dependency. Sensors, remotes, locks, and buttons will eventually fail if their batteries are ignored.</p>
+                <p>Document which devices use batteries, what type they require, and how many each one needs. This can be a simple note, spreadsheet, or inventory page, but it should exist. When a battery alert fires, you should already know exactly what to replace.</p>
+                <p>Keep spare batteries on hand for all common types used in your setup. This avoids last-minute runs to the store or temporarily broken automations because a sensor died at the wrong time.</p>
+            </div>
+        </div>
+    </div>
+    <div class="modal is-hidden" id="name-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="name-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="name-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="name-help-title">Name</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="name-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>Adopt a predictable naming scheme for device. Clean names reduce mistakes and make your configuration readable months later when you revisit it.</p>
             </div>
         </div>
     </div>

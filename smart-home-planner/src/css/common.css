@@ -1105,6 +1105,11 @@ nav.site-nav a.active .site-nav-icon {
     margin-bottom: 0;
 }
 
+.form-label-row-compact {
+    justify-content: flex-start;
+    gap: 0.6rem;
+}
+
 .form-help-btn {
     width: 26px;
     height: 26px;
@@ -1586,6 +1591,66 @@ nav.site-nav a.active .site-nav-icon {
     color: var(--text-secondary);
     line-height: 1.6;
     white-space: pre-line;
+}
+
+.help-modal-body {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.help-modal-body p {
+    margin: 0;
+}
+
+.help-modal-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.help-modal-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.help-modal-list .status-badge {
+    margin-top: 0.05rem;
+}
+
+.help-modal-body a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.help-modal-body a:hover,
+.help-modal-body a:focus-visible {
+    text-decoration: underline;
+}
+
+.help-modal-links {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.help-modal-links li {
+    margin: 0;
+}
+
+.help-modal-content {
+    width: min(620px, 92vw);
+}
+
+.help-modal-wide {
+    width: min(720px, 92vw);
 }
 
 .app-toast-container {

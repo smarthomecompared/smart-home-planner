@@ -1,6 +1,8 @@
 ## 1.3.0 - 
 
 ### Added
+- Added Z-Wave controller field on each device
+- Added help info with explanations and best practices regarding each device data
 
 ### Fixes
 - Caching fixes

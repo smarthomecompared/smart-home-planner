@@ -208,6 +208,186 @@ function initializeEventListeners() {
     document.getElementById('connectivity-modal-cancel').addEventListener('click', closeConnectivityModal);
     document.getElementById('connectivity-modal-save').addEventListener('click', saveConnectivityModal);
     document.getElementById('connectivity-modal-overlay').addEventListener('click', closeConnectivityModal);
+    const connectivityHelpBtn = document.getElementById('connectivity-help-btn');
+    if (connectivityHelpBtn) {
+        connectivityHelpBtn.addEventListener('click', openConnectivityHelpModal);
+    }
+    const connectivityHelpCloseBtn = document.getElementById('connectivity-help-close');
+    if (connectivityHelpCloseBtn) {
+        connectivityHelpCloseBtn.addEventListener('click', closeConnectivityHelpModal);
+    }
+    const connectivityHelpOverlay = document.getElementById('connectivity-help-overlay');
+    if (connectivityHelpOverlay) {
+        connectivityHelpOverlay.addEventListener('click', closeConnectivityHelpModal);
+    }
+    const localOnlyHelpBtn = document.getElementById('local-only-help-btn');
+    if (localOnlyHelpBtn) {
+        localOnlyHelpBtn.addEventListener('click', openLocalOnlyHelpModal);
+    }
+    const localOnlyHelpClose = document.getElementById('local-only-help-close');
+    if (localOnlyHelpClose) {
+        localOnlyHelpClose.addEventListener('click', closeLocalOnlyHelpModal);
+    }
+    const localOnlyHelpOverlay = document.getElementById('local-only-help-overlay');
+    if (localOnlyHelpOverlay) {
+        localOnlyHelpOverlay.addEventListener('click', closeLocalOnlyHelpModal);
+    }
+    const networkHelpBtn = document.getElementById('network-help-btn');
+    if (networkHelpBtn) {
+        networkHelpBtn.addEventListener('click', openNetworkHelpModal);
+    }
+    const networkHelpClose = document.getElementById('network-help-close');
+    if (networkHelpClose) {
+        networkHelpClose.addEventListener('click', closeNetworkHelpModal);
+    }
+    const networkHelpOverlay = document.getElementById('network-help-overlay');
+    if (networkHelpOverlay) {
+        networkHelpOverlay.addEventListener('click', closeNetworkHelpModal);
+    }
+    const statusHelpBtn = document.getElementById('status-help-btn');
+    if (statusHelpBtn) {
+        statusHelpBtn.addEventListener('click', openStatusHelpModal);
+    }
+    const statusHelpClose = document.getElementById('status-help-close');
+    if (statusHelpClose) {
+        statusHelpClose.addEventListener('click', closeStatusHelpModal);
+    }
+    const statusHelpOverlay = document.getElementById('status-help-overlay');
+    if (statusHelpOverlay) {
+        statusHelpOverlay.addEventListener('click', closeStatusHelpModal);
+    }
+    const installedAreaHelpBtn = document.getElementById('installed-area-help-btn');
+    if (installedAreaHelpBtn) {
+        installedAreaHelpBtn.addEventListener('click', openInstalledAreaHelpModal);
+    }
+    const installedAreaHelpClose = document.getElementById('installed-area-help-close');
+    if (installedAreaHelpClose) {
+        installedAreaHelpClose.addEventListener('click', closeInstalledAreaHelpModal);
+    }
+    const installedAreaHelpOverlay = document.getElementById('installed-area-help-overlay');
+    if (installedAreaHelpOverlay) {
+        installedAreaHelpOverlay.addEventListener('click', closeInstalledAreaHelpModal);
+    }
+    const controlledAreaHelpBtn = document.getElementById('controlled-area-help-btn');
+    if (controlledAreaHelpBtn) {
+        controlledAreaHelpBtn.addEventListener('click', openControlledAreaHelpModal);
+    }
+    const controlledAreaHelpClose = document.getElementById('controlled-area-help-close');
+    if (controlledAreaHelpClose) {
+        controlledAreaHelpClose.addEventListener('click', closeControlledAreaHelpModal);
+    }
+    const controlledAreaHelpOverlay = document.getElementById('controlled-area-help-overlay');
+    if (controlledAreaHelpOverlay) {
+        controlledAreaHelpOverlay.addEventListener('click', closeControlledAreaHelpModal);
+    }
+    const ipHelpBtn = document.getElementById('ip-help-btn');
+    if (ipHelpBtn) {
+        ipHelpBtn.addEventListener('click', openIpHelpModal);
+    }
+    const ipHelpClose = document.getElementById('ip-help-close');
+    if (ipHelpClose) {
+        ipHelpClose.addEventListener('click', closeIpHelpModal);
+    }
+    const ipHelpOverlay = document.getElementById('ip-help-overlay');
+    if (ipHelpOverlay) {
+        ipHelpOverlay.addEventListener('click', closeIpHelpModal);
+    }
+    const nameHelpBtn = document.getElementById('name-help-btn');
+    if (nameHelpBtn) {
+        nameHelpBtn.addEventListener('click', openNameHelpModal);
+    }
+    const nameHelpClose = document.getElementById('name-help-close');
+    if (nameHelpClose) {
+        nameHelpClose.addEventListener('click', closeNameHelpModal);
+    }
+    const nameHelpOverlay = document.getElementById('name-help-overlay');
+    if (nameHelpOverlay) {
+        nameHelpOverlay.addEventListener('click', closeNameHelpModal);
+    }
+    const upsHelpBtn = document.getElementById('ups-help-btn');
+    if (upsHelpBtn) {
+        upsHelpBtn.addEventListener('click', openUpsHelpModal);
+    }
+    const upsHelpClose = document.getElementById('ups-help-close');
+    if (upsHelpClose) {
+        upsHelpClose.addEventListener('click', closeUpsHelpModal);
+    }
+    const upsHelpOverlay = document.getElementById('ups-help-overlay');
+    if (upsHelpOverlay) {
+        upsHelpOverlay.addEventListener('click', closeUpsHelpModal);
+    }
+    const powerHelpBtn = document.getElementById('power-help-btn');
+    if (powerHelpBtn) {
+        powerHelpBtn.addEventListener('click', openPowerHelpModal);
+    }
+    const powerHelpClose = document.getElementById('power-help-close');
+    if (powerHelpClose) {
+        powerHelpClose.addEventListener('click', closePowerHelpModal);
+    }
+    const powerHelpOverlay = document.getElementById('power-help-overlay');
+    if (powerHelpOverlay) {
+        powerHelpOverlay.addEventListener('click', closePowerHelpModal);
+    }
+    const zigbeeRouterHelpBtn = document.getElementById('zigbee-router-help-btn');
+    if (zigbeeRouterHelpBtn) {
+        zigbeeRouterHelpBtn.addEventListener('click', openZigbeeRouterHelpModal);
+    }
+    const zigbeeRouterHelpClose = document.getElementById('zigbee-router-help-close');
+    if (zigbeeRouterHelpClose) {
+        zigbeeRouterHelpClose.addEventListener('click', closeZigbeeRouterHelpModal);
+    }
+    const zigbeeRouterHelpOverlay = document.getElementById('zigbee-router-help-overlay');
+    if (zigbeeRouterHelpOverlay) {
+        zigbeeRouterHelpOverlay.addEventListener('click', closeZigbeeRouterHelpModal);
+    }
+    const zigbeeCoordinatorHelpBtn = document.getElementById('zigbee-coordinator-help-btn');
+    if (zigbeeCoordinatorHelpBtn) {
+        zigbeeCoordinatorHelpBtn.addEventListener('click', openZigbeeCoordinatorHelpModal);
+    }
+    const zigbeeCoordinatorHelpClose = document.getElementById('zigbee-coordinator-help-close');
+    if (zigbeeCoordinatorHelpClose) {
+        zigbeeCoordinatorHelpClose.addEventListener('click', closeZigbeeCoordinatorHelpModal);
+    }
+    const zigbeeCoordinatorHelpOverlay = document.getElementById('zigbee-coordinator-help-overlay');
+    if (zigbeeCoordinatorHelpOverlay) {
+        zigbeeCoordinatorHelpOverlay.addEventListener('click', closeZigbeeCoordinatorHelpModal);
+    }
+    const threadBorderRouterHelpBtn = document.getElementById('thread-border-router-help-btn');
+    if (threadBorderRouterHelpBtn) {
+        threadBorderRouterHelpBtn.addEventListener('click', openThreadBorderRouterHelpModal);
+    }
+    const threadBorderRouterHelpClose = document.getElementById('thread-border-router-help-close');
+    if (threadBorderRouterHelpClose) {
+        threadBorderRouterHelpClose.addEventListener('click', closeThreadBorderRouterHelpModal);
+    }
+    const threadBorderRouterHelpOverlay = document.getElementById('thread-border-router-help-overlay');
+    if (threadBorderRouterHelpOverlay) {
+        threadBorderRouterHelpOverlay.addEventListener('click', closeThreadBorderRouterHelpModal);
+    }
+    const zwaveControllerHelpBtn = document.getElementById('zwave-controller-help-btn');
+    if (zwaveControllerHelpBtn) {
+        zwaveControllerHelpBtn.addEventListener('click', openZwaveControllerHelpModal);
+    }
+    const zwaveControllerHelpClose = document.getElementById('zwave-controller-help-close');
+    if (zwaveControllerHelpClose) {
+        zwaveControllerHelpClose.addEventListener('click', closeZwaveControllerHelpModal);
+    }
+    const zwaveControllerHelpOverlay = document.getElementById('zwave-controller-help-overlay');
+    if (zwaveControllerHelpOverlay) {
+        zwaveControllerHelpOverlay.addEventListener('click', closeZwaveControllerHelpModal);
+    }
+    const matterBridgeHelpBtn = document.getElementById('matter-bridge-help-btn');
+    if (matterBridgeHelpBtn) {
+        matterBridgeHelpBtn.addEventListener('click', openMatterBridgeHelpModal);
+    }
+    const matterBridgeHelpClose = document.getElementById('matter-bridge-help-close');
+    if (matterBridgeHelpClose) {
+        matterBridgeHelpClose.addEventListener('click', closeMatterBridgeHelpModal);
+    }
+    const matterBridgeHelpOverlay = document.getElementById('matter-bridge-help-overlay');
+    if (matterBridgeHelpOverlay) {
+        matterBridgeHelpOverlay.addEventListener('click', closeMatterBridgeHelpModal);
+    }
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeDeviceFilePreviewModal();
@@ -216,6 +396,21 @@ function initializeEventListeners() {
             closeTypeModal();
             closeBatteryTypeModal();
             closeConnectivityModal();
+            closeConnectivityHelpModal();
+            closeLocalOnlyHelpModal();
+            closeNetworkHelpModal();
+            closeStatusHelpModal();
+            closeInstalledAreaHelpModal();
+            closeControlledAreaHelpModal();
+            closeIpHelpModal();
+            closeNameHelpModal();
+            closeUpsHelpModal();
+            closePowerHelpModal();
+            closeZigbeeRouterHelpModal();
+            closeZigbeeCoordinatorHelpModal();
+            closeThreadBorderRouterHelpModal();
+            closeZwaveControllerHelpModal();
+            closeMatterBridgeHelpModal();
         }
     });
 }
@@ -1488,6 +1683,7 @@ function loadDeviceData(device) {
     document.getElementById('device-matter-hub').checked = device.matterHub || false;
     document.getElementById('device-zigbee-controller').checked = device.zigbeeController || false;
     document.getElementById('device-zigbee-repeater').checked = device.zigbeeRepeater || false;
+    document.getElementById('device-zwave-controller').checked = device.zwaveController || false;
     document.getElementById('device-home-assistant').checked = isHomeAssistantLinked(device.homeAssistant);
     document.getElementById('device-google-home').checked = device.googleHome || false;
     document.getElementById('device-alexa').checked = device.alexa || false;
@@ -1616,6 +1812,7 @@ async function handleDeviceSubmit(e) {
         matterHub: document.getElementById('device-matter-hub').checked,
         zigbeeController: document.getElementById('device-zigbee-controller').checked,
         zigbeeRepeater: document.getElementById('device-zigbee-repeater').checked,
+        zwaveController: document.getElementById('device-zwave-controller').checked,
         googleHome: document.getElementById('device-google-home').checked,
         alexa: document.getElementById('device-alexa').checked,
         appleHomeKit: document.getElementById('device-apple-home-kit').checked,
@@ -1647,6 +1844,7 @@ function handlePowerTypeChange() {
     const status = document.getElementById('device-status').value;
     const isWishlist = status === 'wishlist';
     const powerType = document.getElementById('device-power').value;
+    const powerHelpBtn = document.getElementById('power-help-btn');
     const batteryTypeGroup = document.getElementById('battery-type-group');
     const batteryCountGroup = document.getElementById('battery-count-group');
     const batteryChangeGroup = document.getElementById('battery-change-group');
@@ -1667,6 +1865,13 @@ function handlePowerTypeChange() {
         group.classList.add('is-collapsed');
         group.classList.remove('is-hidden');
     };
+
+    if (powerHelpBtn) {
+        powerHelpBtn.style.display = powerType === 'battery' ? '' : 'none';
+        if (powerType !== 'battery') {
+            closePowerHelpModal();
+        }
+    }
     
     if (!powerType) {
         hideGroup(batteryTypeGroup);
@@ -1973,6 +2178,276 @@ function closeConnectivityModal() {
     modal.setAttribute('aria-hidden', 'true');
     document.getElementById('device-connectivity').value = lastConnectivityValue;
     handleConnectivityChange();
+}
+
+function openConnectivityHelpModal() {
+    const modal = document.getElementById('connectivity-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('connectivity-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeConnectivityHelpModal() {
+    const modal = document.getElementById('connectivity-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openLocalOnlyHelpModal() {
+    const modal = document.getElementById('local-only-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('local-only-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeLocalOnlyHelpModal() {
+    const modal = document.getElementById('local-only-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openNetworkHelpModal() {
+    const modal = document.getElementById('network-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('network-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeNetworkHelpModal() {
+    const modal = document.getElementById('network-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openStatusHelpModal() {
+    const modal = document.getElementById('status-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('status-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeStatusHelpModal() {
+    const modal = document.getElementById('status-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openInstalledAreaHelpModal() {
+    const modal = document.getElementById('installed-area-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('installed-area-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeInstalledAreaHelpModal() {
+    const modal = document.getElementById('installed-area-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openControlledAreaHelpModal() {
+    const modal = document.getElementById('controlled-area-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('controlled-area-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeControlledAreaHelpModal() {
+    const modal = document.getElementById('controlled-area-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openIpHelpModal() {
+    const modal = document.getElementById('ip-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('ip-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeIpHelpModal() {
+    const modal = document.getElementById('ip-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openNameHelpModal() {
+    const modal = document.getElementById('name-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('name-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeNameHelpModal() {
+    const modal = document.getElementById('name-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openUpsHelpModal() {
+    const modal = document.getElementById('ups-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('ups-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeUpsHelpModal() {
+    const modal = document.getElementById('ups-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openPowerHelpModal() {
+    const modal = document.getElementById('power-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('power-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closePowerHelpModal() {
+    const modal = document.getElementById('power-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openZigbeeRouterHelpModal() {
+    const modal = document.getElementById('zigbee-router-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('zigbee-router-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeZigbeeRouterHelpModal() {
+    const modal = document.getElementById('zigbee-router-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openZigbeeCoordinatorHelpModal() {
+    const modal = document.getElementById('zigbee-coordinator-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('zigbee-coordinator-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeZigbeeCoordinatorHelpModal() {
+    const modal = document.getElementById('zigbee-coordinator-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openThreadBorderRouterHelpModal() {
+    const modal = document.getElementById('thread-border-router-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('thread-border-router-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeThreadBorderRouterHelpModal() {
+    const modal = document.getElementById('thread-border-router-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openZwaveControllerHelpModal() {
+    const modal = document.getElementById('zwave-controller-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('zwave-controller-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeZwaveControllerHelpModal() {
+    const modal = document.getElementById('zwave-controller-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openMatterBridgeHelpModal() {
+    const modal = document.getElementById('matter-bridge-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('matter-bridge-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeMatterBridgeHelpModal() {
+    const modal = document.getElementById('matter-bridge-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 async function saveConnectivityModal() {
