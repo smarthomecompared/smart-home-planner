@@ -499,7 +499,11 @@ class AppHandler(SimpleHTTPRequestHandler):
         path = parsed.path or ""
         if not path.startswith("/api/"):
             ext = os.path.splitext(path)[1].lower()
-            if ext in {".js", ".css", ".html"} or path in {"", "/"} or path.endswith("/"):
+            if ext in {".js", ".css"}:
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, private")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
+            elif ext == ".html" or path in {"", "/"} or path.endswith("/"):
                 self.send_header("Cache-Control", "no-cache, must-revalidate")
         super().end_headers()
 

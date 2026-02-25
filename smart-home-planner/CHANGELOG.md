@@ -2,6 +2,9 @@
 
 ### Added
 
+### Fixes
+- Caching fixes
+
 
 ## 1.2.0 - 2026-02-24
 
