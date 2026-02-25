@@ -47,19 +47,53 @@ Key concepts:
 
 The Dashboard is your operational overview. It is designed to answer two questions quickly: what do I have and what needs attention?
 
-What the Dashboard provides:
-1. Top-level totals for devices, floors, and areas.
-2. Status highlights for working, pending, and not working devices.
-3. Action lists for Pending, Not Working, and Wishlist devices.
-4. Battery planning insights and upcoming changes.
-5. Power usage summaries and heavy consumers.
-6. Distribution views by type, brand, connectivity, and integrations.
+### Overview
+Shows total devices, areas, and floors, plus a quick split of working, pending, and not working devices.
 
-How to use it effectively:
-1. Use the Pending list to drive installation work.
-2. Use the Battery Changes Soon list to plan maintenance.
-3. Use connectivity and integration cards to see ecosystem coverage.
-4. Expand any card for a larger, easier-to-scan view.
+### Pending Devices
+Lists devices that are planned but not installed yet, so you can track installation work.
+
+### Not Working Devices
+Lists installed devices currently marked as not working to prioritize troubleshooting.
+
+### Missing Area
+Lists working devices with no area assigned in the area field currently mapped to Home Assistant.
+
+### Wishlist Devices
+Lists planned or desired devices that are not part of your active setup yet.
+
+### Devices by Label
+Shows how devices are distributed across labels, helping validate your tagging strategy.
+
+### Battery Changes Soon
+Highlights devices approaching battery replacement and includes a purchase-oriented battery summary.
+
+### Total Batteries by Type
+Shows the total battery quantity required across your inventory by battery type.
+
+### Total Power Consumption
+Summarizes aggregate idle, mean, and max power consumption for the entire setup.
+
+### Devices by Power Usage
+Shows the highest-consuming individual devices to identify heavy consumers quickly.
+
+### Devices by Integrations
+Displays device distribution across Home Assistant and other integration ecosystems.
+
+### Devices 100% Local
+Shows the share of devices that can operate fully inside your local network.
+
+### UPS Protected Devices
+Shows how much of your inventory is covered by backup power.
+
+### Devices by Type
+Displays distribution by hardware category such as sensor, camera, switch, or thermostat.
+
+### Devices by Connectivity
+Displays distribution by protocol or transport such as Wi-Fi, Zigbee, Z-Wave, Thread, or Ethernet.
+
+### Devices by Brand
+Shows vendor distribution to understand brand concentration across your setup.
 
 ## Devices
 

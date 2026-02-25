@@ -3,6 +3,7 @@
 ### Added
 - Added Z-Wave controller field on each device
 - Added help info with explanations and best practices regarding each device data
+- Aded new Missing Area card in home dashboard
 
 ### Fixes
 - Caching fixes

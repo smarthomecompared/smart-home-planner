@@ -163,6 +163,35 @@
             margin-bottom: 1rem;
         }
 
+        .chart-description {
+            margin: -0.35rem 0 0.95rem;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            line-height: 1.4;
+        }
+
+        .chart-card.warning-card {
+            border-color: rgba(245, 158, 11, 0.45);
+            background:
+                linear-gradient(180deg, rgba(245, 158, 11, 0.14) 0%, rgba(245, 158, 11, 0.04) 42%, rgba(15, 23, 42, 0) 100%),
+                var(--card-bg);
+            box-shadow: 0 14px 30px rgba(245, 158, 11, 0.12);
+        }
+
+        .chart-card.warning-card .chart-title {
+            color: #fbbf24;
+        }
+
+        .chart-card.warning-card .chart-expand {
+            border-color: rgba(245, 158, 11, 0.45);
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+        }
+
+        .chart-card.warning-card .chart-expand:hover {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
         .pending-list {
             display: grid;
             gap: 0.5rem;
@@ -651,6 +680,25 @@
                     </div>
                     <div class="legend" id="not-working-devices"></div>
                 </div>
+                <div class="chart-card warning-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Missing Area</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="working-without-area-devices" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-description">Working devices without an area assigned</div>
+                    <div class="legend" id="working-without-area-devices"></div>
+                </div>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Wishlist Devices</div>
@@ -687,7 +735,7 @@
                     </div>
                     <div class="legend" id="label-summary"></div>
                 </div>
-                <div class="chart-card" id="battery-alert-card">
+                <div class="chart-card warning-card" id="battery-alert-card">
                     <div class="chart-header">
                         <div class="chart-title">Battery Changes Soon</div>
                         <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="battery-alerts" aria-label="Expand chart" title="Expand chart">
@@ -941,6 +989,7 @@
             });
             renderPendingDevices('pending-devices', devices);
             renderNotWorkingDevices('not-working-devices', devices);
+            renderWorkingDevicesWithoutMappedArea('working-without-area-devices', devices, areas, settings);
             renderWishlistDevices('wishlist-devices', devices);
             renderLabelSummary('label-summary', devices, labels);
             renderPowerTotals('power-totals', buildPowerTotals(devices));
@@ -1452,6 +1501,34 @@
             renderLegendList(targetId, rows, {
                 maxItems: 'fit',
                 emptyMessage: 'No devices not working'
+            });
+        }
+
+        function renderWorkingDevicesWithoutMappedArea(targetId, devices, areas, settings) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+
+            const areaKey = settings?.haAreaSyncTarget === 'installed' ? 'area' : 'controlledArea';
+            const validAreaIds = new Set((areas || [])
+                .map((area) => String(area?.id || '').trim())
+                .filter(Boolean));
+
+            const rows = (devices || [])
+                .filter(device => device?.status === 'working')
+                .filter((device) => {
+                    const areaId = String(device?.[areaKey] || '').trim();
+                    return !areaId || !validAreaIds.has(areaId);
+                })
+                .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), undefined, { sensitivity: 'base' }))
+                .map(device => ({
+                    label: device.name || 'Unnamed',
+                    href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
+                    dotColor: '#f59e0b'
+                }));
+
+            renderLegendList(targetId, rows, {
+                maxItems: getLegendMaxItems(),
+                emptyMessage: 'No working devices without area'
             });
         }
 
