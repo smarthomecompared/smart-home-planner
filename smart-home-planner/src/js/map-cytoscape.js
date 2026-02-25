@@ -352,6 +352,7 @@ window.DeviceDiagram = (() => {
         const replaceBtn = document.getElementById('diagram-background-replace-btn');
         const removeBtn = document.getElementById('diagram-background-remove-btn');
         const uploadBtn = document.getElementById('diagram-background-upload-btn');
+        const helpBtn = document.getElementById('diagram-background-help-btn');
         const tuningPanel = document.getElementById('diagram-background-tuning');
         const opacityInput = document.getElementById('diagram-background-opacity');
         const opacityValue = document.getElementById('diagram-background-opacity-value');
@@ -362,6 +363,9 @@ window.DeviceDiagram = (() => {
         }
         if (uploadBtn) {
             uploadBtn.hidden = hasBackground;
+        }
+        if (helpBtn) {
+            helpBtn.hidden = false;
         }
         if (replaceBtn) {
             replaceBtn.hidden = !hasBackground;
@@ -382,6 +386,31 @@ window.DeviceDiagram = (() => {
 
     function hasDiagramBackground() {
         return Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
+    }
+
+    function openDiagramHelpModal() {
+        const modal = document.getElementById('diagram-background-help-modal');
+        if (!modal) return;
+        modal.classList.remove('is-hidden');
+        modal.setAttribute('aria-hidden', 'false');
+        const closeBtn = document.getElementById('diagram-background-help-close');
+        if (closeBtn) {
+            closeBtn.focus();
+        }
+    }
+
+    function closeDiagramHelpModal() {
+        const modal = document.getElementById('diagram-background-help-modal');
+        if (!modal) return;
+        modal.classList.add('is-hidden');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    function handleDiagramHelpEscape(event) {
+        if (event.key !== 'Escape') return;
+        const modal = document.getElementById('diagram-background-help-modal');
+        if (!modal || modal.classList.contains('is-hidden')) return;
+        closeDiagramHelpModal();
     }
 
     function normalizeDeviceSize(size) {
@@ -1402,6 +1431,18 @@ window.DeviceDiagram = (() => {
             void removeDiagramBackground();
         });
     }
+    const backgroundHelpBtn = document.getElementById('diagram-background-help-btn');
+    if (backgroundHelpBtn) {
+        backgroundHelpBtn.addEventListener('click', openDiagramHelpModal);
+    }
+    const backgroundHelpCloseBtn = document.getElementById('diagram-background-help-close');
+    if (backgroundHelpCloseBtn) {
+        backgroundHelpCloseBtn.addEventListener('click', closeDiagramHelpModal);
+    }
+    const backgroundHelpOverlay = document.getElementById('diagram-background-help-overlay');
+    if (backgroundHelpOverlay) {
+        backgroundHelpOverlay.addEventListener('click', closeDiagramHelpModal);
+    }
         const backgroundOpacityInput = document.getElementById('diagram-background-opacity');
         if (backgroundOpacityInput) {
             backgroundOpacityInput.addEventListener('input', () => {
@@ -1427,6 +1468,7 @@ window.DeviceDiagram = (() => {
         updateLayoutButtons();
         document.addEventListener('keydown', handleFullscreenEscape);
         document.addEventListener('keydown', handlePowerDialogEscape);
+        document.addEventListener('keydown', handleDiagramHelpEscape);
     }
 
 async function toggleLayoutEdit() {

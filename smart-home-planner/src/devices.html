@@ -415,6 +415,13 @@
                             </div>
                             <div class="map-background-actions">
                                 <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-upload-btn">Upload image</button>
+                                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="diagram-background-help-btn" aria-label="About background images" title="About background images">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                        <circle cx="12" cy="17" r="1"></circle>
+                                    </svg>
+                                </button>
                                 <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-replace-btn" hidden>Replace</button>
                                 <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-remove-btn" hidden>Remove</button>
                             </div>
@@ -496,6 +503,32 @@
                 </div>
             </div>
         </section>
+    </div>
+
+    <div class="modal is-hidden" id="diagram-background-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="diagram-background-help-overlay"></div>
+        <div class="modal-content diagram-help-content" role="dialog" aria-modal="true" aria-labelledby="diagram-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="diagram-help-title">Background Image Tips</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="diagram-background-help-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="diagram-help-body">
+                <p>Use a clean floor plan image so you can pin each device to its real location. The diagram keeps that placement aligned during zoom, pan, and fullscreen.</p>
+                <p>If you need to create a floor plan, these apps are a good starting point:</p>
+                <ul class="diagram-help-links">
+                    <li><a href="https://floorplanner.com/" target="_blank" rel="noreferrer">Floorplanner</a></li>
+                    <li><a href="https://planner5d.com/" target="_blank" rel="noreferrer">Planner 5D</a></li>
+                    <li><a href="https://www.homestyler.com/" target="_blank" rel="noreferrer">Homestyler</a></li>
+                    <li><a href="https://www.sweethome3d.com/" target="_blank" rel="noreferrer">Sweet Home 3D</a></li>
+                    <li><a href="https://home.by.me/" target="_blank" rel="noreferrer">HomeByMe</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <script src="js/metadata.js"></script>
