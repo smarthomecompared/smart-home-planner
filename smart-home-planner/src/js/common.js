@@ -23,6 +23,7 @@ const HA_FLOORS_API_URL = buildAppUrl('api/ha/floors');
 const HA_DEVICES_API_URL = buildAppUrl('api/ha/devices');
 const HA_LABELS_API_URL = buildAppUrl('api/ha/labels');
 const HA_CONFIG_API_URL = buildAppUrl('api/ha/config');
+const HA_BACKUPS_STATUS_API_URL = buildAppUrl('api/ha/backups-status');
 
 function isIngressRuntime() {
     const pathname = window.location.pathname || '';
@@ -108,6 +109,7 @@ async function loadHaRegistry(url) {
 }
 
 let haConfigPromise = null;
+let haBackupsStatusPromise = null;
 
 async function loadHaConfig() {
     if (!haConfigPromise) {
@@ -124,6 +126,23 @@ async function loadHaConfig() {
             });
     }
     return haConfigPromise;
+}
+
+async function loadHaBackupsStatus() {
+    if (!haBackupsStatusPromise) {
+        haBackupsStatusPromise = fetch(HA_BACKUPS_STATUS_API_URL, { cache: 'no-store' })
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`Backups status request failed: ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.error(`Failed to load Home Assistant backups status:`, error);
+                return { error: error?.message || 'Unable to load backup status' };
+            });
+    }
+    return haBackupsStatusPromise;
 }
 
 function normalizeDeviceId(value) {
@@ -1289,4 +1308,5 @@ window.isIngressRuntime = isIngressRuntime;
 window.isLocalAddonRuntime = isLocalAddonRuntime;
 window.getRuntimeInfo = getRuntimeInfo;
 window.loadHaConfig = loadHaConfig;
+window.loadHaBackupsStatus = loadHaBackupsStatus;
 window.showToast = showToast;

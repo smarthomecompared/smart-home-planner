@@ -59,6 +59,9 @@ Lists installed devices currently marked as not working to prioritize troublesho
 ### Missing Area
 Lists working devices with no area assigned in the area field currently mapped to Home Assistant.
 
+### Last Backup
+Shows the health and details of the latest Home Assistant backup (full or partial), including age, location, size, and protection. The card is highlighted as warning when the latest backup is older than 7 days or when backups are stored in only one location.
+
 ### Wishlist Devices
 Lists planned or desired devices that are not part of your active setup yet.
 

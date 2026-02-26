@@ -30,6 +30,7 @@ NODE_BIN = os.environ.get("SHP_NODE_BIN", "node")
 HA_DEVICE_UPDATE_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ha-device-update.js")
 SUPERVISOR_TOKEN = os.environ.get("SUPERVISOR_TOKEN", "")
 SUPERVISOR_CORE_URL = os.environ.get("SUPERVISOR_CORE_URL", "http://supervisor/core")
+SUPERVISOR_API_URL = os.environ.get("SUPERVISOR_API_URL", "http://supervisor")
 HOSTNAME = os.environ.get("HOSTNAME", "unknown")
 HOSTNAME_NORMALIZED = HOSTNAME.strip().lower()
 IS_LOCAL_RUNTIME = HOSTNAME_NORMALIZED.startswith("local_") or HOSTNAME_NORMALIZED.startswith("local-")
@@ -493,6 +494,233 @@ def _fetch_ha_config():
         return {"raw": payload}
 
 
+def _fetch_supervisor_json(path):
+    if not SUPERVISOR_TOKEN:
+        raise RuntimeError("SUPERVISOR_TOKEN is missing")
+    base_url = str(SUPERVISOR_API_URL or "http://supervisor").rstrip("/")
+    normalized_path = str(path or "").strip()
+    if not normalized_path.startswith("/"):
+        normalized_path = f"/{normalized_path}"
+    url = f"{base_url}{normalized_path}"
+    request = Request(url, headers={"Authorization": f"Bearer {SUPERVISOR_TOKEN}"})
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = response.read().decode("utf-8") or "{}"
+    except Exception as error:
+        raise RuntimeError(f"Failed to load Supervisor data from {normalized_path}: {error}") from error
+    try:
+        return json.loads(payload)
+    except json.JSONDecodeError:
+        return {"raw": payload}
+
+
+def _unwrap_supervisor_data(payload):
+    if isinstance(payload, dict) and isinstance(payload.get("data"), (dict, list)):
+        return payload.get("data")
+    return payload
+
+
+def _extract_backups_list(payload):
+    data = _unwrap_supervisor_data(payload)
+    if isinstance(data, dict):
+        if isinstance(data.get("backups"), list):
+            return data.get("backups")
+        if isinstance(data.get("snapshots"), list):
+            return data.get("snapshots")
+    if isinstance(data, list):
+        return data
+    return []
+
+
+def _parse_datetime_utc(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    normalized = raw.replace("Z", "+00:00")
+    try:
+        parsed = datetime.datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed.astimezone(datetime.timezone.utc)
+
+
+def _to_int_or_none(value):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _to_float_or_none(value):
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _normalize_backup_type(value):
+    normalized = str(value or "").strip().lower()
+    if normalized in {"full", "partial"}:
+        return normalized
+    return ""
+
+
+def _normalize_location_value(value):
+    if value is None:
+        return ""
+    normalized = str(value).strip()
+    if not normalized:
+        return ""
+    if normalized.lower() in {"none", "null"}:
+        return ""
+    return normalized
+
+
+def _normalize_backup_entry(raw):
+    if not isinstance(raw, dict):
+        return None
+    date_value = str(raw.get("date") or "").strip()
+    parsed_date = _parse_datetime_utc(date_value)
+    size_bytes = _to_int_or_none(raw.get("size_bytes"))
+    if size_bytes is None:
+        size_mb = _to_float_or_none(raw.get("size"))
+        if size_mb is not None:
+            # Supervisor backup/snapshot models can report size in MB.
+            size_bytes = int(size_mb * 1024 * 1024)
+    backup_type = _normalize_backup_type(raw.get("type"))
+    locations = []
+    seen_locations = set()
+
+    def push_location(value):
+        normalized = _normalize_location_value(value)
+        if not normalized or normalized in seen_locations:
+            return
+        seen_locations.add(normalized)
+        locations.append(normalized)
+
+    push_location(raw.get("location"))
+    for location_value in raw.get("locations") or []:
+        push_location(location_value)
+    location_attributes = raw.get("location_attributes")
+    if isinstance(location_attributes, dict):
+        for location_key in location_attributes.keys():
+            push_location(location_key)
+
+    primary_location = locations[0] if locations else ""
+    return {
+        "slug": str(raw.get("slug") or "").strip(),
+        "name": str(raw.get("name") or "").strip(),
+        "type": backup_type,
+        "date": date_value,
+        "parsedDate": parsed_date,
+        "location": primary_location,
+        "locations": locations,
+        "protected": bool(raw.get("protected", False)),
+        "compressed": bool(raw.get("compressed", False)),
+        "sizeBytes": size_bytes,
+    }
+
+
+def _build_backup_status_payload():
+    if not SUPERVISOR_TOKEN:
+        raise RuntimeError("SUPERVISOR_TOKEN is missing")
+
+    first_error = None
+
+    def safe_fetch(path):
+        nonlocal first_error
+        try:
+            return _fetch_supervisor_json(path)
+        except RuntimeError as error:
+            if first_error is None:
+                first_error = error
+            return None
+
+    info_payload = safe_fetch("/backups/info")
+    backups_payload = safe_fetch("/backups")
+
+    backups = _extract_backups_list(backups_payload)
+    if not backups:
+        backups = _extract_backups_list(info_payload)
+
+    # Legacy fallback for older Supervisor versions that still expose snapshots payloads.
+    if not backups:
+        legacy_info_payload = safe_fetch("/snapshots/info")
+        legacy_backups_payload = safe_fetch("/snapshots")
+        backups = _extract_backups_list(legacy_backups_payload)
+        if not backups:
+            backups = _extract_backups_list(legacy_info_payload)
+
+    if first_error is not None and not backups:
+        raise first_error
+
+    normalized_backups = [_normalize_backup_entry(item) for item in backups]
+    normalized_backups = [item for item in normalized_backups if item]
+
+    total_backups = len(normalized_backups)
+    total_full_backups = len([item for item in normalized_backups if item.get("type") == "full"])
+
+    normalized_backups.sort(
+        key=lambda item: item.get("parsedDate") or datetime.datetime.min.replace(tzinfo=datetime.timezone.utc),
+        reverse=True,
+    )
+    latest_backup = normalized_backups[0] if normalized_backups else None
+
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    latest_backup_age_days = None
+    if latest_backup and latest_backup.get("parsedDate"):
+        delta = now_utc - latest_backup.get("parsedDate")
+        latest_backup_age_days = max(0, int(delta.total_seconds() // 86400))
+
+    has_recent_backup = latest_backup_age_days is not None and latest_backup_age_days <= 7
+
+    unique_locations = []
+    seen_locations = set()
+    for backup in normalized_backups:
+        backup_locations = backup.get("locations") if isinstance(backup.get("locations"), list) else []
+        for location_value in backup_locations:
+            normalized = _normalize_location_value(location_value)
+            if not normalized or normalized in seen_locations:
+                continue
+            seen_locations.add(normalized)
+            unique_locations.append(normalized)
+
+    if not unique_locations and total_backups > 0:
+        unique_locations = [".local"]
+
+    has_single_location = total_backups > 0 and len(unique_locations) == 1
+
+    latest_backup_payload = None
+    if latest_backup:
+        latest_backup_payload = {
+            "slug": latest_backup.get("slug"),
+            "name": latest_backup.get("name"),
+            "type": latest_backup.get("type") or "unknown",
+            "date": latest_backup.get("date"),
+            "location": latest_backup.get("location"),
+            "locations": latest_backup.get("locations") or [],
+            "protected": latest_backup.get("protected", False),
+            "compressed": latest_backup.get("compressed", False),
+            "sizeBytes": latest_backup.get("sizeBytes"),
+        }
+
+    return {
+        "totalBackups": total_backups,
+        "totalFullBackups": total_full_backups,
+        "latestBackup": latest_backup_payload,
+        "latestBackupAgeDays": latest_backup_age_days,
+        "hasRecentBackup": has_recent_backup,
+        "uniqueLocations": unique_locations,
+        "locationsCount": len(unique_locations),
+        "hasSingleLocation": has_single_location,
+        "staleAfterDays": 7,
+    }
+
+
 class AppHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
         parsed = urlparse(self.path)
@@ -541,6 +769,17 @@ class AppHandler(SimpleHTTPRequestHandler):
         if path == "/api/ha/config":
             try:
                 payload = _fetch_ha_config()
+            except RuntimeError as error:
+                message = str(error)
+                status = 503 if "SUPERVISOR_TOKEN" in message else 502
+                self._send_json(status, {"error": message})
+                return
+            self._send_json(200, payload)
+            return
+
+        if path == "/api/ha/backups-status":
+            try:
+                payload = _build_backup_status_payload()
             except RuntimeError as error:
                 message = str(error)
                 status = 503 if "SUPERVISOR_TOKEN" in message else 502
