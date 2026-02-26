@@ -89,6 +89,13 @@ for DEST_DIR in "${DEST_DIRS[@]}"; do
 done
 
 DEPLOY_TIMESTAMP="$(date +"%Y.%m.%d.%H.%M.%S")"
+SRC_CONFIG_FILE="${SRC_DIR}/config.yaml"
+BASE_VERSION="$(sed -nE 's/^[[:space:]]*version:[[:space:]]*"([^"]+)".*$/\1/p' "$SRC_CONFIG_FILE" | head -n 1)"
+
+if [[ -z "$BASE_VERSION" ]]; then
+  echo "Could not read version from ${SRC_CONFIG_FILE}" >&2
+  exit 1
+fi
 
 for DEST_DIR in "${DEST_DIRS[@]}"; do
   echo "Clearing destination: ${DEST_DIR}"
@@ -103,6 +110,19 @@ for DEST_DIR in "${DEST_DIRS[@]}"; do
     "${SRC_DIR}/" "${DEST_DIR}/"
 
   DEST_DEBUG_SETTINGS_FILE="${DEST_DIR}/src/js/debug-settings.js"
+  DEST_CONFIG_FILE="${DEST_DIR}/config.yaml"
+
+  if [[ -f "$DEST_CONFIG_FILE" ]]; then
+    if grep -Eq '^[[:space:]]*version:[[:space:]]*".*"[[:space:]]*$' "$DEST_CONFIG_FILE"; then
+      sed -E -i '' "s|^[[:space:]]*version:[[:space:]]*\".*\"[[:space:]]*$|version: \"${BASE_VERSION}-${DEPLOY_TIMESTAMP}\"|" "$DEST_CONFIG_FILE"
+      echo "Stamped destination version (${DEST_DIR}): ${BASE_VERSION}-${DEPLOY_TIMESTAMP}"
+    else
+      echo "Could not find version field in ${DEST_CONFIG_FILE}" >&2
+    fi
+  else
+    echo "config.yaml not found in destination: ${DEST_CONFIG_FILE}" >&2
+  fi
+
   if [[ -f "$DEST_DEBUG_SETTINGS_FILE" ]]; then
     if grep -Eq '^[[:space:]]*var appBuildDateTime = ".*";?[[:space:]]*$' "$DEST_DEBUG_SETTINGS_FILE"; then
       sed -E -i '' "s|^[[:space:]]*var appBuildDateTime = \".*\";?[[:space:]]*$|var appBuildDateTime = \"${DEPLOY_TIMESTAMP}\";|" "$DEST_DEBUG_SETTINGS_FILE"
