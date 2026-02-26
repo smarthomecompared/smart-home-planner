@@ -756,7 +756,9 @@ class AppHandler(SimpleHTTPRequestHandler):
                 self.send_header("Pragma", "no-cache")
                 self.send_header("Expires", "0")
             elif ext == ".html" or path in {"", "/"} or path.endswith("/"):
-                self.send_header("Cache-Control", "no-cache, must-revalidate")
+                self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, private")
+                self.send_header("Pragma", "no-cache")
+                self.send_header("Expires", "0")
         super().end_headers()
 
     def _send_json(self, status, payload):

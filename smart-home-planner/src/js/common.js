@@ -139,6 +139,8 @@ async function loadHaBackupsStatus() {
             })
             .catch((error) => {
                 console.error(`Failed to load Home Assistant backups status:`, error);
+                // Allow subsequent calls to retry instead of keeping a failed promise forever.
+                haBackupsStatusPromise = null;
                 return { error: error?.message || 'Unable to load backup status' };
             });
     }
