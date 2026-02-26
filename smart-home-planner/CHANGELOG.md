@@ -1,4 +1,4 @@
-## 1.3.0 - 
+## 1.3.0 - 2026-02-26
 
 ### Added
 - Added Z-Wave controller field on each device
@@ -7,7 +7,7 @@
 - Added Last Backup dashboard card in home dahsboard
 
 ### Fixes
-- Caching fixes
+- Cache fixes
 
 
 ## 1.2.0 - 2026-02-24
