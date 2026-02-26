@@ -342,6 +342,14 @@ async function refreshFiles() {
     }
 }
 
+async function refreshBackupsDebugDump() {
+    try {
+        await fetch(buildDebugApiUrl('api/ha/backups-status?debugDump=1'), { cache: 'no-store' });
+    } catch (_error) {
+        // Ignore to keep Debug Settings usable even if Supervisor backup endpoint fails.
+    }
+}
+
 async function initializeDebugSettings() {
     renderBuildStampInfo();
 
@@ -354,6 +362,7 @@ async function initializeDebugSettings() {
         jsonToggle.addEventListener('click', handleJsonToggle);
     }
 
+    await refreshBackupsDebugDump();
     await refreshFiles();
 }
 

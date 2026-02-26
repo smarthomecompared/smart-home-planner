@@ -1662,20 +1662,10 @@
             const hasRecent = typeof backupStatus?.hasRecentBackup === 'boolean'
                 ? Boolean(backupStatus.hasRecentBackup)
                 : Boolean(backupStatus?.hasRecentFullBackup);
-            const hasSingleLocation = Boolean(backupStatus?.hasSingleLocation);
-            const fallbackLocationsCount = Array.isArray(backupStatus?.uniqueLocations)
-                ? backupStatus.uniqueLocations.filter(Boolean).length
-                : (Array.isArray(latest?.locations) && latest.locations.length ? latest.locations.length : (latest?.location ? 1 : 0));
-            const locationsCount = Number.isFinite(backupStatus?.locationsCount)
-                ? Number(backupStatus.locationsCount)
-                : fallbackLocationsCount;
             const warningMessages = [];
             if (!hasError && latest) {
                 if (!hasRecent) {
                     warningMessages.push(`Latest backup is older than ${maxAgeDays} days.`);
-                }
-                if (hasSingleLocation) {
-                    warningMessages.push('Only one backup location is configured.');
                 }
             }
             const missingBackup = hasError || !latest;
@@ -1689,17 +1679,12 @@
             } else {
                 statusBanners = warningMessages.length
                     ? warningMessages.map((text) => ({ text, type: 'warn' }))
-                    : [{ text: `Latest backup is recent and spread across ${locationsCount} locations.`, type: 'ok' }];
+                    : [{ text: 'Latest backup is recent.', type: 'ok' }];
             }
-
-            const latestLocations = Array.isArray(latest?.locations) && latest.locations.length
-                ? latest.locations.join(', ')
-                : (latest?.location || 'Unknown');
 
             const primaryRows = [
                 { label: 'Date', value: latest ? formatBackupDate(latest.date) : 'Not available' },
-                { label: 'Age', value: latestAge === null ? 'Unknown' : `${latestAge} day${latestAge === 1 ? '' : 's'}` },
-                { label: 'Location', value: latestLocations }
+                { label: 'Age', value: latestAge === null ? 'Unknown' : `${latestAge} day${latestAge === 1 ? '' : 's'}` }
             ];
             const secondaryRows = [
                 { label: 'Type', value: latest?.type ? formatDeviceType(latest.type) : 'Unknown' },

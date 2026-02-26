@@ -23,6 +23,7 @@ AREAS_FILE = os.path.join(DATA_DIR, "areas.json")
 FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
 DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 LABELS_FILE = os.path.join(DATA_DIR, "labels.json")
+BACKUPS_DEBUG_FILE = os.path.join(DATA_DIR, "backups.json")
 WEB_ROOT = os.environ.get("SHP_WEB_ROOT", "/srv")
 HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
@@ -69,6 +70,14 @@ def _write_storage(payload):
     with open(tmp_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
     os.replace(tmp_path, DATA_FILE)
+
+
+def _write_backups_debug(payload):
+    os.makedirs(os.path.dirname(BACKUPS_DEBUG_FILE), exist_ok=True)
+    tmp_path = f"{BACKUPS_DEBUG_FILE}.tmp"
+    with open(tmp_path, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2)
+    os.replace(tmp_path, BACKUPS_DEBUG_FILE)
 
 
 def _is_json_text(text):
@@ -625,16 +634,20 @@ def _normalize_backup_entry(raw):
     }
 
 
-def _build_backup_status_payload():
+def _build_backup_status_payload(write_debug_dump=False):
     if not SUPERVISOR_TOKEN:
         raise RuntimeError("SUPERVISOR_TOKEN is missing")
 
     first_error = None
+    debug_responses = {}
 
     def safe_fetch(path):
         nonlocal first_error
         try:
-            return _fetch_supervisor_json(path)
+            payload = _fetch_supervisor_json(path)
+            if write_debug_dump:
+                debug_responses[path] = payload
+            return payload
         except RuntimeError as error:
             if first_error is None:
                 first_error = error
@@ -656,6 +669,11 @@ def _build_backup_status_payload():
             backups = _extract_backups_list(legacy_info_payload)
 
     if first_error is not None and not backups:
+        if write_debug_dump:
+            try:
+                _write_backups_debug(debug_responses)
+            except Exception:
+                pass
         raise first_error
 
     normalized_backups = [_normalize_backup_entry(item) for item in backups]
@@ -708,7 +726,7 @@ def _build_backup_status_payload():
             "sizeBytes": latest_backup.get("sizeBytes"),
         }
 
-    return {
+    result = {
         "totalBackups": total_backups,
         "totalFullBackups": total_full_backups,
         "latestBackup": latest_backup_payload,
@@ -719,6 +737,12 @@ def _build_backup_status_payload():
         "hasSingleLocation": has_single_location,
         "staleAfterDays": 7,
     }
+    if write_debug_dump:
+        try:
+            _write_backups_debug(debug_responses)
+        except Exception:
+            pass
+    return result
 
 
 class AppHandler(SimpleHTTPRequestHandler):
@@ -778,8 +802,10 @@ class AppHandler(SimpleHTTPRequestHandler):
             return
 
         if path == "/api/ha/backups-status":
+            debug_dump = ((query.get("debugDump") or [""])[0]).strip().lower() in {"1", "true", "yes"}
+            should_write_debug_dump = bool(debug_dump and IS_LOCAL_RUNTIME)
             try:
-                payload = _build_backup_status_payload()
+                payload = _build_backup_status_payload(write_debug_dump=should_write_debug_dump)
             except RuntimeError as error:
                 message = str(error)
                 status = 503 if "SUPERVISOR_TOKEN" in message else 502
