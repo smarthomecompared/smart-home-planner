@@ -37,7 +37,7 @@ Key concepts:
 1. Device status shows where each device sits in its lifecycle, such as working, pending, not working, or wishlist.
 2. Installed Area is the physical location of the device.
 3. Controlled Area is the space a device influences.
-4. Connectivity captures how the device communicates, along with its network and role flags.
+4. Connectivity captures how the device communicates, along with its network and role flags. For Wi-Fi devices, you can also track download speed, upload speed, Wi-Fi band, and the connected router/access point. From router/access point devices, you can also manage linked Wi-Fi clients.
 5. Power captures wired or battery status and energy usage.
 6. Integrations capture which ecosystems the device belongs to.
 7. Purchase information tracks serial numbers, dates, prices, and warranty expiration.
@@ -152,7 +152,7 @@ Best use cases:
 The Diagram view gives you a spatial and relational understanding of devices.
 
 Best use cases:
-1. Visualizing device connections such as Ethernet, USB, and Power.
+1. Visualizing device connections such as Ethernet, USB, Power, and optional Wi-Fi links to access points (with band labels).
 2. Understanding how devices are grouped by Installed or Controlled Area.
 3. Refining layout by dragging devices into a meaningful arrangement.
 4. Entering full screen for deep review sessions.
@@ -172,7 +172,7 @@ Guidance for each section:
 3. Installation defines location and status, which drives filters and dashboards.
 4. Power captures energy needs, battery planning, and consumption data.
 5. Storage helps document hubs and servers with disk space.
-6. Connectivity captures how the device communicates and its network identity.
+6. Connectivity captures how the device communicates and its network identity, including Wi-Fi speed, band, and connected router/access point details when applicable.
 7. Ports describe connections to other devices for mapping and documentation.
 8. Integrations track ecosystem ownership across platforms.
 9. Notes and Files keep manuals, receipts, and maintenance history in one place.
@@ -186,9 +186,10 @@ Typical tasks:
 2. Update battery change dates after maintenance.
 3. Add files such as invoices or manuals.
 4. Update connectivity details after a network change.
-5. Update purchase info like serial numbers or warranty expiration.
-6. Adjust labels to keep Home Assistant and the app aligned.
-7. Delete the device if it is permanently removed.
+5. Link or unlink Wi-Fi client devices directly from router/access point records.
+6. Update purchase info like serial numbers or warranty expiration.
+7. Adjust labels to keep Home Assistant and the app aligned.
+8. Delete the device if it is permanently removed.
 
 The Apply action lets you save changes without leaving the page, which is useful during longer editing sessions.
 

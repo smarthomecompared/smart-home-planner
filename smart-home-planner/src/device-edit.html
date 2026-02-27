@@ -389,6 +389,55 @@
                                 <input type="text" id="device-mac" pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$" placeholder="e.g., AA:BB:CC:DD:EE:FF">
                             </div>
                         </div>
+                        <div class="form-row is-hidden" id="wifi-details-row">
+                            <div class="form-group">
+                                <label for="device-wifi-download-speed">Download Speed (Mbps)</label>
+                                <input type="number" id="device-wifi-download-speed" min="0" step="0.1" placeholder="e.g., 320">
+                            </div>
+                            <div class="form-group">
+                                <label for="device-wifi-upload-speed">Upload Speed (Mbps)</label>
+                                <input type="number" id="device-wifi-upload-speed" min="0" step="0.1" placeholder="e.g., 45">
+                            </div>
+                            <div class="form-group">
+                                <label for="device-wifi-band">Wi-Fi Band</label>
+                                <select id="device-wifi-band">
+                                    <option value="">Select Wi-Fi band</option>
+                                    <option value="2.4-ghz">2.4 GHz</option>
+                                    <option value="5-ghz">5 GHz</option>
+                                    <option value="6-ghz">6 GHz</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="wifi-access-point-group">
+                            <div class="form-group">
+                                <label for="device-wifi-access-point">Connected To (Router / Access Point)</label>
+                                <div class="port-search-wrapper">
+                                    <input
+                                        type="text"
+                                        id="device-wifi-access-point"
+                                        class="port-device-search"
+                                        placeholder="Search router or access point..."
+                                        autocomplete="off">
+                                    <div id="device-wifi-access-point-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="wifi-linked-devices-group">
+                            <div class="form-group">
+                                <label for="device-wifi-client-search">Linked Wi-Fi Devices</label>
+                                <div id="wifi-linked-devices-list" class="wifi-linked-devices-list"></div>
+                                <div id="wifi-linked-devices-empty" class="wifi-linked-devices-empty">No Wi-Fi devices linked.</div>
+                                <div class="port-search-wrapper wifi-client-search-row">
+                                    <input
+                                        type="text"
+                                        id="device-wifi-client-search"
+                                        class="port-device-search"
+                                        placeholder="Link a Wi-Fi device..."
+                                        autocomplete="off">
+                                    <div id="device-wifi-client-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <div class="form-label-row form-label-row-compact">

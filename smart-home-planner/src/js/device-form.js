@@ -20,6 +20,7 @@ let deviceFilePreviewModal = null;
 let deviceFileRenameModal = null;
 let haDefaultCurrency = '';
 let haCountryCode = '';
+let selectedWifiClientIds = new Set();
 const amazonBatteryMetaMap = buildAmazonBatteryMetaMap();
 
 const AMAZON_STORE_DOMAINS = {
@@ -58,6 +59,34 @@ function showFormMessage(message, type = 'success') {
 
 function generateDeviceId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeWifiBand(value) {
+    const normalized = normalizeOptionValue(value);
+    if (normalized === '2.4-ghz' || normalized === '5-ghz' || normalized === '6-ghz') {
+        return normalized;
+    }
+    return '';
+}
+
+function parseOptionalNonNegativeNumber(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return null;
+    const parsed = parseFloat(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return parsed;
+}
+
+function isRouterOrAccessPointType(value) {
+    const normalized = normalizeOptionValue(value);
+    if (!normalized) return false;
+    if (normalized === 'router' || normalized === 'routers') return true;
+    if (normalized === 'access-point' || normalized === 'access-points') return true;
+    return normalized.includes('router') || normalized.includes('access-point');
+}
+
+function isStrictWifiConnectivity(value) {
+    return normalizeOptionValue(value) === 'wifi';
 }
 
 function escapeFileParam(value) {
@@ -144,6 +173,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleBrandChange();
     handleConnectivityChange();
     handleStatusChange();
+    setupWifiAccessPointSearch();
+    setupWifiClientsManager();
+    updateWifiClientsManagerVisibility();
     
     if (editingDeviceId) {
         loadDeviceForEdit(editingDeviceId);
@@ -1629,6 +1661,11 @@ function loadDeviceData(device) {
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
     document.getElementById('device-type').value = device.type ? normalizeOptionValue(device.type) : '';
+    if (editingDeviceId) {
+        setWifiClientsFromAccessPointDevice(device.id);
+    } else {
+        setSelectedWifiClientIds([]);
+    }
     setSelectedLabels(device.labels);
     document.getElementById('device-ip').value = device.ip || '';
     document.getElementById('device-mac').value = device.mac || '';
@@ -1671,6 +1708,19 @@ function loadDeviceData(device) {
     if (networkSelect) {
         networkSelect.value = device.networkId || '';
     }
+    const wifiDownloadSpeedInput = document.getElementById('device-wifi-download-speed');
+    if (wifiDownloadSpeedInput) {
+        wifiDownloadSpeedInput.value = Number.isFinite(device.wifiDownloadSpeed) ? device.wifiDownloadSpeed : '';
+    }
+    const wifiUploadSpeedInput = document.getElementById('device-wifi-upload-speed');
+    if (wifiUploadSpeedInput) {
+        wifiUploadSpeedInput.value = Number.isFinite(device.wifiUploadSpeed) ? device.wifiUploadSpeed : '';
+    }
+    const wifiBandSelect = document.getElementById('device-wifi-band');
+    if (wifiBandSelect) {
+        wifiBandSelect.value = normalizeWifiBand(device.wifiBand || '');
+    }
+    setWifiAccessPointSelection(device.wifiAccessPointId || '');
     document.getElementById('device-area').value = device.area || '';
     const controlledAreaInput = document.getElementById('device-controlled-area');
     if (controlledAreaInput) {
@@ -1698,6 +1748,7 @@ function loadDeviceData(device) {
     handleBatteryTypeChange();
     handleBrandChange();
     handleStatusChange();
+    updateWifiClientsManagerVisibility();
     lastTypeValue = document.getElementById('device-type').value;
     lastBatteryTypeValue = document.getElementById('device-battery-type').value;
     lastConnectivityValue = document.getElementById('device-connectivity').value;
@@ -1723,9 +1774,34 @@ async function handleDeviceSubmit(e) {
         return;
     }
     connectivity = normalizeOptionValue(connectivity);
-    const ipValue = isWifiConnectivity(connectivity) ? document.getElementById('device-ip').value : '';
-    const macValue = isWifiConnectivity(connectivity) ? document.getElementById('device-mac').value : '';
-    const networkValue = isWifiConnectivity(connectivity) ? (document.getElementById('device-network')?.value || '') : '';
+    const isWifi = connectivity === 'wifi';
+    const isEthernet = connectivity === 'ethernet';
+    const showNetworkFields = isWifi || isEthernet;
+    const showExtendedNetworkFields = isWifi;
+    const ipValue = showNetworkFields ? document.getElementById('device-ip').value : '';
+    const macValue = showNetworkFields ? document.getElementById('device-mac').value : '';
+    const networkValue = showNetworkFields ? (document.getElementById('device-network')?.value || '') : '';
+    const wifiDownloadSpeedValue = showExtendedNetworkFields
+        ? parseOptionalNonNegativeNumber(document.getElementById('device-wifi-download-speed')?.value || '')
+        : null;
+    const wifiUploadSpeedValue = showExtendedNetworkFields
+        ? parseOptionalNonNegativeNumber(document.getElementById('device-wifi-upload-speed')?.value || '')
+        : null;
+    const wifiBandValue = showExtendedNetworkFields
+        ? normalizeWifiBand(document.getElementById('device-wifi-band')?.value || '')
+        : '';
+    const wifiAccessPointInput = document.getElementById('device-wifi-access-point');
+    const wifiAccessPointValue = showExtendedNetworkFields
+        ? String(wifiAccessPointInput?.dataset?.deviceId || '').trim()
+        : '';
+    if (showExtendedNetworkFields && wifiAccessPointInput) {
+        const hasTypedValue = wifiAccessPointInput.value.trim() !== '';
+        if (hasTypedValue && !wifiAccessPointValue) {
+            wifiAccessPointInput.classList.add('port-search-invalid');
+            showAlert('Please select a valid router or access point from the results list.');
+            return;
+        }
+    }
     const brandSelect = document.getElementById('device-brand');
     let brandValue = brandSelect.value;
     if (brandValue === '__new__') {
@@ -1739,6 +1815,9 @@ async function handleDeviceSubmit(e) {
         return;
     }
     typeValue = normalizeOptionValue(typeValue);
+    const wifiLinkedDeviceIds = isRouterOrAccessPointType(typeValue)
+        ? getSelectedWifiClientIds()
+        : [];
     let batteryTypeValue = document.getElementById('device-battery-type').value;
     if (batteryTypeValue === '__new__') {
         showAlert('Please add a new battery type first.');
@@ -1806,6 +1885,11 @@ async function handleDeviceSubmit(e) {
         notes: document.getElementById('device-notes').value,
         connectivity: connectivity,
         networkId: networkValue,
+        wifiDownloadSpeed: wifiDownloadSpeedValue,
+        wifiUploadSpeed: wifiUploadSpeedValue,
+        wifiBand: wifiBandValue,
+        wifiAccessPointId: wifiAccessPointValue,
+        wifiLinkedDeviceIds: wifiLinkedDeviceIds,
         area: isPendingStatus ? '' : document.getElementById('device-area').value,
         controlledArea: isPendingStatus ? '' : (document.getElementById('device-controlled-area')?.value || ''),
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
@@ -2020,6 +2104,7 @@ function handleTypeChange() {
         openTypeModal();
     } else {
         lastTypeValue = typeSelect.value;
+        updateWifiClientsManagerVisibility();
     }
 }
 
@@ -2091,6 +2176,7 @@ function closeTypeModal() {
     modal.classList.add('is-hidden');
     modal.setAttribute('aria-hidden', 'true');
     document.getElementById('device-type').value = lastTypeValue;
+    updateWifiClientsManagerVisibility();
 }
 
 async function saveTypeModal() {
@@ -2114,6 +2200,7 @@ async function saveTypeModal() {
     populateTypes();
     document.getElementById('device-type').value = normalized;
     lastTypeValue = normalized;
+    updateWifiClientsManagerVisibility();
     closeTypeModal();
 }
 
@@ -2477,15 +2564,27 @@ async function saveConnectivityModal() {
 
 function handleConnectivityChange() {
     const connectivity = document.getElementById('device-connectivity').value;
+    const normalizedConnectivity = normalizeOptionValue(connectivity);
     const ipGroup = document.getElementById('ip-address-group');
     const macGroup = document.getElementById('mac-address-group');
     const networkGroup = document.getElementById('network-group');
-    const showNetworkFields = isWifiConnectivity(connectivity);
+    const wifiDetailsRow = document.getElementById('wifi-details-row');
+    const wifiAccessPointGroup = document.getElementById('wifi-access-point-group');
+    const isWifi = normalizedConnectivity === 'wifi';
+    const isEthernet = normalizedConnectivity === 'ethernet';
+    const showNetworkFields = isWifi || isEthernet;
+    const showWifiSpecificFields = isWifi;
 
     ipGroup.classList.toggle('is-hidden', !showNetworkFields);
     macGroup.classList.toggle('is-hidden', !showNetworkFields);
     if (networkGroup) {
         networkGroup.classList.toggle('is-hidden', !showNetworkFields);
+    }
+    if (wifiDetailsRow) {
+        wifiDetailsRow.classList.toggle('is-hidden', !showWifiSpecificFields);
+    }
+    if (wifiAccessPointGroup) {
+        wifiAccessPointGroup.classList.toggle('is-hidden', !showWifiSpecificFields);
     }
 
     if (!showNetworkFields) {
@@ -2496,6 +2595,325 @@ function handleConnectivityChange() {
             networkSelect.value = '';
         }
     }
+
+    if (!showWifiSpecificFields) {
+        const wifiDownloadSpeedInput = document.getElementById('device-wifi-download-speed');
+        if (wifiDownloadSpeedInput) {
+            wifiDownloadSpeedInput.value = '';
+        }
+        const wifiUploadSpeedInput = document.getElementById('device-wifi-upload-speed');
+        if (wifiUploadSpeedInput) {
+            wifiUploadSpeedInput.value = '';
+        }
+        const wifiBandSelect = document.getElementById('device-wifi-band');
+        if (wifiBandSelect) {
+            wifiBandSelect.value = '';
+        }
+        clearWifiAccessPointSelection();
+    }
+}
+
+function clearWifiAccessPointSelection() {
+    const wifiAccessPointInput = document.getElementById('device-wifi-access-point');
+    const wifiAccessPointResults = document.getElementById('device-wifi-access-point-results');
+    if (!wifiAccessPointInput) return;
+    wifiAccessPointInput.value = '';
+    wifiAccessPointInput.dataset.deviceId = '';
+    wifiAccessPointInput.classList.remove('port-search-valid', 'port-search-invalid');
+    if (wifiAccessPointResults) {
+        wifiAccessPointResults.classList.add('is-hidden');
+        wifiAccessPointResults.innerHTML = '';
+    }
+}
+
+function setWifiAccessPointSelection(deviceId) {
+    const wifiAccessPointInput = document.getElementById('device-wifi-access-point');
+    if (!wifiAccessPointInput) return;
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) {
+        clearWifiAccessPointSelection();
+        return;
+    }
+    const target = devices.find(device => String(device.id || '') === normalizedId);
+    if (!target) {
+        clearWifiAccessPointSelection();
+        return;
+    }
+    wifiAccessPointInput.value = target.name || target.model || 'Unnamed Device';
+    wifiAccessPointInput.dataset.deviceId = normalizedId;
+    wifiAccessPointInput.classList.add('port-search-valid');
+    wifiAccessPointInput.classList.remove('port-search-invalid');
+}
+
+function setupWifiAccessPointSearch() {
+    const searchInput = document.getElementById('device-wifi-access-point');
+    const resultsDiv = document.getElementById('device-wifi-access-point-results');
+
+    if (!searchInput || !resultsDiv) return;
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+
+        if (this.dataset.deviceId) {
+            const currentDeviceId = this.dataset.deviceId;
+            const currentDevice = devices.find(device => device.id === currentDeviceId);
+            const currentDeviceName = currentDevice ? (currentDevice.name || currentDevice.model || 'Unnamed Device') : '';
+            if (this.value !== currentDeviceName) {
+                this.dataset.deviceId = '';
+                this.classList.remove('port-search-valid');
+            }
+        }
+
+        if (!query) {
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+            this.dataset.deviceId = '';
+            this.classList.remove('port-search-valid', 'port-search-invalid');
+            return;
+        }
+
+        const currentDeviceId = editingDeviceId;
+        const filteredDevices = devices
+            .filter(device => device.id !== currentDeviceId)
+            .filter(device => isRouterOrAccessPointType(device.type))
+            .filter(device => {
+                const name = (device.name || device.model || '').toLowerCase();
+                const brand = (device.brand || '').toLowerCase();
+                const type = (device.type || '').toLowerCase();
+                return name.includes(query) || brand.includes(query) || type.includes(query);
+            })
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .slice(0, 10);
+
+        if (filteredDevices.length === 0) {
+            resultsDiv.innerHTML = '<div class="port-search-result-item no-results">No routers or access points found</div>';
+            resultsDiv.classList.remove('is-hidden');
+            return;
+        }
+
+        resultsDiv.innerHTML = filteredDevices
+            .map(device => {
+                const rawName = device.name || device.model || 'Unnamed Device';
+                const displayName = escapeHtml(rawName);
+                const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+                const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+                const meta = [brand, type].filter(Boolean).join(' • ');
+
+                return `
+                    <div class="port-search-result-item" data-device-id="${device.id}" data-device-name="${escapeHtml(rawName)}">
+                        <div class="port-search-result-name">${displayName}</div>
+                        ${meta ? `<div class="port-search-result-meta">${meta}</div>` : ''}
+                    </div>
+                `;
+            })
+            .join('');
+
+        resultsDiv.classList.remove('is-hidden');
+
+        resultsDiv.querySelectorAll('.port-search-result-item[data-device-id]').forEach(item => {
+            item.addEventListener('click', function() {
+                const deviceId = this.dataset.deviceId;
+                const deviceName = this.dataset.deviceName;
+
+                searchInput.value = deviceName;
+                searchInput.dataset.deviceId = deviceId;
+                searchInput.classList.add('port-search-valid');
+                searchInput.classList.remove('port-search-invalid');
+                resultsDiv.classList.add('is-hidden');
+                resultsDiv.innerHTML = '';
+            });
+        });
+    });
+
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (this.value.trim() && !this.dataset.deviceId) {
+                this.classList.add('port-search-invalid');
+                return;
+            }
+            this.classList.remove('port-search-invalid');
+        }, 200);
+    });
+
+    document.addEventListener('click', function(event) {
+        if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+            resultsDiv.classList.add('is-hidden');
+        }
+    });
+}
+
+function getCurrentFormDeviceId() {
+    return String(editingDeviceId || activeDeviceId || '').trim();
+}
+
+function getSelectedWifiClientIds() {
+    const currentDeviceId = getCurrentFormDeviceId();
+    const result = [];
+    selectedWifiClientIds.forEach((rawId) => {
+        const clientId = String(rawId || '').trim();
+        if (!clientId || clientId === currentDeviceId) return;
+        const targetDevice = devices.find((device) => String(device.id || '') === clientId);
+        if (!targetDevice || !isStrictWifiConnectivity(targetDevice.connectivity)) return;
+        result.push(clientId);
+    });
+    return result;
+}
+
+function setSelectedWifiClientIds(ids) {
+    const normalized = new Set();
+    (Array.isArray(ids) ? ids : []).forEach((rawId) => {
+        const clientId = String(rawId || '').trim();
+        if (clientId) {
+            normalized.add(clientId);
+        }
+    });
+    selectedWifiClientIds = normalized;
+    renderSelectedWifiClients();
+}
+
+function setWifiClientsFromAccessPointDevice(accessPointId) {
+    const normalizedAccessPointId = String(accessPointId || '').trim();
+    if (!normalizedAccessPointId) {
+        setSelectedWifiClientIds([]);
+        return;
+    }
+    const linkedClients = devices
+        .filter((device) => String(device.id || '') !== normalizedAccessPointId)
+        .filter((device) => isStrictWifiConnectivity(device.connectivity))
+        .filter((device) => String(device.wifiAccessPointId || '').trim() === normalizedAccessPointId)
+        .map((device) => String(device.id || '').trim())
+        .filter(Boolean);
+    setSelectedWifiClientIds(linkedClients);
+}
+
+function updateWifiClientsManagerVisibility() {
+    const group = document.getElementById('wifi-linked-devices-group');
+    if (!group) return;
+    const typeValue = document.getElementById('device-type')?.value || '';
+    const shouldShow = isRouterOrAccessPointType(typeValue);
+    group.classList.toggle('is-hidden', !shouldShow);
+    renderSelectedWifiClients();
+}
+
+function renderSelectedWifiClients() {
+    const list = document.getElementById('wifi-linked-devices-list');
+    const empty = document.getElementById('wifi-linked-devices-empty');
+    if (!list || !empty) return;
+
+    const selectedIds = getSelectedWifiClientIds();
+    selectedWifiClientIds = new Set(selectedIds);
+
+    if (!selectedIds.length) {
+        list.innerHTML = '';
+        empty.classList.remove('is-hidden');
+        return;
+    }
+
+    empty.classList.add('is-hidden');
+    list.innerHTML = selectedIds.map((clientId) => {
+        const device = devices.find((item) => String(item.id || '') === clientId);
+        if (!device) return '';
+        const name = escapeHtml(device.name || device.model || 'Unnamed Device');
+        const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+        const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+        const meta = [brand, type].filter(Boolean).join(' • ');
+        return `
+            <div class="wifi-linked-device-item" data-device-id="${clientId}">
+                <div class="wifi-linked-device-meta">
+                    <div class="wifi-linked-device-name">${name}</div>
+                    ${meta ? `<div class="wifi-linked-device-details">${meta}</div>` : ''}
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" data-wifi-client-remove="${clientId}">Unlink</button>
+            </div>
+        `;
+    }).join('');
+
+    list.querySelectorAll('[data-wifi-client-remove]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetId = String(button.getAttribute('data-wifi-client-remove') || '').trim();
+            if (!targetId) return;
+            selectedWifiClientIds.delete(targetId);
+            renderSelectedWifiClients();
+        });
+    });
+}
+
+function setupWifiClientsManager() {
+    const searchInput = document.getElementById('device-wifi-client-search');
+    const resultsDiv = document.getElementById('device-wifi-client-results');
+    if (!searchInput || !resultsDiv) return;
+
+    renderSelectedWifiClients();
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+        if (!query) {
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        const currentDeviceId = getCurrentFormDeviceId();
+        const filteredDevices = devices
+            .filter((device) => String(device.id || '') !== currentDeviceId)
+            .filter((device) => !selectedWifiClientIds.has(String(device.id || '')))
+            .filter((device) => isStrictWifiConnectivity(device.connectivity))
+            .filter((device) => {
+                const name = (device.name || device.model || '').toLowerCase();
+                const brand = (device.brand || '').toLowerCase();
+                const type = (device.type || '').toLowerCase();
+                return name.includes(query) || brand.includes(query) || type.includes(query);
+            })
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .slice(0, 10);
+
+        if (!filteredDevices.length) {
+            resultsDiv.innerHTML = '<div class="port-search-result-item no-results">No Wi-Fi devices found</div>';
+            resultsDiv.classList.remove('is-hidden');
+            return;
+        }
+
+        resultsDiv.innerHTML = filteredDevices.map((device) => {
+            const rawName = device.name || device.model || 'Unnamed Device';
+            const displayName = escapeHtml(rawName);
+            const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+            const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+            const meta = [brand, type].filter(Boolean).join(' • ');
+            return `
+                <div class="port-search-result-item" data-wifi-client-id="${device.id}">
+                    <div class="port-search-result-name">${displayName}</div>
+                    ${meta ? `<div class="port-search-result-meta">${meta}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        resultsDiv.classList.remove('is-hidden');
+        resultsDiv.querySelectorAll('[data-wifi-client-id]').forEach((item) => {
+            item.addEventListener('click', () => {
+                const clientId = String(item.getAttribute('data-wifi-client-id') || '').trim();
+                if (!clientId) return;
+                selectedWifiClientIds.add(clientId);
+                searchInput.value = '';
+                resultsDiv.innerHTML = '';
+                resultsDiv.classList.add('is-hidden');
+                renderSelectedWifiClients();
+            });
+        });
+    });
+
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            this.value = '';
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+        }, 200);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+            resultsDiv.classList.add('is-hidden');
+        }
+    });
 }
 
 // Port Management
@@ -3032,6 +3450,48 @@ async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
     devices = allDevices;
 }
 
+async function syncWifiClientsForAccessPoint(currentDeviceId, linkedClientIds) {
+    const normalizedCurrentDeviceId = String(currentDeviceId || '').trim();
+    if (!normalizedCurrentDeviceId) return;
+
+    const allData = await loadData();
+    const storedDevices = Array.isArray(allData.devices) ? allData.devices : [];
+    const currentDevice = storedDevices.find((device) => String(device.id || '') === normalizedCurrentDeviceId);
+    const currentDeviceIsAccessPoint = Boolean(currentDevice && isRouterOrAccessPointType(currentDevice.type));
+    const desiredLinkedClients = new Set(
+        (Array.isArray(linkedClientIds) ? linkedClientIds : [])
+            .map((id) => String(id || '').trim())
+            .filter((id) => id && id !== normalizedCurrentDeviceId)
+    );
+
+    storedDevices.forEach((device) => {
+        const deviceId = String(device.id || '').trim();
+        if (!deviceId || deviceId === normalizedCurrentDeviceId) return;
+
+        const linkedToCurrentDevice = String(device.wifiAccessPointId || '').trim() === normalizedCurrentDeviceId;
+        if (!currentDeviceIsAccessPoint) {
+            if (linkedToCurrentDevice) {
+                device.wifiAccessPointId = '';
+            }
+            return;
+        }
+
+        const isWifiClient = isStrictWifiConnectivity(device.connectivity);
+        if (desiredLinkedClients.has(deviceId) && isWifiClient) {
+            device.wifiAccessPointId = normalizedCurrentDeviceId;
+            return;
+        }
+        if (linkedToCurrentDevice) {
+            device.wifiAccessPointId = '';
+        }
+    });
+
+    allData.devices = storedDevices;
+    await saveData(allData);
+    allDevices = storedDevices;
+    devices = storedDevices;
+}
+
 // Make removePort available globally
 window.removePort = removePort;
 
@@ -3086,6 +3546,10 @@ async function createDevice(deviceData) {
         notes: deviceData.notes ? deviceData.notes.trim() : '',
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
+        wifiDownloadSpeed: Number.isFinite(deviceData.wifiDownloadSpeed) ? deviceData.wifiDownloadSpeed : null,
+        wifiUploadSpeed: Number.isFinite(deviceData.wifiUploadSpeed) ? deviceData.wifiUploadSpeed : null,
+        wifiBand: normalizeWifiBand(deviceData.wifiBand),
+        wifiAccessPointId: deviceData.wifiAccessPointId || '',
         area: deviceData.area,
         controlledArea: deviceData.controlledArea || '',
         threadBorderRouter: deviceData.threadBorderRouter || false,
@@ -3112,6 +3576,7 @@ async function createDevice(deviceData) {
     
     // Sync ports bidirectionally
     await syncDevicePorts(device.id, device.ports);
+    await syncWifiClientsForAccessPoint(device.id, deviceData.wifiLinkedDeviceIds || []);
     
     window.location.href = 'devices.html';
 }
@@ -3164,6 +3629,10 @@ async function updateDevice(id, deviceData, options = {}) {
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.networkId = deviceData.networkId || '';
+        device.wifiDownloadSpeed = Number.isFinite(deviceData.wifiDownloadSpeed) ? deviceData.wifiDownloadSpeed : null;
+        device.wifiUploadSpeed = Number.isFinite(deviceData.wifiUploadSpeed) ? deviceData.wifiUploadSpeed : null;
+        device.wifiBand = normalizeWifiBand(deviceData.wifiBand);
+        device.wifiAccessPointId = deviceData.wifiAccessPointId || '';
         device.area = deviceData.area;
         device.controlledArea = deviceData.controlledArea || '';
         device.threadBorderRouter = deviceData.threadBorderRouter || false;
@@ -3186,6 +3655,7 @@ async function updateDevice(id, deviceData, options = {}) {
         
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
+        await syncWifiClientsForAccessPoint(device.id, deviceData.wifiLinkedDeviceIds || []);
         if (isHomeAssistantLinked(device.homeAssistant)) {
             const currentName = String(device.name || '').trim();
             const shouldSyncName = previousName !== currentName;
@@ -3269,6 +3739,9 @@ async function handleDeleteDevice() {
     allDevices.forEach(device => {
         if (device.ports && Array.isArray(device.ports)) {
             device.ports = device.ports.filter(port => port.connectedTo !== editingDeviceId);
+        }
+        if (String(device.wifiAccessPointId || '').trim() === String(editingDeviceId || '').trim()) {
+            device.wifiAccessPointId = '';
         }
     });
 

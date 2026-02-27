@@ -1071,6 +1071,7 @@
     ],
     "connectivity": [
       "Bluetooth",
+      "Ethernet",
       "Matter",
       "Offline",
       "Wi-Fi",

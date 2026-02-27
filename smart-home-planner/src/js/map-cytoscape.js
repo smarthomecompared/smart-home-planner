@@ -1345,6 +1345,10 @@ window.DeviceDiagram = (() => {
     if (powerToggle) {
         powerToggle.addEventListener('change', renderNetwork);
     }
+    const wifiToggle = document.getElementById('show-wifi-connections');
+    if (wifiToggle) {
+        wifiToggle.addEventListener('change', renderNetwork);
+    }
     const powerLabelMode = document.getElementById('power-label-mode');
     if (powerLabelMode) {
         powerLabelMode.addEventListener('change', renderNetwork);
@@ -1933,6 +1937,26 @@ function initializeCytoscape() {
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
                 }
+            },
+            {
+                selector: 'edge[connectionType="wifi"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#38bdf8',
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [8, 6],
+                    'target-arrow-shape': 'none',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
             }
         ],
         
@@ -2185,9 +2209,11 @@ async function renderNetwork() {
     const ethernetToggle = document.getElementById('show-ethernet-connections');
     const usbToggle = document.getElementById('show-usb-connections');
     const powerToggle = document.getElementById('show-power-connections');
+    const wifiToggle = document.getElementById('show-wifi-connections');
     const showEthernet = ethernetToggle ? ethernetToggle.checked : true;
     const showUsb = usbToggle ? usbToggle.checked : true;
     const showPower = powerToggle ? powerToggle.checked : true;
+    const showWifi = wifiToggle ? wifiToggle.checked : false;
     
     const sourceDevices = Array.isArray(filteredDevices)
         ? filteredDevices
@@ -2550,6 +2576,33 @@ async function renderNetwork() {
             }
         });
     });
+
+    if (showWifi) {
+        const processedWifiConnections = new Set();
+        filteredDevicesList.forEach((device) => {
+            const connectedAccessPointId = String(device.wifiAccessPointId || '').trim();
+            if (!connectedAccessPointId || connectedAccessPointId === String(device.id || '')) return;
+            if (!isWifiConnectionDevice(device)) return;
+
+            const connectedAccessPoint = filteredDevicesList.find(item => item.id === connectedAccessPointId);
+            if (!connectedAccessPoint) return;
+
+            const connectionId = [String(device.id || ''), connectedAccessPointId].sort().join('-wifi-');
+            if (processedWifiConnections.has(connectionId)) return;
+            processedWifiConnections.add(connectionId);
+
+            elements.push({
+                group: 'edges',
+                data: {
+                    id: `wifi-${connectionId}`,
+                    source: String(device.id || ''),
+                    target: connectedAccessPointId,
+                    connectionType: 'wifi',
+                    label: formatWifiBandLabel(device.wifiBand)
+                }
+            });
+        });
+    }
     
     // Update cytoscape
     hideEmptyMapMessage();
@@ -2640,6 +2693,28 @@ function formatEthernetLabel(meta) {
         return `Ethernet (${speedLabel})`;
     }
     return 'Ethernet';
+}
+
+function isWifiConnectionDevice(device) {
+    if (!device || typeof device !== 'object') {
+        return false;
+    }
+    const rawConnectivity = device.connectivity;
+    const normalized = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(rawConnectivity)
+        : String(rawConnectivity || '').trim().toLowerCase();
+    return normalized === 'wifi';
+}
+
+function formatWifiBandLabel(value) {
+    const normalized = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(value)
+        : String(value || '').trim().toLowerCase();
+    if (normalized === '2.4-ghz') return '2.4 GHz';
+    if (normalized === '5-ghz') return '5 GHz';
+    if (normalized === '6-ghz') return '6 GHz';
+    if (!normalized) return 'Wi-Fi';
+    return String(value || 'Wi-Fi');
 }
 
 function formatStorageLabel(device) {

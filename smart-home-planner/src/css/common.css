@@ -1549,6 +1549,10 @@ nav.site-nav a.active .site-nav-icon {
     pointer-events: none;
 }
 
+.form-row.is-hidden {
+    display: none;
+}
+
 .form-group.is-collapsed {
     display: none;
 }
@@ -2165,6 +2169,61 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 .port-search-result-meta {
     font-size: 0.75rem;
     color: var(--text-secondary);
+}
+
+.wifi-linked-devices-list {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.wifi-linked-device-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.wifi-linked-device-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.wifi-linked-device-name {
+    font-size: 0.875rem;
+    color: var(--text-color);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wifi-linked-device-details {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wifi-linked-devices-empty {
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    margin-top: 0.45rem;
+}
+
+.wifi-linked-devices-empty.is-hidden {
+    display: none;
+}
+
+.wifi-client-search-row {
+    margin-top: 0.65rem;
 }
 
 /* Responsive Design */

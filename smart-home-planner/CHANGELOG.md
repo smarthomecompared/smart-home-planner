@@ -1,7 +1,8 @@
 ## 1.4.0
 
 ### Added
-- Added a new Test Cases page with manual test definition, scheduling, and run logging
+- New Test Cases page with manual test definition, scheduling, and run logging
+- Wi-Fi connectivity details (download/upload speed, band, connected access point) and optional dotted Wi-Fi diagram links with band labels
 
 ## 1.3.0 - 2026-02-26
 
