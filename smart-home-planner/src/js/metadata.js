@@ -39,6 +39,15 @@ const DEFAULT_CONNECTIVITY = [
     'Bluetooth', 'Matter', 'Offline','Wi-Fi', 'Z-Wave', 'Zigbee'
 ];
 
+const DEFAULT_TEST_CASE_CATEGORIES = [
+    'Security',
+    'Safety',
+    'Network',
+    'Power',
+    'Climate',
+    'Access'
+];
+
 const DEFAULT_BATTERY_TYPES = [
     {
         name: 'AA',

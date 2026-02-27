@@ -18,7 +18,11 @@ const DEVICE_OPTIONS_GROUPS = [
     { key: 'connectivity', label: 'Connectivity Options', singularLabel: 'connectivity option', addPlaceholder: 'Add connectivity option' },
     { key: 'batteryTypes', label: 'Battery Types', singularLabel: 'battery type', addPlaceholder: 'Add battery type' }
 ];
-const DEVICE_OPTIONS_GROUPS_BY_KEY = new Map(DEVICE_OPTIONS_GROUPS.map((group) => [group.key, group]));
+const TEST_CASE_OPTIONS_GROUPS = [
+    { key: 'testCaseCategories', label: 'Test Case Categories', singularLabel: 'test case category', addPlaceholder: 'Add test case category' }
+];
+const OPTION_GROUPS = [...DEVICE_OPTIONS_GROUPS, ...TEST_CASE_OPTIONS_GROUPS];
+const OPTION_GROUPS_BY_KEY = new Map(OPTION_GROUPS.map((group) => [group.key, group]));
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -30,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderExcludedDevicesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
+    renderTestCaseCategoriesManagement();
 });
 
 function initializeSettingsSubmenu(defaultPanel = 'general') {
@@ -983,7 +988,7 @@ async function handleDeleteNetwork(networkId) {
 
 // Options Management
 function getDeviceOptionGroupConfig(key) {
-    return DEVICE_OPTIONS_GROUPS_BY_KEY.get(String(key || '').trim()) || null;
+    return OPTION_GROUPS_BY_KEY.get(String(key || '').trim()) || null;
 }
 
 function normalizeOptionIdentity(value) {
@@ -1049,6 +1054,7 @@ async function persistDeviceOptions(key, nextValues, successMessage) {
     await saveSettings(nextSettings);
     settings = nextSettings;
     renderOptionsManagement();
+    renderTestCaseCategoriesManagement();
     if (successMessage) {
         showMessage(successMessage, 'success');
     }
@@ -1096,12 +1102,20 @@ function buildOptionEditorItemMarkup(key, value) {
 }
 
 function renderOptionsManagement() {
-    const container = document.getElementById('options-management');
-    if (!container) return;
+    renderOptionGroups('options-management', DEVICE_OPTIONS_GROUPS);
+}
+
+function renderTestCaseCategoriesManagement() {
+    renderOptionGroups('test-case-categories-management', TEST_CASE_OPTIONS_GROUPS);
+}
+
+function renderOptionGroups(containerId, groups) {
+    const container = document.getElementById(containerId);
+    if (!container || !Array.isArray(groups) || !groups.length) return;
 
     container.innerHTML = `
         <div class="option-editor-layout">
-            ${DEVICE_OPTIONS_GROUPS.map((group) => {
+            ${groups.map((group) => {
                 const values = sortOptionValues(getOptionValuesByKey(group.key));
                 const listContent = values.length
                     ? values.map((value) => buildOptionEditorItemMarkup(group.key, value)).join('')
@@ -1124,11 +1138,11 @@ function renderOptionsManagement() {
         </div>
     `;
 
-    initializeOptionEditorEvents();
+    initializeOptionEditorEvents(containerId);
 }
 
-function initializeOptionEditorEvents() {
-    const container = document.getElementById('options-management');
+function initializeOptionEditorEvents(containerId) {
+    const container = document.getElementById(containerId);
     if (!container) return;
     if (container.dataset.optionEditorBound === 'true') return;
 

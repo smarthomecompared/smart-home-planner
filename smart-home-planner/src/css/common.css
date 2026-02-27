@@ -397,6 +397,24 @@ nav.site-nav .site-nav-links {
     font-weight: 600;
 }
 
+.global-search-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.global-search-kind {
+    font-size: 0.67rem;
+    line-height: 1;
+    padding: 0.2rem 0.42rem;
+    border-radius: 999px;
+    color: #93c5fd;
+    background: rgba(59, 130, 246, 0.16);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    flex: 0 0 auto;
+}
+
 .global-search-meta {
     font-size: 0.75rem;
     color: var(--text-secondary);

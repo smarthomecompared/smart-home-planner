@@ -35,6 +35,7 @@
             <nav class="site-nav" id="main-nav">
                 <a href="index.html">Dashboard</a>
                 <a href="devices.html">Devices</a>
+                <a href="test-cases.html">Test Cases</a>
                 <a href="settings.html" class="active">Settings</a>
             </nav>
         </header>
@@ -113,6 +114,22 @@
                                 </span>
                                 <span class="settings-menu-label">
                                     <span class="settings-menu-title">Device Options</span>
+                                </span>
+                                <span class="settings-menu-indicator" aria-hidden="true"></span>
+                            </button>
+                            <button class="settings-menu-btn" id="settings-tab-test-cases" role="tab" aria-controls="settings-panel-test-cases" type="button" data-settings-panel-target="test-cases" aria-selected="false">
+                                <span class="settings-menu-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M5 7h14"></path>
+                                        <path d="M5 12h14"></path>
+                                        <path d="M5 17h14"></path>
+                                        <path d="M3 7h.01"></path>
+                                        <path d="M3 12h.01"></path>
+                                        <path d="M3 17h.01"></path>
+                                    </svg>
+                                </span>
+                                <span class="settings-menu-label">
+                                    <span class="settings-menu-title">Test Cases</span>
                                 </span>
                                 <span class="settings-menu-indicator" aria-hidden="true"></span>
                             </button>
@@ -196,6 +213,14 @@
                                 </div>
 
                                 <div class="networks-list" id="networks-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-test-cases" data-settings-panel="test-cases" id="settings-panel-test-cases" hidden>
+                            <div class="settings-section">
+                                <h3 class="settings-section-title">Test Case Categories</h3>
+                                <p class="settings-description">Manage default and custom categories used to organize manual test cases.</p>
+                                <div id="test-case-categories-management"></div>
                             </div>
                         </div>
 

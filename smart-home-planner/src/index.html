@@ -693,6 +693,7 @@
             <nav class="site-nav" id="main-nav">
                 <a href="index.html" class="active">Dashboard</a>
                 <a href="devices.html">Devices</a>
+                <a href="test-cases.html">Test Cases</a>
                 <a href="settings.html">Settings</a>
             </nav>
         </header>
@@ -755,6 +756,25 @@
                     </div>
                     <div class="chart-description">Working devices without an area assigned</div>
                     <div class="legend" id="working-without-area-devices"></div>
+                </div>
+                <div class="chart-card" id="tests-health-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Tests Health</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="tests-health-list" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="chart-description">Manual tests with failed results, overdue schedules, or runs due soon.</div>
+                    <div class="legend" id="tests-health-list"></div>
                 </div>
                 <div class="chart-card" id="backup-status-card">
                     <div class="chart-header">
@@ -1016,6 +1036,8 @@
             haCountry = String(haConfig?.country || '').trim().toUpperCase();
             const dashboard = document.getElementById('dashboard');
             const devices = data.devices || [];
+            const testCases = data.testCases || [];
+            const testCaseRuns = data.testCaseRuns || [];
             const floors = data.floors || [];
             const areas = data.areas || [];
             const labels = data.labels || [];
@@ -1069,6 +1091,7 @@
             renderPendingDevices('pending-devices', devices);
             renderNotWorkingDevices('not-working-devices', devices);
             renderWorkingDevicesWithoutMappedArea('working-without-area-devices', devices, areas, settings);
+            renderTestsHealth('tests-health-list', testCases, testCaseRuns);
             renderBackupStatusCard('backup-status-card', 'backup-status-content', haBackupsStatus);
             renderWishlistDevices('wishlist-devices', devices);
             renderLabelSummary('label-summary', devices, labels);
@@ -1618,6 +1641,174 @@
             renderLegendList(targetId, rows, {
                 maxItems: getLegendMaxItems(),
                 emptyMessage: 'No working devices without area'
+            });
+        }
+
+        function renderTestsHealth(targetId, testCases, testCaseRuns) {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const card = target.closest('.chart-card');
+            const totalTests = Array.isArray(testCases) ? testCases.length : 0;
+            const totalRuns = Array.isArray(testCaseRuns) ? testCaseRuns.length : 0;
+
+            if (totalTests === 0) {
+                if (card) {
+                    card.classList.add('warning-card');
+                }
+                target.classList.remove('legend');
+                target.classList.add('backup-status');
+                target.innerHTML = `
+                    <div class="backup-status-banner warn">
+                        <span>No tests created yet.</span>
+                        <span class="status-pill">Warning</span>
+                    </div>
+                `;
+                updateCardVisibilityByTargetId(targetId, true);
+                updateExpandButton(targetId, false);
+                delete chartRegistry[targetId];
+                return;
+            }
+
+            if (totalRuns === 0) {
+                if (card) {
+                    card.classList.add('warning-card');
+                }
+                target.classList.remove('legend');
+                target.classList.add('backup-status');
+                target.innerHTML = `
+                    <div class="backup-status-banner warn">
+                        <span>No test runs executed yet.</span>
+                        <span class="status-pill">Warning</span>
+                    </div>
+                `;
+                updateCardVisibilityByTargetId(targetId, true);
+                updateExpandButton(targetId, false);
+                delete chartRegistry[targetId];
+                return;
+            }
+
+            const rows = buildTestsHealthRows(testCases, testCaseRuns);
+            if (card) {
+                card.classList.toggle('warning-card', rows.length > 0);
+            }
+            if (!rows.length) {
+                target.classList.remove('legend');
+                target.classList.add('backup-status');
+                target.innerHTML = `
+                    <div class="backup-status-banner ok">
+                        <span>No failed, overdue, or upcoming tests.</span>
+                        <span class="status-pill">Healthy</span>
+                    </div>
+                `;
+                updateCardVisibilityByTargetId(targetId, true);
+                updateExpandButton(targetId, false);
+                delete chartRegistry[targetId];
+                return;
+            }
+
+            target.classList.remove('backup-status');
+            renderLegendList(targetId, rows, {
+                maxItems: getLegendMaxItems(),
+                emptyMessage: 'No test health issues'
+            });
+        }
+
+        function buildTestsHealthRows(testCases, testCaseRuns) {
+            const latestRunByTest = new Map();
+            (testCaseRuns || []).forEach((run) => {
+                if (!run || typeof run !== 'object') return;
+                const testCaseId = String(run.testCaseId || '').trim();
+                if (!testCaseId) return;
+                const executedAt = new Date(run.executedAt || '');
+                if (Number.isNaN(executedAt.getTime())) return;
+                const previous = latestRunByTest.get(testCaseId);
+                if (!previous || executedAt.getTime() > previous.executedAt.getTime()) {
+                    latestRunByTest.set(testCaseId, {
+                        status: String(run.status || '').trim().toLowerCase(),
+                        executedAt
+                    });
+                }
+            });
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const rows = [];
+
+            (testCases || []).forEach((testCase) => {
+                if (!testCase || typeof testCase !== 'object') return;
+                const id = String(testCase.id || '').trim();
+                const name = String(testCase.name || '').trim();
+                if (!id || !name) return;
+                if (testCase.enabled === false) return;
+
+                const latestRun = latestRunByTest.get(id) || null;
+                const frequencyDaysRaw = Number(testCase.frequencyDays);
+                const frequencyDays = Number.isFinite(frequencyDaysRaw) && frequencyDaysRaw > 0
+                    ? Math.round(frequencyDaysRaw)
+                    : 30;
+                const anchorRaw = latestRun?.executedAt || new Date(testCase.updatedAt || testCase.createdAt || '');
+                if (!anchorRaw || Number.isNaN(anchorRaw.getTime())) return;
+
+                const nextDue = new Date(anchorRaw.getTime() + (frequencyDays * 24 * 60 * 60 * 1000));
+                nextDue.setHours(0, 0, 0, 0);
+                const daysUntilDue = Math.round((nextDue.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+                const href = `test-case-add.html?id=${encodeURIComponent(id)}`;
+                const latestRunDate = latestRun ? formatTestDate(latestRun.executedAt) : 'never';
+
+                if (latestRun && latestRun.status === 'fail') {
+                    rows.push({
+                        label: name,
+                        meta: 'Failed',
+                        href,
+                        dotColor: '#ef4444',
+                        severity: 0,
+                        sortDue: daysUntilDue
+                    });
+                    return;
+                }
+
+                if (daysUntilDue < 0) {
+                    rows.push({
+                        label: name,
+                        meta: 'Overdue',
+                        href,
+                        dotColor: '#f59e0b',
+                        severity: 1,
+                        sortDue: daysUntilDue
+                    });
+                    return;
+                }
+
+                if (daysUntilDue <= 7) {
+                    rows.push({
+                        label: name,
+                        meta: daysUntilDue === 0
+                            ? 'Due today'
+                            : `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`,
+                        href,
+                        dotColor: '#fbbf24',
+                        severity: 2,
+                        sortDue: daysUntilDue
+                    });
+                }
+            });
+
+            return rows
+                .sort((a, b) => {
+                    if (a.severity !== b.severity) return a.severity - b.severity;
+                    if (a.sortDue !== b.sortDue) return a.sortDue - b.sortDue;
+                    return String(a.label || '').localeCompare(String(b.label || ''), undefined, { sensitivity: 'base' });
+                })
+                .map(({ severity, sortDue, ...row }) => row);
+        }
+
+        function formatTestDate(value) {
+            const date = value instanceof Date ? value : new Date(value || '');
+            if (Number.isNaN(date.getTime())) return 'Unknown';
+            return date.toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
             });
         }
 

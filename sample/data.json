@@ -1096,7 +1096,15 @@
       "Internal",
       "USB"
     ],
-    "haAreaSyncTarget": "controlled"
+    "haAreaSyncTarget": "controlled",
+    "testCaseCategories": [
+      "Access",
+      "Climate",
+      "Network",
+      "Power",
+      "Safety",
+      "Security"
+    ]
   },
   "mapPositions": {
     "dev-5": {
@@ -1362,5 +1370,229 @@
       "mimeType": "image/webp"
     },
     "diagramBackgroundOpacity": 100
-  }
+  },
+  "testCases": [
+    {
+      "id": "tc-1",
+      "name": "Smoke alarm siren trigger",
+      "category": "Safety",
+      "description": "Verify smoke alarm events trigger sirens and emergency notifications.",
+      "steps": "1. Trigger smoke test mode.\n2. Confirm siren starts.\n3. Confirm alert notification is delivered.",
+      "expectedResult": "Siren starts within 5 seconds and alert is sent to all family devices.",
+      "frequencyDays": 30,
+      "enabled": true,
+      "createdAt": "2025-11-01T10:00:00.000Z",
+      "updatedAt": "2026-01-15T14:00:00.000Z"
+    },
+    {
+      "id": "tc-2",
+      "name": "Front door camera motion push",
+      "category": "Security",
+      "description": "Check that motion at front door creates push notifications with snapshot.",
+      "steps": "1. Walk in front of camera.\n2. Confirm event in timeline.\n3. Confirm push includes image.",
+      "expectedResult": "Motion event appears in Home Assistant and push notification arrives with snapshot.",
+      "frequencyDays": 14,
+      "enabled": true,
+      "createdAt": "2025-10-10T09:30:00.000Z",
+      "updatedAt": "2026-02-01T08:00:00.000Z"
+    },
+    {
+      "id": "tc-3",
+      "name": "Leak sensor notification chain",
+      "category": "Safety",
+      "description": "Validate leak sensors still trigger notification and valve close automation.",
+      "steps": "1. Simulate leak event.\n2. Confirm valve close command.\n3. Confirm mobile notification.",
+      "expectedResult": "Valve closes and notification is delivered in less than 10 seconds.",
+      "frequencyDays": 30,
+      "enabled": true,
+      "createdAt": "2025-08-01T07:00:00.000Z",
+      "updatedAt": "2025-12-01T07:00:00.000Z"
+    },
+    {
+      "id": "tc-4",
+      "name": "Guest network isolation check",
+      "category": "Network",
+      "description": "Ensure guest VLAN cannot access LAN devices.",
+      "steps": "1. Connect test client to guest Wi-Fi.\n2. Attempt to ping NAS and Home Assistant host.\n3. Validate blocked access.",
+      "expectedResult": "Guest client cannot reach LAN services while internet access remains functional.",
+      "frequencyDays": 90,
+      "enabled": true,
+      "createdAt": "2025-09-15T12:00:00.000Z",
+      "updatedAt": "2025-12-05T12:00:00.000Z"
+    },
+    {
+      "id": "tc-5",
+      "name": "UPS failover runtime test",
+      "category": "Power",
+      "description": "Measure how long core networking remains online on UPS battery.",
+      "steps": "1. Disconnect mains power.\n2. Confirm router, switch, HA host remain online.\n3. Restore power.",
+      "expectedResult": "Core stack remains online for minimum runtime target.",
+      "frequencyDays": 180,
+      "enabled": false,
+      "createdAt": "2025-07-22T10:00:00.000Z",
+      "updatedAt": "2026-02-01T10:00:00.000Z"
+    },
+    {
+      "id": "tc-6",
+      "name": "Zigbee mesh health spot check",
+      "category": "Network",
+      "description": "Quick validation of route stability and end-device responsiveness.",
+      "steps": "1. Check coordinator logs for route failures.\n2. Trigger two battery sensors manually.",
+      "expectedResult": "No route errors and all tested sensors respond.",
+      "frequencyDays": 7,
+      "enabled": true,
+      "createdAt": "2026-02-23T18:00:00.000Z",
+      "updatedAt": "2026-02-23T18:00:00.000Z"
+    },
+    {
+      "id": "tc-7",
+      "name": "Thread border router recovery",
+      "category": "Network",
+      "description": "Validate Thread devices recover after border router restart.",
+      "steps": "1. Restart border router.\n2. Wait for network recovery.\n3. Trigger two Thread sensors.",
+      "expectedResult": "Thread sensors reconnect and report states without manual intervention.",
+      "frequencyDays": 60,
+      "enabled": true,
+      "createdAt": "2025-11-20T16:00:00.000Z",
+      "updatedAt": "2026-01-10T16:00:00.000Z"
+    }
+  ],
+  "testCaseRuns": [
+    {
+      "id": "tr-1",
+      "testCaseId": "tc-1",
+      "status": "pass",
+      "notes": "Baseline validation completed successfully.",
+      "executedAt": "2025-12-18T19:00:00.000Z",
+      "createdAt": "2025-12-18T19:05:00.000Z"
+    },
+    {
+      "id": "tr-2",
+      "testCaseId": "tc-1",
+      "status": "blocked",
+      "notes": "Siren maintenance window in progress.",
+      "executedAt": "2026-01-20T19:05:00.000Z",
+      "createdAt": "2026-01-20T19:10:00.000Z"
+    },
+    {
+      "id": "tr-3",
+      "testCaseId": "tc-1",
+      "status": "pass",
+      "notes": "All alarms and notifications fired normally.",
+      "executedAt": "2026-02-20T19:10:00.000Z",
+      "createdAt": "2026-02-20T19:15:00.000Z"
+    },
+    {
+      "id": "tr-4",
+      "testCaseId": "tc-2",
+      "status": "pass",
+      "notes": "Motion and push delivery working as expected.",
+      "executedAt": "2026-01-27T20:00:00.000Z",
+      "createdAt": "2026-01-27T20:05:00.000Z"
+    },
+    {
+      "id": "tr-5",
+      "testCaseId": "tc-2",
+      "status": "blocked",
+      "notes": "Camera stream temporarily unavailable during ISP maintenance.",
+      "executedAt": "2026-02-10T20:00:00.000Z",
+      "createdAt": "2026-02-10T20:05:00.000Z"
+    },
+    {
+      "id": "tr-6",
+      "testCaseId": "tc-2",
+      "status": "fail",
+      "notes": "Notification arrived without snapshot image.",
+      "executedAt": "2026-02-24T20:00:00.000Z",
+      "createdAt": "2026-02-24T20:05:00.000Z"
+    },
+    {
+      "id": "tr-7",
+      "testCaseId": "tc-3",
+      "status": "pass",
+      "notes": "Leak chain fully operational.",
+      "executedAt": "2025-09-15T08:30:00.000Z",
+      "createdAt": "2025-09-15T08:35:00.000Z"
+    },
+    {
+      "id": "tr-8",
+      "testCaseId": "tc-3",
+      "status": "blocked",
+      "notes": "Water valve firmware update postponed execution.",
+      "executedAt": "2025-11-22T08:30:00.000Z",
+      "createdAt": "2025-11-22T08:35:00.000Z"
+    },
+    {
+      "id": "tr-9",
+      "testCaseId": "tc-3",
+      "status": "pass",
+      "notes": "Valve close automation executed correctly.",
+      "executedAt": "2026-01-10T08:30:00.000Z",
+      "createdAt": "2026-01-10T08:35:00.000Z"
+    },
+    {
+      "id": "tr-10",
+      "testCaseId": "tc-4",
+      "status": "pass",
+      "notes": "Guest VLAN blocked access to LAN assets.",
+      "executedAt": "2025-09-10T18:00:00.000Z",
+      "createdAt": "2025-09-10T18:05:00.000Z"
+    },
+    {
+      "id": "tr-11",
+      "testCaseId": "tc-4",
+      "status": "pass",
+      "notes": "Guest VLAN still isolated from LAN.",
+      "executedAt": "2025-12-05T18:00:00.000Z",
+      "createdAt": "2025-12-05T18:05:00.000Z"
+    },
+    {
+      "id": "tr-12",
+      "testCaseId": "tc-5",
+      "status": "pass",
+      "notes": "UPS runtime above expected threshold.",
+      "executedAt": "2025-08-20T11:00:00.000Z",
+      "createdAt": "2025-08-20T11:05:00.000Z"
+    },
+    {
+      "id": "tr-13",
+      "testCaseId": "tc-5",
+      "status": "fail",
+      "notes": "Runtime dropped below target due to old battery pack.",
+      "executedAt": "2026-02-01T11:00:00.000Z",
+      "createdAt": "2026-02-01T11:05:00.000Z"
+    },
+    {
+      "id": "tr-14",
+      "testCaseId": "tc-6",
+      "status": "pass",
+      "notes": "Coordinator and routers responding correctly.",
+      "executedAt": "2026-02-15T18:00:00.000Z",
+      "createdAt": "2026-02-15T18:05:00.000Z"
+    },
+    {
+      "id": "tr-15",
+      "testCaseId": "tc-6",
+      "status": "blocked",
+      "notes": "Two endpoints asleep; deferred full check.",
+      "executedAt": "2026-02-22T18:00:00.000Z",
+      "createdAt": "2026-02-22T18:05:00.000Z"
+    },
+    {
+      "id": "tr-16",
+      "testCaseId": "tc-7",
+      "status": "pass",
+      "notes": "Thread mesh recovered after restart in under 60 seconds.",
+      "executedAt": "2025-12-10T14:00:00.000Z",
+      "createdAt": "2025-12-10T14:05:00.000Z"
+    },
+    {
+      "id": "tr-17",
+      "testCaseId": "tc-7",
+      "status": "blocked",
+      "notes": "Maintenance window closed before full validation.",
+      "executedAt": "2026-02-12T14:00:00.000Z",
+      "createdAt": "2026-02-12T14:05:00.000Z"
+    }
+  ]
 }

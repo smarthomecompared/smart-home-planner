@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#0f172a">
+    <title>Add Test Case - Smart Home Planner</title>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/test-cases.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="test-cases.html" class="active">Test Cases</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section class="form-page">
+            <div class="section-header">
+                <h2 id="test-case-form-page-title">Add Test Case</h2>
+            </div>
+
+            <div class="form-card">
+                <form id="test-case-add-form" novalidate>
+                    <div class="form-section">
+                        <h3 class="form-section-title">Basic Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="test-case-name">Name *</label>
+                                <input class="form-input" type="text" id="test-case-name" maxlength="120" required placeholder="Example: Front door alert automation">
+                            </div>
+                            <div class="form-group">
+                                <label for="test-case-category">Category</label>
+                                <select class="form-input" id="test-case-category"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="test-case-priority">Priority</label>
+                                <select class="form-input" id="test-case-priority">
+                                    <option value="high">High</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="test-case-frequency-preset">Frequency *</label>
+                                <select class="form-input" id="test-case-frequency-preset" required>
+                                    <option value="30">1 month</option>
+                                    <option value="90">3 months</option>
+                                    <option value="180">6 months</option>
+                                    <option value="365">1 year</option>
+                                    <option value="custom">Custom (days)</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="test-case-frequency-days-group" hidden>
+                                <label for="test-case-frequency-days">Custom Frequency (days) *</label>
+                                <input class="form-input" type="number" id="test-case-frequency-days" min="1" step="1" value="30">
+                            </div>
+                            <div class="form-group checkbox-group test-case-enabled-group">
+                                <label class="checkbox-label" for="test-case-enabled">
+                                    <input type="checkbox" id="test-case-enabled" checked>
+                                    <span>Enabled</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title">Validation Details</h3>
+                        <div class="form-row">
+                            <div class="form-group form-group-full">
+                                <label for="test-case-description">Description</label>
+                                <textarea class="form-input" id="test-case-description" rows="2" maxlength="600" placeholder="What this test validates and why it matters"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group form-group-full">
+                                <label for="test-case-steps">Manual Steps</label>
+                                <textarea class="form-input" id="test-case-steps" rows="5" maxlength="2000" placeholder="Step-by-step procedure"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group form-group-full">
+                                <label for="test-case-expected">Expected Result</label>
+                                <textarea class="form-input" id="test-case-expected" rows="3" maxlength="1000" placeholder="Expected behavior when the test passes"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section" id="test-case-runs-section" hidden>
+                        <div class="test-case-runs-header">
+                            <h3 class="form-section-title">Test Runs</h3>
+                            <button class="btn btn-primary btn-sm" type="button" id="test-case-run-add-btn">Add Run</button>
+                        </div>
+                        <div class="table-container test-runs-table-container">
+                            <table class="test-runs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Outcome</th>
+                                        <th>Notes</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="test-case-runs-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="test-runs-empty" id="test-case-runs-empty" hidden>No runs recorded yet.</div>
+                        <div class="pagination-container test-runs-pagination" id="test-case-runs-pagination" hidden>
+                            <div class="pagination-info">
+                                <span id="test-case-runs-pagination-info">Showing 0-0 of 0</span>
+                            </div>
+                            <div class="pagination-controls">
+                                <button class="btn btn-sm btn-secondary" id="test-case-runs-prev-btn" type="button" disabled>Previous</button>
+                                <span id="test-case-runs-page-numbers"></span>
+                                <button class="btn btn-sm btn-secondary" id="test-case-runs-next-btn" type="button" disabled>Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a class="btn btn-secondary" href="test-cases.html">Cancel</a>
+                        <button class="btn btn-primary" id="test-case-form-submit-btn" type="submit">Save Test Case</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="test-case-run-modal" aria-hidden="true">
+        <div class="modal-overlay" id="test-case-run-modal-overlay"></div>
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="test-case-run-modal-title">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title" id="test-case-run-modal-title">Add Test Run</div>
+                    <div class="modal-subtitle" id="test-case-run-modal-subtitle"></div>
+                </div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="test-case-run-modal-close" aria-label="Close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6L6 18"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="test-case-run-form-grid">
+                <div class="form-group">
+                    <label for="test-case-run-status">Outcome</label>
+                    <select class="form-input" id="test-case-run-status">
+                        <option value="pass">Pass</option>
+                        <option value="fail">Fail</option>
+                        <option value="blocked">Blocked</option>
+                    </select>
+                </div>
+                <div class="form-group run-date-group">
+                    <label for="test-case-run-at">Run Date</label>
+                    <input class="form-input" type="datetime-local" id="test-case-run-at">
+                </div>
+                <div class="form-group run-notes-group">
+                    <label for="test-case-run-notes">Notes</label>
+                    <textarea class="form-input" id="test-case-run-notes" rows="4" maxlength="1200" placeholder="Observed result, incident details, or follow-up actions"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="test-case-run-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="test-case-run-modal-save">Save Run</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/metadata.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/test-case-add.js"></script>
+</body>
+</html>

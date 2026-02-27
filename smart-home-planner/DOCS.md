@@ -59,6 +59,9 @@ Lists installed devices currently marked as not working to prioritize troublesho
 ### Missing Area
 Lists working devices with no area assigned in the area field currently mapped to Home Assistant.
 
+### Tests Health
+Highlights manual test cases that need attention, including failed runs, overdue checks, and tests due within the next 7 days.
+
 ### Last Backup
 Shows the health and details of the latest Home Assistant backup (full or partial), including age, size, and protection. The card is highlighted as warning when the latest backup is older than 7 days.
 
@@ -104,7 +107,7 @@ The Devices screen is the heart of the app. It combines search, filtering, and m
 
 ### Global Search
 
-Use the search bar in the top navigation to find devices from anywhere in the app. Search is real time and scans all text fields on a device, so you can locate items by name, model, serial number, notes, labels, or any other written detail.
+Use the search bar in the top navigation to find devices and test cases from anywhere in the app. Search is real time and scans text details, so you can locate records by name, notes, labels, model, test steps, and expected outcomes.
 
 ### Filters
 
@@ -189,6 +192,18 @@ Typical tasks:
 
 The Apply action lets you save changes without leaving the page, which is useful during longer editing sessions.
 
+## Test Cases
+
+Test Cases is a dedicated workspace for defining repeatable manual checks and logging pass/fail results over time.
+
+How it works:
+1. Create test cases with a category, priority, frequency, manual steps, and expected result.
+2. Run a test any time and record the outcome as Pass, Fail, or Blocked with notes.
+3. Track the latest run date and next due date for each test.
+4. Filter by category, priority, and health to focus on failed, overdue, or upcoming checks.
+5. Sort by category, priority, last run status, or next due date to review your list in the order you need.
+6. Review the last run row inside each test case to see the most recent execution details.
+
 ## Settings
 
 Settings is where you maintain the app’s overall structure and reference data.
@@ -206,6 +221,10 @@ Networks manages the list of VLANs or network names used in device connectivity 
 ### Device Options
 
 Device Options control the selectable lists used throughout the app. Keep these tidy to speed up device entry and maintain consistency across the inventory.
+
+### Test Cases
+
+Test Cases settings lets you manage the category list used in the Test Cases page. You can add, rename, or remove categories to match your operational check workflows.
 
 ### Home Assistant Integration
 

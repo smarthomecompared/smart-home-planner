@@ -66,6 +66,8 @@ function buildNetwork(name) {
 function buildDefaultStorage() {
     return {
         devices: [],
+        testCases: [],
+        testCaseRuns: [],
         networks: [],
         excluded_devices: [],
         settings: null,
@@ -83,6 +85,8 @@ function mergeStorage(raw) {
         : (Array.isArray(source.excludedDevices) ? source.excludedDevices : base.excluded_devices);
     return {
         devices: Array.isArray(source.devices) ? source.devices : base.devices,
+        testCases: Array.isArray(source.testCases) ? source.testCases : base.testCases,
+        testCaseRuns: Array.isArray(source.testCaseRuns) ? source.testCaseRuns : base.testCaseRuns,
         networks: Array.isArray(source.networks) ? source.networks : base.networks,
         excluded_devices: excludedDevices
             .map((value) => String(value || '').trim())
@@ -357,6 +361,8 @@ async function patchStorage(patch) {
 async function loadData() {
     const storage = await loadStorage();
     const devices = Array.isArray(storage.devices) ? storage.devices : [];
+    const testCases = Array.isArray(storage.testCases) ? storage.testCases : [];
+    const testCaseRuns = Array.isArray(storage.testCaseRuns) ? storage.testCaseRuns : [];
     let networks = Array.isArray(storage.networks) ? storage.networks : [];
     const rawAreas = await loadHaRegistry(HA_AREAS_API_URL);
     const rawFloors = await loadHaRegistry(HA_FLOORS_API_URL);
@@ -401,6 +407,8 @@ async function loadData() {
 
     return {
         devices: devices,
+        testCases: testCases,
+        testCaseRuns: testCaseRuns,
         areas: areas,
         floors: floors,
         networks: networks,
@@ -436,6 +444,7 @@ function getDefaultSettings() {
         types: (DEFAULT_TYPES || []).map(mapType),
         connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
         batteryTypes: batteryDefaults,
+        testCaseCategories: [...(DEFAULT_TEST_CASE_CATEGORIES || [])],
         haAreaSyncTarget: 'controlled'
     };
 }
@@ -453,6 +462,7 @@ async function loadSettings() {
         types: settings.types || defaults.types,
         connectivity: settings.connectivity || defaults.connectivity,
         batteryTypes: settings.batteryTypes || defaults.batteryTypes,
+        testCaseCategories: settings.testCaseCategories || defaults.testCaseCategories,
         haAreaSyncTarget: settings.haAreaSyncTarget || defaults.haAreaSyncTarget
     });
     if (!storage.settings) {
@@ -517,6 +527,7 @@ function ensureFriendlySettings(settings) {
         types: ensureFriendlyList(settings.types, formatDeviceType),
         connectivity: ensureFriendlyList(settings.connectivity, formatConnectivity),
         batteryTypes: ensureFriendlyList(settings.batteryTypes, formatDeviceType),
+        testCaseCategories: ensureFriendlyList(settings.testCaseCategories),
         haAreaSyncTarget: normalizeHaAreaSyncTarget(settings.haAreaSyncTarget)
     };
 }
@@ -757,6 +768,9 @@ function getSiteNavIconMarkup(href) {
     if (cleanHref.endsWith('devices.html')) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M7 7v10"></path><path d="M17 7v10"></path><path d="M4 17h16"></path></svg>';
     }
+    if (cleanHref.endsWith('test-cases.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h14"></path><path d="M3 7h.01"></path><path d="M3 12h.01"></path><path d="M3 17h.01"></path></svg>';
+    }
     if (cleanHref.endsWith('settings.html')) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>';
     }
@@ -881,7 +895,7 @@ function ensureGlobalSearchMarkup() {
     container.className = 'global-search';
     container.setAttribute('role', 'search');
     container.innerHTML = `
-        <button type="button" class="global-search-trigger" aria-label="Search devices" title="Search devices">
+        <button type="button" class="global-search-trigger" aria-label="Search devices and tests" title="Search devices and tests">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="11" cy="11" r="7"></circle>
                 <path d="M20 20l-3.5-3.5"></path>
@@ -905,11 +919,11 @@ function ensureGlobalSearchOverlay() {
     overlay.id = 'global-search-overlay';
     overlay.hidden = true;
     overlay.innerHTML = `
-        <div class="global-search-panel" role="dialog" aria-modal="true" aria-label="Global device search">
+        <div class="global-search-panel" role="dialog" aria-modal="true" aria-label="Global search">
             <div class="global-search-panel-header">
                 <div>
-                    <div class="global-search-panel-title">Search Devices</div>
-                    <div class="global-search-panel-subtitle">Type to search across all device details.</div>
+                    <div class="global-search-panel-title">Search</div>
+                    <div class="global-search-panel-subtitle">Type to search across devices and test cases.</div>
                 </div>
                 <button type="button" class="global-search-close" id="global-search-overlay-close" aria-label="Close search">
                     <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -922,7 +936,7 @@ function ensureGlobalSearchOverlay() {
                     <circle cx="11" cy="11" r="7"></circle>
                     <path d="M20 20l-3.5-3.5"></path>
                 </svg>
-                <input type="search" id="global-search-overlay-input" placeholder="Search by name, model, serial number, notes, labels, and more" autocomplete="off" spellcheck="false">
+                <input type="search" id="global-search-overlay-input" placeholder="Search by name, notes, labels, models, test steps, and more" autocomplete="off" spellcheck="false">
                 <button type="button" class="global-search-clear" id="global-search-overlay-clear" aria-label="Clear search" hidden>
                     <svg viewBox="0 0 16 16" aria-hidden="true">
                         <path d="M4 4l8 8M12 4l-8 8"></path>
@@ -998,13 +1012,83 @@ function buildDeviceSearchIndex(devices, areas, floors, labels, networks) {
         const meta = metaParts.join(' • ');
         const metaLower = meta.toLowerCase();
 
+        const id = String(device?.id || '').trim();
         return {
-            device,
+            kind: 'device',
             searchText,
             name,
             nameLower,
             meta,
-            metaLower
+            metaLower,
+            href: id ? `device-edit.html?id=${encodeURIComponent(id)}` : 'devices.html'
+        };
+    });
+}
+
+function buildTestCaseSearchIndex(testCases, testCaseRuns) {
+    const latestRunByTest = new Map();
+    (testCaseRuns || []).forEach((run) => {
+        if (!run || typeof run !== 'object') return;
+        const testCaseId = String(run.testCaseId || '').trim();
+        if (!testCaseId) return;
+        const executedAt = new Date(run.executedAt || '');
+        if (Number.isNaN(executedAt.getTime())) return;
+        const previous = latestRunByTest.get(testCaseId);
+        if (!previous || executedAt.getTime() > previous.executedAt.getTime()) {
+            latestRunByTest.set(testCaseId, {
+                status: String(run.status || '').trim().toLowerCase(),
+                executedAt
+            });
+        }
+    });
+
+    return (testCases || []).map((testCase) => {
+        const id = String(testCase?.id || '').trim();
+        const name = String(testCase?.name || '').trim() || 'Unnamed test case';
+        const category = String(testCase?.category || '').trim();
+        const description = String(testCase?.description || '').trim();
+        const steps = String(testCase?.steps || '').trim();
+        const expectedResult = String(testCase?.expectedResult || '').trim();
+        const frequencyDaysRaw = Number(testCase?.frequencyDays);
+        const frequencyDays = Number.isFinite(frequencyDaysRaw) && frequencyDaysRaw > 0
+            ? Math.round(frequencyDaysRaw)
+            : 30;
+        const enabled = testCase?.enabled !== false;
+
+        const latestRun = id ? latestRunByTest.get(id) : null;
+        const latestRunLabel = latestRun
+            ? `${latestRun.status || 'pass'} ${latestRun.executedAt.toLocaleDateString()}`
+            : 'no runs';
+        const statusLabel = enabled ? 'enabled' : 'disabled';
+        const frequencyLabel = `every ${frequencyDays} day${frequencyDays === 1 ? '' : 's'}`;
+
+        const tokens = [
+            name,
+            category,
+            description,
+            steps,
+            expectedResult,
+            statusLabel,
+            frequencyLabel,
+            latestRunLabel
+        ];
+        const searchText = tokens
+            .map((value) => String(value || '').trim().toLowerCase())
+            .filter(Boolean)
+            .join(' ');
+
+        const metaParts = [category, statusLabel, frequencyLabel, latestRun ? `last run: ${latestRun.status}` : 'not run yet']
+            .filter(Boolean);
+        const meta = metaParts.join(' • ');
+
+        return {
+            kind: 'test',
+            searchText,
+            name,
+            nameLower: name.toLowerCase(),
+            meta,
+            metaLower: meta.toLowerCase(),
+            href: id ? `test-case-add.html?id=${encodeURIComponent(id)}` : 'test-cases.html'
         };
     });
 }
@@ -1025,13 +1109,18 @@ async function loadGlobalSearchIndex() {
     if (globalSearchLoading) return globalSearchLoading;
     globalSearchLoading = (async () => {
         const data = await loadData();
-        globalSearchIndex = buildDeviceSearchIndex(
+        const deviceEntries = buildDeviceSearchIndex(
             data.devices || [],
             data.areas || [],
             data.floors || [],
             data.labels || [],
             data.networks || []
         );
+        const testEntries = buildTestCaseSearchIndex(
+            data.testCases || [],
+            data.testCaseRuns || []
+        );
+        globalSearchIndex = [...deviceEntries, ...testEntries];
         globalSearchReady = true;
         return globalSearchIndex;
     })();
@@ -1041,18 +1130,22 @@ async function loadGlobalSearchIndex() {
 function renderGlobalSearchResults(results, query, resultsEl, terms) {
     if (!resultsEl) return;
     if (!results.length) {
-        resultsEl.innerHTML = `<div class="global-search-empty">No devices found for "${escapeHtml(query)}".</div>`;
+        resultsEl.innerHTML = `<div class="global-search-empty">No results found for "${escapeHtml(query)}".</div>`;
         return;
     }
     resultsEl.innerHTML = results.map(result => {
-        const device = result.device;
         const title = highlightMatches(result.name || 'Unnamed Device', terms);
         const meta = result.meta ? `<div class="global-search-meta">${highlightMatches(result.meta, terms)}</div>` : '';
-        const id = encodeURIComponent(String(device.id || ''));
-        const href = `device-edit.html?id=${id}`;
+        const typeBadge = result.kind
+            ? `<div class="global-search-kind">${escapeHtml(result.kind === 'test' ? 'Test Case' : 'Device')}</div>`
+            : '';
+        const href = result.href || '#';
         return `
             <a class="global-search-item" href="${href}" role="option">
-                <div class="global-search-title">${title}</div>
+                <div class="global-search-title-row">
+                    <div class="global-search-title">${title}</div>
+                    ${typeBadge}
+                </div>
                 ${meta}
             </a>
         `;
