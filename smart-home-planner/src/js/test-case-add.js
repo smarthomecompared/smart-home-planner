@@ -1,4 +1,6 @@
 let existingTestCaseId = '';
+let workingTestCaseId = '';
+let isAddMode = true;
 let allTestCases = [];
 let allTestCaseRuns = [];
 let currentRunsPage = 1;
@@ -11,17 +13,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     await initializeTestCaseForm();
 });
 
+window.addEventListener('pageshow', () => {
+    const params = new URLSearchParams(window.location.search || '');
+    if (String(params.get('id') || '').trim()) return;
+    forceDefaultFrequencySelection();
+});
+
 async function initializeTestCaseForm() {
     const form = document.getElementById('test-case-add-form');
     if (!form) return;
 
     const params = new URLSearchParams(window.location.search || '');
     existingTestCaseId = String(params.get('id') || '').trim();
+    isAddMode = !existingTestCaseId;
 
     const data = await loadData();
     const settings = await loadSettings();
     allTestCases = Array.isArray(data?.testCases) ? data.testCases : [];
     allTestCaseRuns = Array.isArray(data?.testCaseRuns) ? data.testCaseRuns : [];
+    workingTestCaseId = existingTestCaseId || buildUniqueTestCaseId();
 
     populateCategorySelect(settings, allTestCases);
     initializeFrequencyControls();
@@ -30,12 +40,11 @@ async function initializeTestCaseForm() {
 
     if (existingTestCaseId) {
         hydrateEditMode(allTestCases, existingTestCaseId);
-        setRunsSectionVisible(true);
-        renderRunsTable();
     } else {
         hydrateAddMode();
-        setRunsSectionVisible(false);
     }
+    setRunsSectionVisible(true);
+    renderRunsTable();
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -48,15 +57,30 @@ async function initializeTestCaseForm() {
     });
 }
 
+function getWorkingTestCaseId() {
+    return String(workingTestCaseId || existingTestCaseId || '').trim();
+}
+
+function buildUniqueTestCaseId() {
+    const existingIds = new Set(allTestCases.map((item) => String(item?.id || '').trim()).filter(Boolean));
+    let nextId = buildTestCaseId();
+    while (existingIds.has(nextId)) {
+        nextId = buildTestCaseId();
+    }
+    return nextId;
+}
+
 function hydrateAddMode() {
     const title = document.getElementById('test-case-form-page-title');
     const submitBtn = document.getElementById('test-case-form-submit-btn');
     const priorityInput = document.getElementById('test-case-priority');
+    const enabledInput = document.getElementById('test-case-enabled');
     if (title) title.textContent = 'Add Test Case';
     if (submitBtn) submitBtn.textContent = 'Save Test Case';
     if (priorityInput) priorityInput.value = 'medium';
+    if (enabledInput) enabledInput.checked = true;
     document.title = 'Add Test Case - Smart Home Planner';
-    setFrequencyValue(30);
+    forceDefaultFrequencySelection();
 }
 
 function hydrateEditMode(testCases, targetId) {
@@ -90,7 +114,7 @@ function hydrateEditMode(testCases, targetId) {
         priorityInput.value = normalizeTestCasePriority(current.priority);
     }
     const frequency = Number.parseInt(current.frequencyDays, 10);
-    setFrequencyValue(Number.isFinite(frequency) && frequency > 0 ? frequency : 30);
+    setFrequencyValue(Number.isFinite(frequency) && frequency > 0 ? frequency : 180);
     if (enabledInput) enabledInput.checked = current.enabled !== false;
     if (descriptionInput) descriptionInput.value = String(current.description || '').trim();
     if (stepsInput) stepsInput.value = String(current.steps || '').trim();
@@ -135,6 +159,16 @@ function initializeFrequencyControls() {
     toggleCustomDays();
 }
 
+function forceDefaultFrequencySelection() {
+    const presetInput = document.getElementById('test-case-frequency-preset');
+    const daysInput = document.getElementById('test-case-frequency-days');
+    const daysGroup = document.getElementById('test-case-frequency-days-group');
+    if (!presetInput || !daysInput || !daysGroup) return;
+    presetInput.value = '180';
+    daysInput.value = '180';
+    daysGroup.hidden = true;
+}
+
 function setFrequencyValue(days) {
     const presetInput = document.getElementById('test-case-frequency-preset');
     const daysInput = document.getElementById('test-case-frequency-days');
@@ -151,7 +185,7 @@ function setFrequencyValue(days) {
 
     presetInput.value = 'custom';
     daysGroup.hidden = false;
-    daysInput.value = Number.isFinite(normalizedDays) && normalizedDays > 0 ? String(normalizedDays) : '30';
+    daysInput.value = Number.isFinite(normalizedDays) && normalizedDays > 0 ? String(normalizedDays) : '180';
 }
 
 function getFrequencyDays() {
@@ -241,9 +275,10 @@ function setRunsSectionVisible(visible) {
 }
 
 function getCurrentTestCaseRuns() {
-    if (!existingTestCaseId) return [];
+    const targetTestCaseId = getWorkingTestCaseId();
+    if (!targetTestCaseId) return [];
     return allTestCaseRuns
-        .filter((run) => String(run?.testCaseId || '').trim() === existingTestCaseId)
+        .filter((run) => String(run?.testCaseId || '').trim() === targetTestCaseId)
         .slice()
         .sort((a, b) => Date.parse(String(b?.executedAt || '')) - Date.parse(String(a?.executedAt || '')));
 }
@@ -401,7 +436,6 @@ function initializeRunModalEvents() {
 
     if (closeBtn) closeBtn.addEventListener('click', closeRunModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeRunModal);
-    if (overlay) overlay.addEventListener('click', closeRunModal);
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             void saveRun();
@@ -410,7 +444,8 @@ function initializeRunModalEvents() {
 }
 
 function openRunModal(runId = '') {
-    if (!existingTestCaseId) return;
+    const targetTestCaseId = getWorkingTestCaseId();
+    if (!targetTestCaseId) return;
 
     const modal = document.getElementById('test-case-run-modal');
     const modalTitle = document.getElementById('test-case-run-modal-title');
@@ -423,11 +458,12 @@ function openRunModal(runId = '') {
 
     editingRunId = String(runId || '').trim();
     const currentRun = editingRunId
-        ? allTestCaseRuns.find((run) => String(run?.id || '').trim() === editingRunId && String(run?.testCaseId || '').trim() === existingTestCaseId)
+        ? allTestCaseRuns.find((run) => String(run?.id || '').trim() === editingRunId && String(run?.testCaseId || '').trim() === targetTestCaseId)
         : null;
 
-    const currentTestCase = allTestCases.find((testCase) => String(testCase?.id || '').trim() === existingTestCaseId);
-    subtitle.textContent = String(currentTestCase?.name || '').trim();
+    const currentTestCase = allTestCases.find((testCase) => String(testCase?.id || '').trim() === targetTestCaseId);
+    const draftName = String(document.getElementById('test-case-name')?.value || '').trim();
+    subtitle.textContent = String(currentTestCase?.name || draftName || 'New test case').trim();
 
     modalTitle.textContent = currentRun ? 'Edit Test Run' : 'Add Test Run';
     saveBtn.textContent = currentRun ? 'Save Changes' : 'Save Run';
@@ -458,7 +494,8 @@ function closeRunModal() {
 }
 
 async function saveRun() {
-    if (!existingTestCaseId) return;
+    const targetTestCaseId = getWorkingTestCaseId();
+    if (!targetTestCaseId) return;
 
     const statusInput = document.getElementById('test-case-run-status');
     const dateInput = document.getElementById('test-case-run-at');
@@ -480,7 +517,7 @@ async function saveRun() {
     if (wasEditing) {
         const runIndex = allTestCaseRuns.findIndex((run) => (
             String(run?.id || '').trim() === editingRunId &&
-            String(run?.testCaseId || '').trim() === existingTestCaseId
+            String(run?.testCaseId || '').trim() === targetTestCaseId
         ));
         if (runIndex < 0) {
             notify('Test run not found.', 'error');
@@ -499,7 +536,7 @@ async function saveRun() {
     } else {
         allTestCaseRuns.push({
             id: buildTestRunId(),
-            testCaseId: existingTestCaseId,
+            testCaseId: targetTestCaseId,
             status,
             notes,
             executedAt,
@@ -507,9 +544,11 @@ async function saveRun() {
         });
     }
 
-    await saveData({
-        testCaseRuns: allTestCaseRuns
-    });
+    if (!isAddMode) {
+        await saveData({
+            testCaseRuns: allTestCaseRuns
+        });
+    }
 
     closeRunModal();
     renderRunsTable();
@@ -517,12 +556,14 @@ async function saveRun() {
 }
 
 async function deleteRun(runId) {
+    const targetTestCaseId = getWorkingTestCaseId();
+    if (!targetTestCaseId) return;
     const normalizedRunId = String(runId || '').trim();
     if (!normalizedRunId) return;
 
     const current = allTestCaseRuns.find((run) => (
         String(run?.id || '').trim() === normalizedRunId &&
-        String(run?.testCaseId || '').trim() === existingTestCaseId
+        String(run?.testCaseId || '').trim() === targetTestCaseId
     ));
     if (!current) return;
 
@@ -534,9 +575,11 @@ async function deleteRun(runId) {
     if (!confirmed) return;
 
     allTestCaseRuns = allTestCaseRuns.filter((run) => String(run?.id || '').trim() !== normalizedRunId);
-    await saveData({
-        testCaseRuns: allTestCaseRuns
-    });
+    if (!isAddMode) {
+        await saveData({
+            testCaseRuns: allTestCaseRuns
+        });
+    }
 
     renderRunsTable();
     notify('Test run deleted.', 'success');
@@ -612,8 +655,9 @@ async function handleSubmit() {
             updatedAt: now
         };
     } else {
+        const newTestCaseId = getWorkingTestCaseId() || buildUniqueTestCaseId();
         nextTestCases.push({
-            id: buildTestCaseId(),
+            id: newTestCaseId,
             name,
             category,
             priority,
@@ -630,7 +674,8 @@ async function handleSubmit() {
     allTestCases = nextTestCases;
 
     await saveData({
-        testCases: nextTestCases
+        testCases: nextTestCases,
+        testCaseRuns: allTestCaseRuns
     });
 
     notify(existingTestCaseId ? 'Test case updated.' : 'Test case saved.', 'success');

@@ -71,17 +71,17 @@
                                 <select class="form-input" id="test-case-frequency-preset" required>
                                     <option value="30">1 month</option>
                                     <option value="90">3 months</option>
-                                    <option value="180">6 months</option>
+                                    <option value="180" selected>6 months</option>
                                     <option value="365">1 year</option>
                                     <option value="custom">Custom (days)</option>
                                 </select>
                             </div>
                             <div class="form-group" id="test-case-frequency-days-group" hidden>
                                 <label for="test-case-frequency-days">Custom Frequency (days) *</label>
-                                <input class="form-input" type="number" id="test-case-frequency-days" min="1" step="1" value="30">
+                                <input class="form-input" type="number" id="test-case-frequency-days" min="1" step="1" value="180">
                             </div>
                             <div class="form-group checkbox-group test-case-enabled-group">
-                                <label class="checkbox-label" for="test-case-enabled">
+                                <label class="checkbox-label checkbox-label-plain" for="test-case-enabled">
                                     <input type="checkbox" id="test-case-enabled" checked>
                                     <span>Enabled</span>
                                 </label>

@@ -1806,6 +1806,22 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     user-select: none;
 }
 
+.form-page .checkbox-label-plain {
+    display: flex;
+    padding: 0;
+    border: none;
+    background: none;
+    border-radius: 0;
+    font-size: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.form-page .checkbox-label-plain:hover {
+    border-color: transparent;
+    color: inherit;
+}
+
 .form-group.checkbox-group {
     padding-top: 0;
 }

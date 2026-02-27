@@ -121,6 +121,13 @@ for DEST_DIR in "${DEST_DIRS[@]}"; do
       echo "Could not find name field in ${DEST_CONFIG_FILE}" >&2
     fi
 
+    if grep -Eq '^[[:space:]]*panel_title:[[:space:]]*".*"[[:space:]]*$' "$DEST_CONFIG_FILE"; then
+      sed -E -i '' "s|^[[:space:]]*panel_title:[[:space:]]*\".*\"[[:space:]]*$|panel_title: \"${LOCAL_ADDON_NAME}\"|" "$DEST_CONFIG_FILE"
+      echo "Set destination panel title (${DEST_DIR}): ${LOCAL_ADDON_NAME}"
+    else
+      echo "Could not find panel_title field in ${DEST_CONFIG_FILE}" >&2
+    fi
+
     if grep -Eq '^[[:space:]]*version:[[:space:]]*".*"[[:space:]]*$' "$DEST_CONFIG_FILE"; then
       sed -E -i '' "s|^[[:space:]]*version:[[:space:]]*\".*\"[[:space:]]*$|version: \"${BASE_VERSION}-${DEPLOY_TIMESTAMP}\"|" "$DEST_CONFIG_FILE"
       echo "Stamped destination version (${DEST_DIR}): ${BASE_VERSION}-${DEPLOY_TIMESTAMP}"

@@ -91,7 +91,6 @@ function initializeRunModalEvents() {
 
     if (closeBtn) closeBtn.addEventListener('click', closeRunModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeRunModal);
-    if (overlay) overlay.addEventListener('click', closeRunModal);
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             void saveTestCaseRun();
@@ -132,7 +131,7 @@ function normalizeTestCase(item, index) {
         description: String(item.description || '').trim(),
         steps: String(item.steps || '').trim(),
         expectedResult: String(item.expectedResult || '').trim(),
-        frequencyDays: Number.isFinite(frequency) && frequency > 0 ? frequency : 30,
+        frequencyDays: Number.isFinite(frequency) && frequency > 0 ? frequency : 180,
         enabled: item.enabled !== false,
         createdAt: normalizeIsoDate(item.createdAt) || new Date().toISOString(),
         updatedAt: normalizeIsoDate(item.updatedAt) || normalizeIsoDate(item.createdAt) || new Date().toISOString()
