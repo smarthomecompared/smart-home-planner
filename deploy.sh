@@ -91,6 +91,7 @@ done
 DEPLOY_TIMESTAMP="$(date +"%Y.%m.%d.%H.%M.%S")"
 SRC_CONFIG_FILE="${SRC_DIR}/config.yaml"
 BASE_VERSION="$(sed -nE 's/^[[:space:]]*version:[[:space:]]*"([^"]+)".*$/\1/p' "$SRC_CONFIG_FILE" | head -n 1)"
+LOCAL_ADDON_NAME="Smart Home Planner (Local)"
 
 if [[ -z "$BASE_VERSION" ]]; then
   echo "Could not read version from ${SRC_CONFIG_FILE}" >&2
@@ -113,6 +114,13 @@ for DEST_DIR in "${DEST_DIRS[@]}"; do
   DEST_CONFIG_FILE="${DEST_DIR}/config.yaml"
 
   if [[ -f "$DEST_CONFIG_FILE" ]]; then
+    if grep -Eq '^[[:space:]]*name:[[:space:]]*".*"[[:space:]]*$' "$DEST_CONFIG_FILE"; then
+      sed -E -i '' "s|^[[:space:]]*name:[[:space:]]*\".*\"[[:space:]]*$|name: \"${LOCAL_ADDON_NAME}\"|" "$DEST_CONFIG_FILE"
+      echo "Set destination add-on name (${DEST_DIR}): ${LOCAL_ADDON_NAME}"
+    else
+      echo "Could not find name field in ${DEST_CONFIG_FILE}" >&2
+    fi
+
     if grep -Eq '^[[:space:]]*version:[[:space:]]*".*"[[:space:]]*$' "$DEST_CONFIG_FILE"; then
       sed -E -i '' "s|^[[:space:]]*version:[[:space:]]*\".*\"[[:space:]]*$|version: \"${BASE_VERSION}-${DEPLOY_TIMESTAMP}\"|" "$DEST_CONFIG_FILE"
       echo "Stamped destination version (${DEST_DIR}): ${BASE_VERSION}-${DEPLOY_TIMESTAMP}"
