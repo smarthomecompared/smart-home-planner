@@ -1,4 +1,4 @@
-## 1.4.0
+## 1.4.0 - 2026-02-27
 
 ### Added
 - New Test Cases page with manual test definition, scheduling, and run logging
