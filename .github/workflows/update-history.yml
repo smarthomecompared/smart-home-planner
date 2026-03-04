@@ -2,7 +2,7 @@ name: Update History
 
 on:
     schedule:
-        - cron: "0 0,12 * * *"
+        - cron: "0 0,12,18 * * *"
     workflow_dispatch:
 
 permissions:
