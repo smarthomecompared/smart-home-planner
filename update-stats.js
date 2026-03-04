@@ -1,11 +1,14 @@
 // update-stats.js
 import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import fetch from "node-fetch";
 
 const SLUG = "1750ef26_smart-home-planner";
 const REPO_API_URL = "https://api.github.com/repos/smarthomecompared/smart-home-planner";
-const HISTORY_FILE = "./history.json";
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const HISTORY_FILE = path.join(SCRIPT_DIR, "docs", "history.json");
 const MAX_HISTORY_DAYS = 3650;
 
 function getDateKey(value) {
