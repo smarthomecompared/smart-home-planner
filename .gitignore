@@ -1,8 +1,4 @@
-public/
-newsletter/
-deals/public
-temp/
-sample.tar
+node_modules/
 
 # Logs
 logs

@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Planner • Historical Stats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-top: #222d3c;
+            --bg-base: #1a2230;
+            --bg-bottom: #141b26;
+            --surface: #202a39;
+            --surface-soft: #1c2634;
+            --surface-strong: #263244;
+            --surface-hover: #2a3649;
+            --border: rgba(226, 232, 240, 0.08);
+            --border-strong: rgba(226, 232, 240, 0.12);
+            --text: #f7fafc;
+            --text-muted: #c3cfde;
+            --text-soft: #93a4ba;
+            --shadow: 0 24px 48px rgba(7, 11, 19, 0.24);
+            --emerald: #4ade80;
+            --emerald-soft: rgba(74, 222, 128, 0.14);
+            --sky: #60a5fa;
+            --sky-soft: rgba(96, 165, 250, 0.14);
+            --amber: #fbbf24;
+            --amber-soft: rgba(251, 191, 36, 0.14);
+            --rose: #fb7185;
+            --rose-soft: rgba(251, 113, 133, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            color-scheme: dark;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Manrope", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 8% 0%, rgba(96, 165, 250, 0.12), transparent 18%),
+                radial-gradient(circle at 100% 0%, rgba(74, 222, 128, 0.09), transparent 18%),
+                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-base) 34%, var(--bg-bottom) 100%);
+        }
+
+        .page-shell {
+            width: calc(100vw - clamp(1rem, 2vw, 2.25rem));
+            margin: 0 auto;
+        }
+
+        .surface {
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+                var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 26px;
+            box-shadow: var(--shadow);
+        }
+
+        .surface-soft {
+            background: var(--surface-soft);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+        }
+
+        .dashboard-header {
+            padding: clamp(1.4rem, 2vw, 2.25rem);
+            background:
+                radial-gradient(circle at top right, rgba(96, 165, 250, 0.08), transparent 26%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+                var(--surface-strong);
+        }
+
+        .dashboard-stack {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .header-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .header-copy-block,
+        .section-heading {
+            display: grid;
+            align-content: start;
+            gap: 0.5rem;
+        }
+
+        .eyebrow {
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-soft);
+        }
+
+        .page-title {
+            margin: 0;
+            font-size: clamp(1.9rem, 3.2vw, 3rem);
+            line-height: 1.02;
+            letter-spacing: -0.04em;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .header-copy,
+        .section-copy {
+            color: var(--text-muted);
+            line-height: 1.65;
+        }
+
+        .header-copy {
+            max-width: 56rem;
+            font-size: 1.02rem;
+        }
+
+        .meta-stack {
+            display: grid;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .meta-card {
+            padding: 1.1rem 1.2rem;
+            min-height: 100%;
+            display: grid;
+            align-content: start;
+            gap: 0.85rem;
+        }
+
+        .meta-value,
+        .metric-value {
+            font-family: "Space Grotesk", sans-serif;
+            letter-spacing: -0.04em;
+        }
+
+        .meta-value {
+            font-size: 1.65rem;
+            line-height: 1;
+        }
+
+        .meta-inline {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .meta-card-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .meta-card-copy {
+            display: grid;
+            gap: 0.35rem;
+            align-content: start;
+        }
+
+        .metric-card {
+            padding: 1.55rem;
+            min-height: 208px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metric-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .metric-label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .metric-icon {
+            width: 2.85rem;
+            height: 2.85rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .metric-value {
+            font-size: clamp(2.35rem, 4vw, 3.7rem);
+            line-height: 0.98;
+        }
+
+        .metric-body {
+            display: grid;
+            gap: 0.8rem;
+            align-content: start;
+            margin-top: auto;
+        }
+
+        .metric-value-line {
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .metric-note {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 0.94rem;
+            max-width: 28ch;
+        }
+
+        .metric-subvalue {
+            font-family: "Manrope", sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0;
+            line-height: 1.2;
+            color: var(--text-soft);
+            transform: translateY(-0.18rem);
+        }
+
+        .section-card {
+            padding: 1.75rem;
+        }
+
+        .section-heading {
+            margin-bottom: 1.4rem;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 440px;
+            margin-top: 1.5rem;
+        }
+
+        .chart-wrap-compact {
+            height: 320px;
+        }
+
+        .pie-wrap {
+            position: relative;
+            width: min(280px, 100%);
+            height: 280px;
+            margin: 0;
+        }
+
+        .version-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .kpi-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .details-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .ranking-grid {
+            display: grid;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .ranking-grid > * {
+            min-width: 0;
+        }
+
+        .versions-layout {
+            display: grid;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .version-item {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1rem;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+        }
+
+        .version-item-left {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            min-width: 0;
+        }
+
+        .version-copy {
+            display: grid;
+            gap: 0.15rem;
+            min-width: 0;
+        }
+
+        .version-dot {
+            width: 0.7rem;
+            height: 0.7rem;
+            border-radius: 999px;
+            flex: 0 0 auto;
+        }
+
+        .version-name {
+            margin: 0;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .version-value {
+            display: flex;
+            align-items: baseline;
+            gap: 0.45rem;
+            justify-content: flex-end;
+            white-space: nowrap;
+        }
+
+        .version-share {
+            margin: 0.12rem 0 0;
+            color: var(--text-soft);
+            font-size: 0.9rem;
+        }
+
+        .version-share-inline {
+            margin: 0;
+            color: var(--text-soft);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.4rem;
+        }
+
+        .history-table th {
+            padding: 0 0 0.95rem;
+            color: var(--text-soft);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .history-table td {
+            padding: 1rem 0;
+            color: var(--text-muted);
+            vertical-align: middle;
+        }
+
+        .history-table tbody tr {
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            transition: background-color 140ms ease;
+        }
+
+        .history-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .history-table td:first-child,
+        .history-table th:first-child {
+            padding-left: 0;
+            width: 14rem;
+            text-align: left;
+        }
+
+        .history-table td:last-child,
+        .history-table th:last-child {
+            padding-right: 0;
+        }
+
+        .table-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-top: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .table-summary {
+            color: var(--text-soft);
+            font-size: 0.92rem;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .pagination-button {
+            min-width: 2.5rem;
+            height: 2.5rem;
+            padding: 0 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.035);
+            color: var(--text);
+            font: inherit;
+            cursor: pointer;
+            transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+        }
+
+        .pagination-button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .pagination-button:disabled {
+            cursor: default;
+            opacity: 0.45;
+        }
+
+        .pagination-status {
+            color: var(--text-soft);
+            font-size: 0.92rem;
+            min-width: 4.5rem;
+            text-align: center;
+        }
+
+        .state-card {
+            min-height: 320px;
+            display: grid;
+            place-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .state-card p {
+            margin: 0;
+        }
+
+        .accent-emerald {
+            color: var(--emerald);
+        }
+
+        .accent-sky {
+            color: var(--sky);
+        }
+
+        .accent-amber {
+            color: var(--amber);
+        }
+
+        .accent-rose {
+            color: var(--rose);
+        }
+
+        .accent-bg-emerald {
+            background: var(--emerald-soft);
+        }
+
+        .accent-bg-sky {
+            background: var(--sky-soft);
+        }
+
+        .accent-bg-amber {
+            background: var(--amber-soft);
+        }
+
+        .accent-bg-rose {
+            background: var(--rose-soft);
+        }
+
+        .accent-neutral {
+            color: #dbe4f0;
+        }
+
+        .accent-bg-neutral {
+            background: rgba(226, 232, 240, 0.08);
+        }
+
+        @media (min-width: 640px) {
+            .kpi-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .meta-stack {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 960px) {
+            .details-grid {
+                grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+            }
+
+            .kpi-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .ranking-grid {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            }
+        }
+
+        @media (min-width: 1180px) {
+            .header-grid {
+                grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr);
+                align-items: start;
+            }
+
+            .details-grid {
+                grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
+            }
+
+            .versions-layout {
+                grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+            }
+        }
+
+        @media (min-width: 1500px) {
+            .kpi-grid {
+                grid-template-columns: repeat(6, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .page-shell {
+                width: calc(100vw - 2rem);
+            }
+
+            .chart-wrap {
+                height: 500px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-header {
+                padding: 1.6rem;
+            }
+
+            .section-card,
+            .metric-card {
+                padding: 1.25rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-base) 42%, var(--bg-bottom) 100%);
+            }
+
+            .page-shell {
+                width: calc(100vw - 1rem);
+            }
+
+            .meta-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-wrap {
+                height: 300px;
+            }
+
+            .pie-wrap {
+                height: 220px;
+                width: min(220px, 100%);
+                margin: 0 auto;
+            }
+
+            .table-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .pagination-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .pagination-button {
+                flex: 1 1 0;
+            }
+
+            .pagination-status {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body class="px-2 py-3 sm:px-2.5 sm:py-4 lg:px-3 lg:py-5">
+    <main class="page-shell">
+        <div id="content" class="surface state-card">
+            <div>
+                <p class="eyebrow mb-3">Preparing dashboard</p>
+                <p class="page-title mb-4">Smart Home Planner stats</p>
+                <p class="header-copy mx-auto">Loading the latest analytics snapshot and historical trends.</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const numberFormatter = new Intl.NumberFormat("en-US");
+        const TABLE_PAGE_SIZE = 25;
+        const dateFormatter = new Intl.DateTimeFormat("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric"
+        });
+        const versionPalette = ["#4ade80", "#60a5fa", "#fbbf24", "#fb7185", "#38bdf8", "#a78bfa"];
+
+        function formatNumber(value) {
+            return numberFormatter.format(value || 0);
+        }
+
+        function formatOptionalNumber(value) {
+            return Number.isFinite(value) ? numberFormatter.format(value) : "—";
+        }
+
+        function formatRank(value) {
+            return Number.isInteger(value) ? `#${numberFormatter.format(value)}` : "—";
+        }
+
+        function getTopPercent(entry) {
+            if (!Number.isInteger(entry?.install_rank) || !Number.isInteger(entry?.total_rank) || entry.total_rank <= 0) {
+                return null;
+            }
+
+            return Math.max(0.1, (entry.install_rank / entry.total_rank) * 100);
+        }
+
+        function formatTopPercent(value) {
+            return Number.isFinite(value) ? `Top ${value.toFixed(1)}%` : "—";
+        }
+
+        function formatPercent(value, total) {
+            if (!total) {
+                return "0%";
+            }
+            return `${Math.round((value / total) * 100)}%`;
+        }
+
+        function parseHistoryDate(value) {
+            if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const [year, month, day] = value.split("-").map(Number);
+                return new Date(year, month - 1, day);
+            }
+
+            return new Date(value);
+        }
+
+        function getGrowthSummary(history) {
+            if (history.length < 2) {
+                return {
+                    label: "30-Day Growth",
+                    helper: "Not enough history for a 30-day comparison yet",
+                    value: null
+                };
+            }
+
+            const latestEntry = history[history.length - 1];
+            const latestDate = parseHistoryDate(latestEntry.date);
+            const baselineDate = new Date(latestDate);
+            baselineDate.setDate(baselineDate.getDate() - 30);
+
+            let baselineEntry = null;
+            for (let index = history.length - 2; index >= 0; index -= 1) {
+                const entryDate = parseHistoryDate(history[index].date);
+                if (entryDate <= baselineDate) {
+                    baselineEntry = history[index];
+                    break;
+                }
+            }
+
+            if (!baselineEntry || !baselineEntry.total) {
+                return {
+                    label: "30-Day Growth",
+                    helper: "Not enough history for a 30-day comparison yet",
+                    value: null
+                };
+            }
+
+            const value = Math.round(((latestEntry.total - baselineEntry.total) / baselineEntry.total) * 100);
+            return {
+                label: "30-Day Growth",
+                helper: `Change since ${dateFormatter.format(parseHistoryDate(baselineEntry.date))}`,
+                value
+            };
+        }
+
+        function getVersionEntries(latest) {
+            return Object.entries(latest.versions || {})
+                .sort(([, a], [, b]) => b - a)
+                .map(([version, count], index) => ({
+                    version,
+                    count,
+                    color: versionPalette[index % versionPalette.length],
+                    share: formatPercent(count, latest.total)
+                }));
+        }
+
+        function buildMetricCard(label, accentClass, accentBgClass, value, helper, icon) {
+            return `
+                <article class="surface metric-card">
+                    <div class="metric-card-header">
+                        <p class="metric-label ${accentClass}">${label}</p>
+                        <span class="metric-icon ${accentBgClass} ${accentClass}">
+                            <i class="${icon}"></i>
+                        </span>
+                    </div>
+                    <div class="metric-body">
+                        <div class="metric-value-line">
+                            <div class="metric-value">${value}</div>
+                        </div>
+                        <p class="metric-note">${helper}</p>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderHistoryTable(history, page) {
+            const totalPages = Math.max(1, Math.ceil(history.length / TABLE_PAGE_SIZE));
+            const currentPage = Math.min(Math.max(page, 1), totalPages);
+            const reversedHistory = history.slice().reverse();
+            const startIndex = (currentPage - 1) * TABLE_PAGE_SIZE;
+            const pageEntries = reversedHistory.slice(startIndex, startIndex + TABLE_PAGE_SIZE);
+
+            document.getElementById("tableBody").innerHTML = pageEntries.map((entry) => `
+                <tr>
+                    <td class="font-medium text-slate-100">${dateFormatter.format(parseHistoryDate(entry.date))}</td>
+                    <td class="text-right font-semibold text-slate-100">${formatNumber(entry.total)}</td>
+                    <td class="text-right">${formatNumber(entry.auto_update)}</td>
+                    <td class="text-right">${formatOptionalNumber(entry.stars)}</td>
+                    <td class="text-right">${formatRank(entry.install_rank)}</td>
+                    <td class="text-right">${formatTopPercent(getTopPercent(entry))}</td>
+                </tr>
+            `).join("");
+
+            const rangeStart = history.length === 0 ? 0 : startIndex + 1;
+            const rangeEnd = startIndex + pageEntries.length;
+            document.getElementById("tableSummary").textContent = `Showing ${rangeStart}-${rangeEnd} of ${history.length}`;
+            document.getElementById("paginationStatus").textContent = `${currentPage}/${totalPages}`;
+            document.getElementById("paginationPrev").disabled = currentPage === 1;
+            document.getElementById("paginationNext").disabled = currentPage === totalPages;
+
+            return currentPage;
+        }
+
+        function renderDashboard(history) {
+            if (!Array.isArray(history) || history.length === 0) {
+                document.getElementById("content").innerHTML = `
+                    <section class="surface state-card">
+                        <div>
+                            <p class="eyebrow mb-3">No snapshots yet</p>
+                            <p class="page-title mb-4">Historical stats unavailable</p>
+                            <p class="header-copy mx-auto">Run the stats updater to generate the first analytics snapshot, then reload this page.</p>
+                        </div>
+                    </section>
+                `;
+                return;
+            }
+
+            const latest = history[history.length - 1];
+            const growth = getGrowthSummary(history);
+            const versionEntries = getVersionEntries(latest);
+            const topVersion = versionEntries[0];
+            const growthAccentClass = growth.value === null ? "accent-neutral" : (growth.value >= 0 ? "accent-emerald" : "accent-rose");
+            const growthAccentBgClass = growth.value === null ? "accent-bg-neutral" : (growth.value >= 0 ? "accent-bg-emerald" : "accent-bg-rose");
+            const growthDisplay = growth.value === null ? "—" : `${growth.value >= 0 ? "+" : ""}${growth.value}%`;
+            const topPercent = getTopPercent(latest);
+
+            document.getElementById("content").innerHTML = `
+                <div class="dashboard-stack">
+                <section class="surface dashboard-header">
+                    <div class="header-grid">
+                        <div class="header-copy-block">
+                            <p class="eyebrow mb-3">Historical statistics</p>
+                            <h1 class="page-title">Smart Home Planner</h1>
+                            <p class="header-copy">Analytics in Home Assistant are opt-in and do not reflect the entire Home Assistant userbase. It is estimated that less than a fourth of all Home Assistant users opt in.</p>
+                        </div>
+                        <div class="meta-stack">
+                            <div class="surface-soft meta-card">
+                                <p class="eyebrow mb-2">Latest snapshot</p>
+                                <p class="meta-inline">
+                                    <i class="fa-regular fa-clock accent-sky"></i>
+                                    <span>${dateFormatter.format(parseHistoryDate(latest.date))}</span>
+                                </p>
+                            </div>
+                            <div class="surface-soft meta-card">
+                                <p class="eyebrow mb-2">Leading version</p>
+                                <div class="meta-card-row">
+                                    <div class="meta-card-copy">
+                                        <p class="meta-value">${topVersion ? topVersion.version : "N/A"}</p>
+                                        <p class="text-sm text-slate-300">${topVersion ? `${formatNumber(topVersion.count)} installs • ${topVersion.share}` : "No version data available"}</p>
+                                    </div>
+                                    <span class="metric-icon accent-bg-emerald accent-emerald">
+                                        <i class="fa-solid fa-arrow-trend-up"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="kpi-grid">
+                    ${buildMetricCard(
+                        "Total Installations",
+                        "accent-emerald",
+                        "accent-bg-emerald",
+                        formatNumber(latest.total),
+                        "Current installed base across reported Home Assistant instances.",
+                        "fa-solid fa-house-signal"
+                    )}
+                    ${buildMetricCard(
+                        growth.label,
+                        growthAccentClass,
+                        growthAccentBgClass,
+                        growthDisplay,
+                        growth.helper,
+                        "fa-solid fa-chart-line"
+                    )}
+                    ${buildMetricCard(
+                        "Auto-Update Enabled",
+                        "accent-sky",
+                        "accent-bg-sky",
+                        `${formatNumber(latest.auto_update)} <span class="metric-subvalue">(${formatPercent(latest.auto_update, latest.total)})</span>`,
+                        "Installations configured to move with new releases automatically.",
+                        "fa-solid fa-arrows-rotate"
+                    )}
+                    ${buildMetricCard(
+                        "GitHub Stars",
+                        "accent-amber",
+                        "accent-bg-amber",
+                        formatOptionalNumber(latest.stars),
+                        "Public repository stars tracked once per day from GitHub.",
+                        "fa-solid fa-star"
+                    )}
+                    ${buildMetricCard(
+                        "App Rank",
+                        "accent-rose",
+                        "accent-bg-rose",
+                        formatRank(latest.install_rank),
+                        "Position among Home Assistant Apps by total installations.",
+                        "fa-solid fa-trophy"
+                    )}
+                    ${buildMetricCard(
+                        "Top Rank",
+                        "accent-neutral",
+                        "accent-bg-neutral",
+                        formatTopPercent(topPercent),
+                        "Relative position band among Home Assistant Apps by installations.",
+                        "fa-solid fa-layer-group"
+                    )}
+                </section>
+
+                <section class="details-grid">
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">Trend</p>
+                            <h2 class="section-title">Installation growth over time</h2>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="lineChart"></canvas>
+                        </div>
+                    </article>
+
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">Versions</p>
+                            <h2 class="section-title">Current version mix</h2>
+                        </div>
+                        <div class="versions-layout">
+                            <div class="pie-wrap">
+                                <canvas id="pieChart"></canvas>
+                            </div>
+                            <div class="version-list">
+                                ${versionEntries.map((entry) => `
+                                    <div class="version-item">
+                                        <div class="version-item-left">
+                                            <span class="version-dot" style="background:${entry.color}"></span>
+                                            <div class="version-copy">
+                                                <p class="version-name">${entry.version}</p>
+                                            </div>
+                                        </div>
+                                        <div class="version-value">
+                                            <p class="version-name">${formatNumber(entry.count)}</p>
+                                            <p class="version-share-inline">${entry.share}</p>
+                                        </div>
+                                    </div>
+                                `).join("")}
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <section>
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">GitHub</p>
+                            <h2 class="section-title">Stars over time</h2>
+                        </div>
+                        <div class="chart-wrap chart-wrap-compact">
+                            <canvas id="starsChart"></canvas>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="ranking-grid">
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">Ranking</p>
+                            <h2 class="section-title">App rank over time</h2>
+                        </div>
+                        <div class="chart-wrap chart-wrap-compact">
+                            <canvas id="rankChart"></canvas>
+                        </div>
+                    </article>
+
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">Ranking</p>
+                            <h2 class="section-title">Top rank over time</h2>
+                        </div>
+                        <div class="chart-wrap chart-wrap-compact">
+                            <canvas id="topPercentChart"></canvas>
+                        </div>
+                    </article>
+                </section>
+
+                <section>
+                    <article class="surface section-card">
+                        <div class="section-heading">
+                            <p class="eyebrow">History</p>
+                            <h2 class="section-title">Complete timeline</h2>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="history-table min-w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left">Date</th>
+                                        <th class="text-right">Installations</th>
+                                        <th class="text-right">Auto-update</th>
+                                        <th class="text-right">GitHub Stars</th>
+                                        <th class="text-right">App Rank</th>
+                                        <th class="text-right">Top Rank</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="table-footer">
+                            <p id="tableSummary" class="table-summary">Showing 0-0 of 0</p>
+                            <div class="pagination-controls">
+                                <button id="paginationPrev" class="pagination-button" type="button">Prev</button>
+                                <span id="paginationStatus" class="pagination-status">1/1</span>
+                                <button id="paginationNext" class="pagination-button" type="button">Next</button>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+                </div>
+            `;
+
+            new Chart(document.getElementById("lineChart"), {
+                type: "line",
+                data: {
+                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
+                    datasets: [{
+                        label: "Total Installations",
+                        data: history.map((entry) => entry.total),
+                        borderColor: "#4ade80",
+                        backgroundColor: "rgba(74, 222, 128, 0.12)",
+                        borderWidth: 3,
+                        pointRadius: history.length === 1 ? 4 : 0,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#bbf7d0",
+                        pointBorderWidth: 0,
+                        tension: 0,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: "index"
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "#111827",
+                            borderColor: "rgba(226, 232, 240, 0.08)",
+                            borderWidth: 1,
+                            titleColor: "#f8fafc",
+                            bodyColor: "#dbe4f0",
+                            padding: 12,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                maxRotation: 0,
+                                autoSkipPadding: 18
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.06)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                padding: 10,
+                                callback(value) {
+                                    return numberFormatter.format(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("pieChart"), {
+                type: "doughnut",
+                data: {
+                    labels: versionEntries.map((entry) => entry.version),
+                    datasets: [{
+                        data: versionEntries.map((entry) => entry.count),
+                        backgroundColor: versionEntries.map((entry) => entry.color),
+                        borderColor: "#202a39",
+                        borderWidth: 4,
+                        hoverOffset: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: "70%",
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "#111827",
+                            borderColor: "rgba(226, 232, 240, 0.08)",
+                            borderWidth: 1,
+                            titleColor: "#f8fafc",
+                            bodyColor: "#dbe4f0",
+                            padding: 12,
+                            callbacks: {
+                                label(context) {
+                                    const value = context.raw || 0;
+                                    return `${context.label}: ${formatNumber(value)} installs`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("starsChart"), {
+                type: "line",
+                data: {
+                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
+                    datasets: [{
+                        label: "GitHub Stars",
+                        data: history.map((entry) => Number.isFinite(entry.stars) ? entry.stars : null),
+                        borderColor: "#fbbf24",
+                        backgroundColor: "rgba(251, 191, 36, 0.14)",
+                        borderWidth: 3,
+                        pointRadius: history.length === 1 ? 4 : 0,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#fde68a",
+                        pointBorderWidth: 0,
+                        tension: 0,
+                        fill: true,
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: "index"
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "#111827",
+                            borderColor: "rgba(226, 232, 240, 0.08)",
+                            borderWidth: 1,
+                            titleColor: "#f8fafc",
+                            bodyColor: "#dbe4f0",
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label(context) {
+                                    return `GitHub Stars: ${formatOptionalNumber(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                maxRotation: 0,
+                                autoSkipPadding: 18
+                            }
+                        },
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.06)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                padding: 10,
+                                callback(value) {
+                                    return numberFormatter.format(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("rankChart"), {
+                type: "line",
+                data: {
+                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
+                    datasets: [{
+                        label: "App Rank",
+                        data: history.map((entry) => Number.isInteger(entry.install_rank) ? entry.install_rank : null),
+                        borderColor: "#fb7185",
+                        backgroundColor: "rgba(251, 113, 133, 0.14)",
+                        borderWidth: 3,
+                        pointRadius: history.length === 1 ? 4 : 0,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#fda4af",
+                        pointBorderWidth: 0,
+                        tension: 0,
+                        fill: true,
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: "index"
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "#111827",
+                            borderColor: "rgba(226, 232, 240, 0.08)",
+                            borderWidth: 1,
+                            titleColor: "#f8fafc",
+                            bodyColor: "#dbe4f0",
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label(context) {
+                                    return `App Rank: ${formatRank(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                maxRotation: 0,
+                                autoSkipPadding: 18
+                            }
+                        },
+                        y: {
+                            reverse: true,
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.06)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                padding: 10,
+                                callback(value) {
+                                    return `#${numberFormatter.format(value)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            new Chart(document.getElementById("topPercentChart"), {
+                type: "line",
+                data: {
+                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
+                    datasets: [{
+                        label: "Top Rank",
+                        data: history.map((entry) => getTopPercent(entry)),
+                        borderColor: "#c084fc",
+                        backgroundColor: "rgba(192, 132, 252, 0.14)",
+                        borderWidth: 3,
+                        pointRadius: history.length === 1 ? 4 : 0,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#d8b4fe",
+                        pointBorderWidth: 0,
+                        tension: 0,
+                        fill: true,
+                        spanGaps: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: "index"
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "#111827",
+                            borderColor: "rgba(226, 232, 240, 0.08)",
+                            borderWidth: 1,
+                            titleColor: "#f8fafc",
+                            bodyColor: "#dbe4f0",
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label(context) {
+                                    return `Top Rank: ${formatTopPercent(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.05)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                maxRotation: 0,
+                                autoSkipPadding: 18
+                            }
+                        },
+                        y: {
+                            reverse: true,
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                color: "rgba(255, 255, 255, 0.06)",
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: "#93a4ba",
+                                padding: 10,
+                                callback(value) {
+                                    return `${value}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            let currentTablePage = renderHistoryTable(history, 1);
+            document.getElementById("paginationPrev").addEventListener("click", () => {
+                currentTablePage = renderHistoryTable(history, currentTablePage - 1);
+            });
+            document.getElementById("paginationNext").addEventListener("click", () => {
+                currentTablePage = renderHistoryTable(history, currentTablePage + 1);
+            });
+        }
+
+        async function loadData() {
+            const response = await fetch("./history.json", { cache: "no-store" });
+            if (!response.ok) {
+                throw new Error(`History request failed: ${response.status}`);
+            }
+            const history = await response.json();
+            return history.slice().sort((left, right) => parseHistoryDate(left.date) - parseHistoryDate(right.date));
+        }
+
+        loadData()
+            .then(renderDashboard)
+            .catch((error) => {
+                console.error("Failed to load data:", error);
+                document.getElementById("content").innerHTML = `
+                    <section class="surface state-card">
+                        <div>
+                            <p class="eyebrow mb-3">Load failed</p>
+                            <p class="page-title mb-4">Unable to render stats</p>
+                            <p class="header-copy mx-auto">
+                                The dashboard could not load <code class="rounded bg-white/5 px-2 py-1 text-slate-100">history.json</code>.
+                                Check that the file exists and contains valid JSON.
+                            </p>
+                        </div>
+                    </section>
+                `;
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "ha-addon-stats-tracker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node update-stats.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
