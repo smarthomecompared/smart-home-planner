@@ -28,14 +28,18 @@ jobs:
               with:
                   node-version: 20
                   cache: npm
+                  cache-dependency-path: pages/package-lock.json
 
             - name: Install dependencies
+              working-directory: pages
               run: npm ci
 
             - name: Update stats history
+              working-directory: pages
               run: node update-stats.js
 
             - name: Commit updated history
+              working-directory: pages
               run: |
                   if git diff --quiet -- docs/history.json; then
                     echo "No history changes to commit."
