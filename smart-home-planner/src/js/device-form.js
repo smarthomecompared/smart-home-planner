@@ -77,6 +77,60 @@ function parseOptionalNonNegativeNumber(value) {
     return parsed;
 }
 
+function normalizeExternalUrl(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+
+    const candidates = raw.includes('://') ? [raw] : [`https://${raw}`, raw];
+    for (const candidate of candidates) {
+        try {
+            const url = new URL(candidate);
+            if (url.protocol === 'http:' || url.protocol === 'https:') {
+                return url.toString();
+            }
+        } catch (_error) {
+            // Ignore invalid candidates.
+        }
+    }
+
+    return '';
+}
+
+function deriveLinkNameFromUrl(value) {
+    const normalizedUrl = normalizeExternalUrl(value);
+    if (!normalizedUrl) return '';
+    try {
+        const url = new URL(normalizedUrl);
+        return url.hostname.replace(/^www\./i, '');
+    } catch (_error) {
+        return '';
+    }
+}
+
+function normalizeDeviceLinks(links) {
+    const normalized = [];
+    (Array.isArray(links) ? links : []).forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const url = normalizeExternalUrl(item.url || item.href || '');
+        if (!url) return;
+        const name = String(item.name || '').trim() || deriveLinkNameFromUrl(url);
+        normalized.push({
+            name,
+            url
+        });
+    });
+    return normalized;
+}
+
+function getLegacyWebsiteLink(device) {
+    const url = normalizeExternalUrl(device && device.website);
+    if (!url) return [];
+    return [{
+        name: deriveLinkNameFromUrl(url),
+        url
+    }];
+}
+
 function isRouterOrAccessPointType(value) {
     const normalized = normalizeOptionValue(value);
     if (!normalized) return false;
@@ -176,6 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupWifiAccessPointSearch();
     setupWifiClientsManager();
     updateWifiClientsManagerVisibility();
+    initializeDeviceLinksSupport();
     
     if (editingDeviceId) {
         loadDeviceForEdit(editingDeviceId);
@@ -1495,6 +1550,213 @@ function updateViewOnHaButton(device) {
     }
 }
 
+function initializeDeviceLinksSupport() {
+    const addLinkButton = document.getElementById('add-device-link-btn');
+    const linksList = document.getElementById('device-links-list');
+    if (addLinkButton) {
+        addLinkButton.addEventListener('click', () => {
+            appendDeviceLinkRow();
+            updateDeviceLinksEmptyState();
+        });
+    }
+    if (!linksList) return;
+
+    linksList.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!target) return;
+        const openButton = target.closest('[data-link-open]');
+        if (openButton) {
+            const row = openButton.closest('.device-link-item');
+            openDeviceLinkRow(row);
+            return;
+        }
+        const removeButton = target.closest('[data-link-remove]');
+        if (removeButton) {
+            const row = removeButton.closest('.device-link-item');
+            if (row) {
+                row.remove();
+                updateDeviceLinksEmptyState();
+            }
+        }
+    });
+
+    linksList.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) return;
+        const row = target.closest('.device-link-item');
+        if (!row) return;
+
+        if (target.matches('[data-link-name]')) {
+            const autoName = row.dataset.autoName || '';
+            const value = target.value.trim();
+            target.dataset.userModified = value && value !== autoName ? 'true' : 'false';
+            return;
+        }
+
+        if (target.matches('[data-link-url]')) {
+            updateDeviceLinkRowState(row);
+        }
+    });
+
+    renderDeviceLinks([]);
+}
+
+function renderDeviceLinks(links) {
+    const linksList = document.getElementById('device-links-list');
+    if (!linksList) return;
+    linksList.innerHTML = '';
+    const normalizedLinks = normalizeDeviceLinks(links);
+    normalizedLinks.forEach((link) => appendDeviceLinkRow(link));
+    updateDeviceLinksEmptyState();
+}
+
+function appendDeviceLinkRow(link = {}) {
+    const linksList = document.getElementById('device-links-list');
+    if (!linksList) return null;
+
+    const item = document.createElement('div');
+    item.className = 'device-link-item';
+    item.innerHTML = `
+        <div class="form-group">
+            <label>Label</label>
+            <input type="text" data-link-name placeholder="e.g., manufacturer.com">
+        </div>
+        <div class="form-group">
+            <label>URL</label>
+            <input type="url" data-link-url placeholder="https://example.com">
+        </div>
+        <div class="device-link-actions">
+            <button class="btn btn-secondary btn-sm btn-icon" type="button" data-link-open aria-label="Open link" data-tooltip="Open link" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14 4h6v6"></path>
+                    <path d="M10 14 20 4"></path>
+                    <path d="M20 13v5a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2h5"></path>
+                </svg>
+            </button>
+            <button class="btn btn-secondary btn-sm btn-icon device-link-remove" type="button" data-link-remove aria-label="Remove link" data-tooltip="Remove link">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M6 6l1 14h10l1-14"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+
+    const nameInput = item.querySelector('[data-link-name]');
+    const urlInput = item.querySelector('[data-link-url]');
+    if (nameInput) {
+        nameInput.value = String(link.name || '').trim();
+        nameInput.dataset.userModified = nameInput.value ? 'true' : 'false';
+    }
+    if (urlInput) {
+        urlInput.value = String(link.url || '').trim();
+    }
+
+    linksList.appendChild(item);
+    updateDeviceLinkRowState(item, { preferAutofill: !String(link.name || '').trim() });
+    return item;
+}
+
+function updateDeviceLinkRowState(row, options = {}) {
+    if (!row) return;
+    const nameInput = row.querySelector('[data-link-name]');
+    const urlInput = row.querySelector('[data-link-url]');
+    const openButton = row.querySelector('[data-link-open]');
+    if (!nameInput || !urlInput || !openButton) return;
+
+    const normalizedUrl = normalizeExternalUrl(urlInput.value);
+    const autoName = deriveLinkNameFromUrl(urlInput.value);
+    const previousAutoName = row.dataset.autoName || '';
+    const currentName = nameInput.value.trim();
+    const userModified = nameInput.dataset.userModified === 'true';
+    const shouldAutofill = Boolean(
+        autoName && (
+            options.preferAutofill ||
+            !currentName ||
+            (!userModified && (!currentName || currentName === previousAutoName))
+        )
+    );
+
+    row.dataset.autoName = autoName;
+    if (shouldAutofill) {
+        nameInput.value = autoName;
+        nameInput.dataset.userModified = 'false';
+    } else if (!autoName && !userModified && currentName === previousAutoName) {
+        nameInput.value = '';
+        nameInput.dataset.userModified = 'false';
+    }
+
+    openButton.disabled = !normalizedUrl;
+    if (normalizedUrl) {
+        openButton.dataset.url = normalizedUrl;
+        openButton.title = normalizedUrl;
+    } else {
+        delete openButton.dataset.url;
+        openButton.removeAttribute('title');
+    }
+}
+
+function openDeviceLinkRow(row) {
+    if (!row) return;
+    const openButton = row.querySelector('[data-link-open]');
+    const url = String(openButton?.dataset.url || '').trim();
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function updateDeviceLinksEmptyState() {
+    const linksList = document.getElementById('device-links-list');
+    const emptyState = document.getElementById('device-links-empty');
+    if (!linksList || !emptyState) return;
+    emptyState.hidden = linksList.children.length > 0;
+}
+
+function getDeviceLinksForLoad(device) {
+    const normalizedLinks = normalizeDeviceLinks(device && device.links);
+    if (normalizedLinks.length) return normalizedLinks;
+    return getLegacyWebsiteLink(device);
+}
+
+function collectDeviceLinks() {
+    const linksList = document.getElementById('device-links-list');
+    if (!linksList) {
+        return { links: [], invalid: false };
+    }
+
+    const links = [];
+    let invalid = false;
+    linksList.querySelectorAll('.device-link-item').forEach((row) => {
+        const nameInput = row.querySelector('[data-link-name]');
+        const urlInput = row.querySelector('[data-link-url]');
+        const rawName = String(nameInput?.value || '').trim();
+        const rawUrl = String(urlInput?.value || '').trim();
+        if (!rawName && !rawUrl) return;
+
+        const url = normalizeExternalUrl(rawUrl);
+        if (!url) {
+            invalid = true;
+            if (urlInput) {
+                urlInput.focus();
+                urlInput.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+            return;
+        }
+
+        links.push({
+            name: rawName || deriveLinkNameFromUrl(url),
+            url
+        });
+    });
+
+    return {
+        links: normalizeDeviceLinks(links),
+        invalid
+    };
+}
+
 function updateAreaAutoSyncState() {
     const installed = document.getElementById('device-area')?.value || '';
     const controlled = document.getElementById('device-controlled-area')?.value || '';
@@ -1661,6 +1923,7 @@ function loadDeviceData(device) {
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
     document.getElementById('device-type').value = device.type ? normalizeOptionValue(device.type) : '';
+    renderDeviceLinks(getDeviceLinksForLoad(device));
     if (editingDeviceId) {
         setWifiClientsFromAccessPointDevice(device.id);
     } else {
@@ -1848,6 +2111,11 @@ async function handleDeviceSubmit(e) {
         showAlert('Please select valid devices from the search results for all ports, or clear the invalid entries.');
         return;
     }
+    const linksResult = collectDeviceLinks();
+    if (linksResult.invalid) {
+        showAlert('Please enter a valid URL for each link, or remove the incomplete row.');
+        return;
+    }
 
     const statusValue = document.getElementById('device-status').value;
     const isPendingStatus = statusValue === 'pending';
@@ -1883,6 +2151,7 @@ async function handleDeviceSubmit(e) {
         storageSize: document.getElementById('device-storage-size').value,
         storageUnit: document.getElementById('device-storage-unit').value,
         notes: document.getElementById('device-notes').value,
+        links: linksResult.links,
         connectivity: connectivity,
         networkId: networkValue,
         wifiDownloadSpeed: wifiDownloadSpeedValue,
@@ -3544,6 +3813,7 @@ async function createDevice(deviceData) {
         storageSize: deviceData.storageSize ? parseFloat(deviceData.storageSize) : null,
         storageUnit: deviceData.storageUnit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
+        links: normalizeDeviceLinks(deviceData.links),
         connectivity: normalizeOptionValue(deviceData.connectivity),
         networkId: deviceData.networkId || '',
         wifiDownloadSpeed: Number.isFinite(deviceData.wifiDownloadSpeed) ? deviceData.wifiDownloadSpeed : null,
@@ -3627,6 +3897,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.storageSize = deviceData.storageSize ? parseFloat(deviceData.storageSize) : null;
         device.storageUnit = deviceData.storageUnit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
+        device.links = normalizeDeviceLinks(deviceData.links);
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
         device.networkId = deviceData.networkId || '';
         device.wifiDownloadSpeed = Number.isFinite(deviceData.wifiDownloadSpeed) ? deviceData.wifiDownloadSpeed : null;
@@ -3646,6 +3917,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.localOnly = deviceData.localOnly || false;
         device.ports = deviceData.ports || [];
         device.files = normalizeDeviceFiles(deviceData.files);
+        delete device.website;
         device.updatedAt = new Date().toISOString();
         
         await saveData({

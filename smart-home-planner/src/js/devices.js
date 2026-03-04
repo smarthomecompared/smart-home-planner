@@ -499,6 +499,7 @@ async function createDevice(deviceData) {
         name: name,
         brand: normalizeOptionValue(deviceData.brand),
         model: deviceData.model.trim(),
+        website: deviceData.website ? deviceData.website.trim() : '',
         type: normalizeOptionValue(deviceData.type),
         labels: normalizeLabelList(deviceData.labels),
         ip: deviceData.ip.trim() || '',
@@ -539,6 +540,7 @@ async function updateDevice(id, deviceData) {
         device.name = name;
         device.brand = normalizeOptionValue(deviceData.brand);
         device.model = deviceData.model.trim();
+        device.website = deviceData.website ? deviceData.website.trim() : '';
         device.type = normalizeOptionValue(deviceData.type);
         if (deviceData.labels !== undefined) {
             device.labels = normalizeLabelList(deviceData.labels);

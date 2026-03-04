@@ -1,3 +1,8 @@
+## 1.5.0 - 2026-03-04
+
+### Added
+- Support to assign a multiple links to each device
+
 ## 1.4.0 - 2026-02-27
 
 ### Added

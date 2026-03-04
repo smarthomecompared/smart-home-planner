@@ -175,7 +175,7 @@ Guidance for each section:
 6. Connectivity captures how the device communicates and its network identity, including Wi-Fi speed, band, and connected router/access point details when applicable.
 7. Ports describe connections to other devices for mapping and documentation.
 8. Integrations track ecosystem ownership across platforms.
-9. Notes and Files keep manuals, receipts, and maintenance history in one place.
+9. Notes, Links, and Files keep product pages, docs, receipts, and maintenance history in one place.
 
 ## Edit Device
 
