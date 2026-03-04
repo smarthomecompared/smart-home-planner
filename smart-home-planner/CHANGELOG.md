@@ -1,9 +1,10 @@
-## 1.5.0 - 2026-03-04
+## 1.5.0 - 2026-03-05
 
 ### Added
 - Support to assign a multiple links to each device
 - Support to link Z-Wave and Zigbee devices
 - Display Z-Wave and Zigbee connections on diagram
+- Persist diagram display settings
 
 ## 1.4.0 - 2026-02-27
 

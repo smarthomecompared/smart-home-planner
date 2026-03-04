@@ -3,6 +3,7 @@
 window.DeviceDiagram = (() => {
     const DIAGRAM_BACKGROUND_UI_KEY = 'diagramBackground';
     const DIAGRAM_BACKGROUND_OPACITY_UI_KEY = 'diagramBackgroundOpacity';
+    const DIAGRAM_DISPLAY_SETTINGS_UI_KEY = 'diagramDisplaySettings';
     const DIAGRAM_BACKGROUND_DEVICE_ID = 'diagram-background';
     const DIAGRAM_BACKGROUND_NODE_ID = 'diagram-background-node';
     const BACKGROUND_MODEL_MAX_DIMENSION = 1800;
@@ -81,6 +82,116 @@ window.DeviceDiagram = (() => {
     let pendingBackgroundSeedPositions = null;
     let lastPositionsSource = 'map';
 
+    function getDefaultDiagramDisplaySettings() {
+        return {
+            showEthernetConnections: true,
+            showUsbConnections: true,
+            showPowerConnections: true,
+            showWifiConnections: false,
+            showZigbeeConnections: false,
+            showZwaveConnections: false,
+            deviceAreaMode: 'installed',
+            powerLabelMode: 'mean'
+        };
+    }
+
+    function normalizeDiagramDisplaySettings(value) {
+        const defaults = getDefaultDiagramDisplaySettings();
+        if (!value || typeof value !== 'object') {
+            return defaults;
+        }
+        return {
+            showEthernetConnections: value.showEthernetConnections !== undefined ? Boolean(value.showEthernetConnections) : defaults.showEthernetConnections,
+            showUsbConnections: value.showUsbConnections !== undefined ? Boolean(value.showUsbConnections) : defaults.showUsbConnections,
+            showPowerConnections: value.showPowerConnections !== undefined ? Boolean(value.showPowerConnections) : defaults.showPowerConnections,
+            showWifiConnections: value.showWifiConnections !== undefined ? Boolean(value.showWifiConnections) : defaults.showWifiConnections,
+            showZigbeeConnections: value.showZigbeeConnections !== undefined ? Boolean(value.showZigbeeConnections) : defaults.showZigbeeConnections,
+            showZwaveConnections: value.showZwaveConnections !== undefined ? Boolean(value.showZwaveConnections) : defaults.showZwaveConnections,
+            deviceAreaMode: value.deviceAreaMode === 'controlled' ? 'controlled' : defaults.deviceAreaMode,
+            powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode
+        };
+    }
+
+    function getCurrentDiagramDisplaySettings() {
+        return {
+            showEthernetConnections: Boolean(document.getElementById('show-ethernet-connections')?.checked),
+            showUsbConnections: Boolean(document.getElementById('show-usb-connections')?.checked),
+            showPowerConnections: Boolean(document.getElementById('show-power-connections')?.checked),
+            showWifiConnections: Boolean(document.getElementById('show-wifi-connections')?.checked),
+            showZigbeeConnections: Boolean(document.getElementById('show-zigbee-connections')?.checked),
+            showZwaveConnections: Boolean(document.getElementById('show-zwave-connections')?.checked),
+            deviceAreaMode: document.getElementById('device-area-mode')?.value || 'installed',
+            powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean'
+        };
+    }
+
+    function applyDiagramDisplaySettings(settingsPayload) {
+        const settings = normalizeDiagramDisplaySettings(settingsPayload);
+        const ethernetToggle = document.getElementById('show-ethernet-connections');
+        const usbToggle = document.getElementById('show-usb-connections');
+        const powerToggle = document.getElementById('show-power-connections');
+        const wifiToggle = document.getElementById('show-wifi-connections');
+        const zigbeeToggle = document.getElementById('show-zigbee-connections');
+        const zwaveToggle = document.getElementById('show-zwave-connections');
+        const areaModeSelect = document.getElementById('device-area-mode');
+        const powerLabelMode = document.getElementById('power-label-mode');
+
+        if (ethernetToggle) ethernetToggle.checked = settings.showEthernetConnections;
+        if (usbToggle) usbToggle.checked = settings.showUsbConnections;
+        if (powerToggle) powerToggle.checked = settings.showPowerConnections;
+        if (wifiToggle) wifiToggle.checked = settings.showWifiConnections;
+        if (zigbeeToggle) zigbeeToggle.checked = settings.showZigbeeConnections;
+        if (zwaveToggle) zwaveToggle.checked = settings.showZwaveConnections;
+        if (areaModeSelect) areaModeSelect.value = settings.deviceAreaMode;
+        if (powerLabelMode) powerLabelMode.value = settings.powerLabelMode;
+    }
+
+    async function persistDiagramDisplaySettings() {
+        try {
+            await setUiPreference(DIAGRAM_DISPLAY_SETTINGS_UI_KEY, getCurrentDiagramDisplaySettings());
+        } catch (error) {
+            console.error('Failed to persist diagram display settings:', error);
+        }
+    }
+
+    async function loadDiagramDisplaySettingsPreference() {
+        try {
+            const stored = await getUiPreference(DIAGRAM_DISPLAY_SETTINGS_UI_KEY);
+            applyDiagramDisplaySettings(stored);
+        } catch (error) {
+            console.error('Failed to load diagram display settings:', error);
+            applyDiagramDisplaySettings(null);
+        }
+    }
+
+    function getViewportState() {
+        if (!cy) return null;
+        return {
+            zoom: cy.zoom(),
+            pan: { ...cy.pan() }
+        };
+    }
+
+    function restoreViewportState(viewportState) {
+        if (!cy || !viewportState) return;
+        if (Number.isFinite(viewportState.zoom)) {
+            cy.zoom(viewportState.zoom);
+        }
+        if (viewportState.pan && Number.isFinite(viewportState.pan.x) && Number.isFinite(viewportState.pan.y)) {
+            cy.pan(viewportState.pan);
+        }
+    }
+
+    function handleDiagramConnectionToggleChange() {
+        void persistDiagramDisplaySettings();
+        void renderNetwork({ preserveViewport: true });
+    }
+
+    function handleDiagramDisplaySelectChange() {
+        void persistDiagramDisplaySettings();
+        void renderNetwork();
+    }
+
     function init(options = {}) {
         if (isInitialized) return;
         const mapContainer = document.getElementById('network-map');
@@ -109,9 +220,13 @@ window.DeviceDiagram = (() => {
 
         initializeEventListeners();
         initializeCytoscape();
-        void loadDiagramBackgroundPreference();
-        renderNetwork();
-        isInitialized = true;
+        void Promise.all([
+            loadDiagramBackgroundPreference(),
+            loadDiagramDisplaySettingsPreference()
+        ]).finally(() => {
+            renderNetwork();
+            isInitialized = true;
+        });
     }
 
     async function initWithStoredData(options = {}) {
@@ -1335,35 +1450,35 @@ window.DeviceDiagram = (() => {
     function initializeEventListeners() {
     const ethernetToggle = document.getElementById('show-ethernet-connections');
     if (ethernetToggle) {
-        ethernetToggle.addEventListener('change', renderNetwork);
+        ethernetToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const usbToggle = document.getElementById('show-usb-connections');
     if (usbToggle) {
-        usbToggle.addEventListener('change', renderNetwork);
+        usbToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const powerToggle = document.getElementById('show-power-connections');
     if (powerToggle) {
-        powerToggle.addEventListener('change', renderNetwork);
+        powerToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const wifiToggle = document.getElementById('show-wifi-connections');
     if (wifiToggle) {
-        wifiToggle.addEventListener('change', renderNetwork);
+        wifiToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const zigbeeToggle = document.getElementById('show-zigbee-connections');
     if (zigbeeToggle) {
-        zigbeeToggle.addEventListener('change', renderNetwork);
+        zigbeeToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const zwaveToggle = document.getElementById('show-zwave-connections');
     if (zwaveToggle) {
-        zwaveToggle.addEventListener('change', renderNetwork);
+        zwaveToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
     const powerLabelMode = document.getElementById('power-label-mode');
     if (powerLabelMode) {
-        powerLabelMode.addEventListener('change', renderNetwork);
+        powerLabelMode.addEventListener('change', handleDiagramDisplaySelectChange);
     }
     const areaModeSelect = document.getElementById('device-area-mode');
     if (areaModeSelect) {
-        areaModeSelect.addEventListener('change', renderNetwork);
+        areaModeSelect.addEventListener('change', handleDiagramDisplaySelectChange);
     }
     const configToggle = document.querySelector('.map-display-toggle');
     const configPanel = document.getElementById('map-config');
@@ -2244,11 +2359,13 @@ function unbindTooltipDismiss() {
 }
 
 // Render network
-async function renderNetwork() {
+async function renderNetwork(options = {}) {
     if (!cy) {
         console.error('Cytoscape not initialized');
         return;
     }
+    const preserveViewport = options && options.preserveViewport === true;
+    const viewportState = preserveViewport ? getViewportState() : null;
     
     hideDeviceTooltip();
     hideResizeHandles();
@@ -2718,14 +2835,16 @@ async function renderNetwork() {
     // Run layout
     cy.layout({
         name: 'preset',
-        fit: !hasBackground,
+        fit: !hasBackground && !preserveViewport,
         padding: 80
     }).run();
 
     applyDiagramBackground();
     if (hasBackground) {
         applyBackgroundNormalizedPositions(backgroundNormalizedPositions);
-        fitNetwork();
+        if (!preserveViewport) {
+            fitNetwork();
+        }
         if (pendingBackgroundSeedPositions && pendingBackgroundSeedPositions.size) {
             const frame = getBackgroundModelFrame();
             if (frame && frame.width > 0 && frame.height > 0) {
@@ -2744,6 +2863,10 @@ async function renderNetwork() {
             }
             pendingBackgroundSeedPositions = null;
         }
+    }
+    if (preserveViewport) {
+        restoreViewportState(viewportState);
+        scheduleResizeOverlayUpdate();
     }
 
     await setLayoutEditable(isLayoutEditable);
