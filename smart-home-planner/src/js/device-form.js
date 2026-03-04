@@ -21,6 +21,8 @@ let deviceFileRenameModal = null;
 let haDefaultCurrency = '';
 let haCountryCode = '';
 let selectedWifiClientIds = new Set();
+let selectedZigbeeChildIds = new Set();
+let selectedZwaveChildIds = new Set();
 const amazonBatteryMetaMap = buildAmazonBatteryMetaMap();
 
 const AMAZON_STORE_DOMAINS = {
@@ -143,6 +145,23 @@ function isStrictWifiConnectivity(value) {
     return normalizeOptionValue(value) === 'wifi';
 }
 
+function isZigbeeConnectivity(value) {
+    return normalizeOptionValue(value) === 'zigbee';
+}
+
+function isZwaveConnectivity(value) {
+    const normalized = normalizeOptionValue(value);
+    return normalized === 'z-wave' || normalized === 'zwave';
+}
+
+function isZigbeeParentDevice(device) {
+    return Boolean(device && isZigbeeConnectivity(device.connectivity) && (device.zigbeeController || device.zigbeeRepeater));
+}
+
+function isZwaveParentDevice(device) {
+    return Boolean(device && isZwaveConnectivity(device.connectivity) && device.zwaveController);
+}
+
 function escapeFileParam(value) {
     return encodeURIComponent(String(value || ''));
 }
@@ -229,7 +248,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     handleStatusChange();
     setupWifiAccessPointSearch();
     setupWifiClientsManager();
+    setupZigbeeParentSearch();
+    setupZigbeeClientsManager();
+    setupZwaveCoordinatorSearch();
+    setupZwaveClientsManager();
     updateWifiClientsManagerVisibility();
+    updateZigbeeClientsManagerVisibility();
+    updateZwaveClientsManagerVisibility();
     initializeDeviceLinksSupport();
     
     if (editingDeviceId) {
@@ -250,6 +275,19 @@ function initializeEventListeners() {
     document.getElementById('device-brand').addEventListener('change', handleBrandChange);
     document.getElementById('device-type').addEventListener('change', handleTypeChange);
     document.getElementById('device-status').addEventListener('change', handleStatusChange);
+    const zigbeeControllerCheckbox = document.getElementById('device-zigbee-controller');
+    if (zigbeeControllerCheckbox) {
+        zigbeeControllerCheckbox.addEventListener('change', handleConnectivityChange);
+        zigbeeControllerCheckbox.addEventListener('change', updateZigbeeClientsManagerVisibility);
+    }
+    const zigbeeRepeaterCheckbox = document.getElementById('device-zigbee-repeater');
+    if (zigbeeRepeaterCheckbox) {
+        zigbeeRepeaterCheckbox.addEventListener('change', updateZigbeeClientsManagerVisibility);
+    }
+    const zwaveControllerCheckbox = document.getElementById('device-zwave-controller');
+    if (zwaveControllerCheckbox) {
+        zwaveControllerCheckbox.addEventListener('change', updateZwaveClientsManagerVisibility);
+    }
     const areaSelect = document.getElementById('device-area');
     const controlledAreaSelect = document.getElementById('device-controlled-area');
     if (areaSelect) {
@@ -1984,6 +2022,8 @@ function loadDeviceData(device) {
         wifiBandSelect.value = normalizeWifiBand(device.wifiBand || '');
     }
     setWifiAccessPointSelection(device.wifiAccessPointId || '');
+    setZigbeeParentSelection(device.zigbeeParentId || '');
+    setZwaveCoordinatorSelection(device.zwaveControllerId || '');
     document.getElementById('device-area').value = device.area || '';
     const controlledAreaInput = document.getElementById('device-controlled-area');
     if (controlledAreaInput) {
@@ -2003,6 +2043,13 @@ function loadDeviceData(device) {
     document.getElementById('device-apple-home-kit').checked = device.appleHomeKit || false;
     document.getElementById('device-samsung-smartthings').checked = device.samsungSmartThings || false;
     document.getElementById('device-local-only').checked = device.localOnly || false;
+    if (editingDeviceId) {
+        setZigbeeChildrenFromParentDevice(device.id);
+        setZwaveChildrenFromControllerDevice(device.id);
+    } else {
+        setSelectedZigbeeChildIds([]);
+        setSelectedZwaveChildIds([]);
+    }
     deviceFiles = normalizeDeviceFiles(device.files);
     renderDeviceFiles();
     
@@ -2012,6 +2059,8 @@ function loadDeviceData(device) {
     handleBrandChange();
     handleStatusChange();
     updateWifiClientsManagerVisibility();
+    updateZigbeeClientsManagerVisibility();
+    updateZwaveClientsManagerVisibility();
     lastTypeValue = document.getElementById('device-type').value;
     lastBatteryTypeValue = document.getElementById('device-battery-type').value;
     lastConnectivityValue = document.getElementById('device-connectivity').value;
@@ -2038,6 +2087,8 @@ async function handleDeviceSubmit(e) {
     }
     connectivity = normalizeOptionValue(connectivity);
     const isWifi = connectivity === 'wifi';
+    const isZigbee = isZigbeeConnectivity(connectivity);
+    const isZwave = isZwaveConnectivity(connectivity);
     const isEthernet = connectivity === 'ethernet';
     const showNetworkFields = isWifi || isEthernet;
     const showExtendedNetworkFields = isWifi;
@@ -2065,6 +2116,30 @@ async function handleDeviceSubmit(e) {
             return;
         }
     }
+    const zigbeeParentInput = document.getElementById('device-zigbee-parent');
+    const zigbeeParentValue = isZigbee
+        ? String(zigbeeParentInput?.dataset?.deviceId || '').trim()
+        : '';
+    if (isZigbee && zigbeeParentInput) {
+        const hasTypedValue = zigbeeParentInput.value.trim() !== '';
+        if (hasTypedValue && !zigbeeParentValue) {
+            zigbeeParentInput.classList.add('port-search-invalid');
+            showAlert('Please select a valid Zigbee router or coordinator from the results list.');
+            return;
+        }
+    }
+    const zwaveCoordinatorInput = document.getElementById('device-zwave-coordinator');
+    const zwaveCoordinatorValue = isZwave
+        ? String(zwaveCoordinatorInput?.dataset?.deviceId || '').trim()
+        : '';
+    if (isZwave && zwaveCoordinatorInput) {
+        const hasTypedValue = zwaveCoordinatorInput.value.trim() !== '';
+        if (hasTypedValue && !zwaveCoordinatorValue) {
+            zwaveCoordinatorInput.classList.add('port-search-invalid');
+            showAlert('Please select a valid Z-Wave coordinator from the results list.');
+            return;
+        }
+    }
     const brandSelect = document.getElementById('device-brand');
     let brandValue = brandSelect.value;
     if (brandValue === '__new__') {
@@ -2080,6 +2155,15 @@ async function handleDeviceSubmit(e) {
     typeValue = normalizeOptionValue(typeValue);
     const wifiLinkedDeviceIds = isRouterOrAccessPointType(typeValue)
         ? getSelectedWifiClientIds()
+        : [];
+    const zigbeeControllerChecked = document.getElementById('device-zigbee-controller').checked;
+    const zigbeeRepeaterChecked = document.getElementById('device-zigbee-repeater').checked;
+    const zwaveControllerChecked = document.getElementById('device-zwave-controller').checked;
+    const zigbeeLinkedDeviceIds = isZigbee && (zigbeeControllerChecked || zigbeeRepeaterChecked)
+        ? getSelectedZigbeeChildIds()
+        : [];
+    const zwaveLinkedDeviceIds = isZwave && zwaveControllerChecked
+        ? getSelectedZwaveChildIds()
         : [];
     let batteryTypeValue = document.getElementById('device-battery-type').value;
     if (batteryTypeValue === '__new__') {
@@ -2159,13 +2243,17 @@ async function handleDeviceSubmit(e) {
         wifiBand: wifiBandValue,
         wifiAccessPointId: wifiAccessPointValue,
         wifiLinkedDeviceIds: wifiLinkedDeviceIds,
+        zigbeeParentId: zigbeeParentValue,
+        zigbeeLinkedDeviceIds: zigbeeLinkedDeviceIds,
+        zwaveControllerId: zwaveCoordinatorValue,
+        zwaveLinkedDeviceIds: zwaveLinkedDeviceIds,
         area: isPendingStatus ? '' : document.getElementById('device-area').value,
         controlledArea: isPendingStatus ? '' : (document.getElementById('device-controlled-area')?.value || ''),
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
         matterHub: document.getElementById('device-matter-hub').checked,
-        zigbeeController: document.getElementById('device-zigbee-controller').checked,
-        zigbeeRepeater: document.getElementById('device-zigbee-repeater').checked,
-        zwaveController: document.getElementById('device-zwave-controller').checked,
+        zigbeeController: zigbeeControllerChecked,
+        zigbeeRepeater: zigbeeRepeaterChecked,
+        zwaveController: zwaveControllerChecked,
         googleHome: document.getElementById('device-google-home').checked,
         alexa: document.getElementById('device-alexa').checked,
         appleHomeKit: document.getElementById('device-apple-home-kit').checked,
@@ -2839,10 +2927,16 @@ function handleConnectivityChange() {
     const networkGroup = document.getElementById('network-group');
     const wifiDetailsRow = document.getElementById('wifi-details-row');
     const wifiAccessPointGroup = document.getElementById('wifi-access-point-group');
+    const zigbeeParentGroup = document.getElementById('zigbee-parent-group');
+    const zwaveCoordinatorGroup = document.getElementById('zwave-coordinator-group');
     const isWifi = normalizedConnectivity === 'wifi';
+    const isZigbee = isZigbeeConnectivity(normalizedConnectivity);
+    const isZwave = isZwaveConnectivity(normalizedConnectivity);
+    const isZigbeeCoordinator = isZigbee && Boolean(document.getElementById('device-zigbee-controller')?.checked);
     const isEthernet = normalizedConnectivity === 'ethernet';
     const showNetworkFields = isWifi || isEthernet;
     const showWifiSpecificFields = isWifi;
+    const showZigbeeParentField = isZigbee && !isZigbeeCoordinator;
 
     ipGroup.classList.toggle('is-hidden', !showNetworkFields);
     macGroup.classList.toggle('is-hidden', !showNetworkFields);
@@ -2854,6 +2948,12 @@ function handleConnectivityChange() {
     }
     if (wifiAccessPointGroup) {
         wifiAccessPointGroup.classList.toggle('is-hidden', !showWifiSpecificFields);
+    }
+    if (zigbeeParentGroup) {
+        zigbeeParentGroup.classList.toggle('is-hidden', !showZigbeeParentField);
+    }
+    if (zwaveCoordinatorGroup) {
+        zwaveCoordinatorGroup.classList.toggle('is-hidden', !isZwave);
     }
 
     if (!showNetworkFields) {
@@ -2880,6 +2980,17 @@ function handleConnectivityChange() {
         }
         clearWifiAccessPointSelection();
     }
+
+    if (!showZigbeeParentField) {
+        clearZigbeeParentSelection();
+    }
+
+    if (!isZwave) {
+        clearZwaveCoordinatorSelection();
+    }
+
+    updateZigbeeClientsManagerVisibility();
+    updateZwaveClientsManagerVisibility();
 }
 
 function clearWifiAccessPointSelection() {
@@ -3182,6 +3293,449 @@ function setupWifiClientsManager() {
         if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
             resultsDiv.classList.add('is-hidden');
         }
+    });
+}
+
+function getProtocolChildState(protocol) {
+    if (protocol === 'zigbee') return selectedZigbeeChildIds;
+    if (protocol === 'zwave') return selectedZwaveChildIds;
+    return selectedWifiClientIds;
+}
+
+function setProtocolChildState(protocol, nextState) {
+    if (protocol === 'zigbee') {
+        selectedZigbeeChildIds = nextState;
+        return;
+    }
+    if (protocol === 'zwave') {
+        selectedZwaveChildIds = nextState;
+        return;
+    }
+    selectedWifiClientIds = nextState;
+}
+
+function buildLinkedDeviceMarkup(deviceId, removeAttrName) {
+    const device = devices.find((item) => String(item.id || '') === deviceId);
+    if (!device) return '';
+    const name = escapeHtml(device.name || device.model || 'Unnamed Device');
+    const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+    const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+    const meta = [brand, type].filter(Boolean).join(' • ');
+    return `
+        <div class="protocol-linked-device-item" data-device-id="${deviceId}">
+            <div class="protocol-linked-device-meta">
+                <div class="protocol-linked-device-name">${name}</div>
+                ${meta ? `<div class="protocol-linked-device-details">${meta}</div>` : ''}
+            </div>
+            <button type="button" class="btn btn-danger btn-sm" ${removeAttrName}="${deviceId}">Unlink</button>
+        </div>
+    `;
+}
+
+function renderProtocolLinkedDevices(options) {
+    const { protocol, listId, emptyId, getIds, removeAttrName } = options;
+    const list = document.getElementById(listId);
+    const empty = document.getElementById(emptyId);
+    if (!list || !empty) return;
+
+    const selectedIds = getIds();
+    setProtocolChildState(protocol, new Set(selectedIds));
+
+    if (!selectedIds.length) {
+        list.innerHTML = '';
+        empty.classList.remove('is-hidden');
+        return;
+    }
+
+    empty.classList.add('is-hidden');
+    list.innerHTML = selectedIds.map((deviceId) => buildLinkedDeviceMarkup(deviceId, removeAttrName)).join('');
+    list.querySelectorAll(`[${removeAttrName}]`).forEach((button) => {
+        button.addEventListener('click', () => {
+            const targetId = String(button.getAttribute(removeAttrName) || '').trim();
+            if (!targetId) return;
+            const next = getProtocolChildState(protocol);
+            next.delete(targetId);
+            renderProtocolLinkedDevices(options);
+        });
+    });
+}
+
+function setupProtocolClientsManager(options) {
+    const { protocol, searchInputId, resultsId, noResultsText, isChildDevice, renderSelected } = options;
+    const searchInput = document.getElementById(searchInputId);
+    const resultsDiv = document.getElementById(resultsId);
+    if (!searchInput || !resultsDiv) return;
+
+    renderSelected();
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+        if (!query) {
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        const selectedIds = getProtocolChildState(protocol);
+        const currentDeviceId = getCurrentFormDeviceId();
+        const filteredDevices = devices
+            .filter((device) => String(device.id || '') !== currentDeviceId)
+            .filter((device) => !selectedIds.has(String(device.id || '')))
+            .filter((device) => isChildDevice(device))
+            .filter((device) => {
+                const name = (device.name || device.model || '').toLowerCase();
+                const brand = (device.brand || '').toLowerCase();
+                const type = (device.type || '').toLowerCase();
+                return name.includes(query) || brand.includes(query) || type.includes(query);
+            })
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .slice(0, 10);
+
+        if (!filteredDevices.length) {
+            resultsDiv.innerHTML = `<div class="port-search-result-item no-results">${noResultsText}</div>`;
+            resultsDiv.classList.remove('is-hidden');
+            return;
+        }
+
+        resultsDiv.innerHTML = filteredDevices.map((device) => {
+            const rawName = device.name || device.model || 'Unnamed Device';
+            const displayName = escapeHtml(rawName);
+            const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+            const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+            const meta = [brand, type].filter(Boolean).join(' • ');
+            return `
+                <div class="port-search-result-item" data-protocol-client-id="${device.id}">
+                    <div class="port-search-result-name">${displayName}</div>
+                    ${meta ? `<div class="port-search-result-meta">${meta}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        resultsDiv.classList.remove('is-hidden');
+        resultsDiv.querySelectorAll('[data-protocol-client-id]').forEach((item) => {
+            item.addEventListener('click', () => {
+                const clientId = String(item.getAttribute('data-protocol-client-id') || '').trim();
+                if (!clientId) return;
+                getProtocolChildState(protocol).add(clientId);
+                searchInput.value = '';
+                resultsDiv.innerHTML = '';
+                resultsDiv.classList.add('is-hidden');
+                renderSelected();
+            });
+        });
+    });
+
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            this.value = '';
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+        }, 200);
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+            resultsDiv.classList.add('is-hidden');
+        }
+    });
+}
+
+function clearProtocolParentSelection(inputId, resultsId) {
+    const input = document.getElementById(inputId);
+    const results = document.getElementById(resultsId);
+    if (!input) return;
+    input.value = '';
+    input.dataset.deviceId = '';
+    input.classList.remove('port-search-valid', 'port-search-invalid');
+    if (results) {
+        results.classList.add('is-hidden');
+        results.innerHTML = '';
+    }
+}
+
+function setProtocolParentSelection(deviceId, inputId, resultsId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) {
+        clearProtocolParentSelection(inputId, resultsId);
+        return;
+    }
+    const target = devices.find((device) => String(device.id || '') === normalizedId);
+    if (!target) {
+        clearProtocolParentSelection(inputId, resultsId);
+        return;
+    }
+    input.value = target.name || target.model || 'Unnamed Device';
+    input.dataset.deviceId = normalizedId;
+    input.classList.add('port-search-valid');
+    input.classList.remove('port-search-invalid');
+}
+
+function setupProtocolParentSearch(options) {
+    const { inputId, resultsId, noResultsText, isParentDevice } = options;
+    const searchInput = document.getElementById(inputId);
+    const resultsDiv = document.getElementById(resultsId);
+    if (!searchInput || !resultsDiv) return;
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim().toLowerCase();
+
+        if (this.dataset.deviceId) {
+            const currentDevice = devices.find((device) => device.id === this.dataset.deviceId);
+            const currentName = currentDevice ? (currentDevice.name || currentDevice.model || 'Unnamed Device') : '';
+            if (this.value !== currentName) {
+                this.dataset.deviceId = '';
+                this.classList.remove('port-search-valid');
+            }
+        }
+
+        if (!query) {
+            resultsDiv.classList.add('is-hidden');
+            resultsDiv.innerHTML = '';
+            this.dataset.deviceId = '';
+            this.classList.remove('port-search-valid', 'port-search-invalid');
+            return;
+        }
+
+        const currentDeviceId = getCurrentFormDeviceId();
+        const filteredDevices = devices
+            .filter((device) => String(device.id || '') !== currentDeviceId)
+            .filter((device) => isParentDevice(device))
+            .filter((device) => {
+                const name = (device.name || device.model || '').toLowerCase();
+                const brand = (device.brand || '').toLowerCase();
+                const type = (device.type || '').toLowerCase();
+                return name.includes(query) || brand.includes(query) || type.includes(query);
+            })
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .slice(0, 10);
+
+        if (!filteredDevices.length) {
+            resultsDiv.innerHTML = `<div class="port-search-result-item no-results">${noResultsText}</div>`;
+            resultsDiv.classList.remove('is-hidden');
+            return;
+        }
+
+        resultsDiv.innerHTML = filteredDevices
+            .map((device) => {
+                const rawName = device.name || device.model || 'Unnamed Device';
+                const displayName = escapeHtml(rawName);
+                const brand = device.brand ? escapeHtml(getFriendlyOption(settings.brands, device.brand)) : '';
+                const type = device.type ? escapeHtml(getFriendlyOption(settings.types, device.type, formatDeviceType)) : '';
+                const meta = [brand, type].filter(Boolean).join(' • ');
+                return `
+                    <div class="port-search-result-item" data-device-id="${device.id}" data-device-name="${escapeHtml(rawName)}">
+                        <div class="port-search-result-name">${displayName}</div>
+                        ${meta ? `<div class="port-search-result-meta">${meta}</div>` : ''}
+                    </div>
+                `;
+            })
+            .join('');
+
+        resultsDiv.classList.remove('is-hidden');
+
+        resultsDiv.querySelectorAll('.port-search-result-item[data-device-id]').forEach((item) => {
+            item.addEventListener('click', function() {
+                searchInput.value = this.dataset.deviceName;
+                searchInput.dataset.deviceId = this.dataset.deviceId;
+                searchInput.classList.add('port-search-valid');
+                searchInput.classList.remove('port-search-invalid');
+                resultsDiv.classList.add('is-hidden');
+                resultsDiv.innerHTML = '';
+            });
+        });
+    });
+
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (this.value.trim() && !this.dataset.deviceId) {
+                this.classList.add('port-search-invalid');
+                return;
+            }
+            this.classList.remove('port-search-invalid');
+        }, 200);
+    });
+
+    document.addEventListener('click', function(event) {
+        if (!searchInput.contains(event.target) && !resultsDiv.contains(event.target)) {
+            resultsDiv.classList.add('is-hidden');
+        }
+    });
+}
+
+function getSelectedZigbeeChildIds() {
+    const currentDeviceId = getCurrentFormDeviceId();
+    const result = [];
+    selectedZigbeeChildIds.forEach((rawId) => {
+        const childId = String(rawId || '').trim();
+        if (!childId || childId === currentDeviceId) return;
+        const targetDevice = devices.find((device) => String(device.id || '') === childId);
+        if (!targetDevice || !isZigbeeConnectivity(targetDevice.connectivity)) return;
+        result.push(childId);
+    });
+    return result;
+}
+
+function setSelectedZigbeeChildIds(ids) {
+    const normalized = new Set();
+    (Array.isArray(ids) ? ids : []).forEach((rawId) => {
+        const childId = String(rawId || '').trim();
+        if (childId) {
+            normalized.add(childId);
+        }
+    });
+    selectedZigbeeChildIds = normalized;
+    renderSelectedZigbeeClients();
+}
+
+function setZigbeeChildrenFromParentDevice(parentId) {
+    const normalizedParentId = String(parentId || '').trim();
+    if (!normalizedParentId) {
+        setSelectedZigbeeChildIds([]);
+        return;
+    }
+    const linkedChildren = devices
+        .filter((device) => String(device.id || '') !== normalizedParentId)
+        .filter((device) => isZigbeeConnectivity(device.connectivity))
+        .filter((device) => String(device.zigbeeParentId || '').trim() === normalizedParentId)
+        .map((device) => String(device.id || '').trim())
+        .filter(Boolean);
+    setSelectedZigbeeChildIds(linkedChildren);
+}
+
+function updateZigbeeClientsManagerVisibility() {
+    const group = document.getElementById('zigbee-linked-devices-group');
+    if (!group) return;
+    const shouldShow = (
+        document.getElementById('device-zigbee-controller')?.checked ||
+        document.getElementById('device-zigbee-repeater')?.checked
+    );
+    group.classList.toggle('is-hidden', !shouldShow);
+    renderSelectedZigbeeClients();
+}
+
+function renderSelectedZigbeeClients() {
+    renderProtocolLinkedDevices({
+        protocol: 'zigbee',
+        listId: 'zigbee-linked-devices-list',
+        emptyId: 'zigbee-linked-devices-empty',
+        getIds: getSelectedZigbeeChildIds,
+        removeAttrName: 'data-zigbee-client-remove'
+    });
+}
+
+function setupZigbeeClientsManager() {
+    setupProtocolClientsManager({
+        protocol: 'zigbee',
+        searchInputId: 'device-zigbee-client-search',
+        resultsId: 'device-zigbee-client-results',
+        noResultsText: 'No Zigbee devices found',
+        isChildDevice: (device) => isZigbeeConnectivity(device.connectivity),
+        renderSelected: renderSelectedZigbeeClients
+    });
+}
+
+function clearZigbeeParentSelection() {
+    clearProtocolParentSelection('device-zigbee-parent', 'device-zigbee-parent-results');
+}
+
+function setZigbeeParentSelection(deviceId) {
+    setProtocolParentSelection(deviceId, 'device-zigbee-parent', 'device-zigbee-parent-results');
+}
+
+function setupZigbeeParentSearch() {
+    setupProtocolParentSearch({
+        inputId: 'device-zigbee-parent',
+        resultsId: 'device-zigbee-parent-results',
+        noResultsText: 'No Zigbee routers or coordinators found',
+        isParentDevice: isZigbeeParentDevice
+    });
+}
+
+function getSelectedZwaveChildIds() {
+    const currentDeviceId = getCurrentFormDeviceId();
+    const result = [];
+    selectedZwaveChildIds.forEach((rawId) => {
+        const childId = String(rawId || '').trim();
+        if (!childId || childId === currentDeviceId) return;
+        const targetDevice = devices.find((device) => String(device.id || '') === childId);
+        if (!targetDevice || !isZwaveConnectivity(targetDevice.connectivity)) return;
+        result.push(childId);
+    });
+    return result;
+}
+
+function setSelectedZwaveChildIds(ids) {
+    const normalized = new Set();
+    (Array.isArray(ids) ? ids : []).forEach((rawId) => {
+        const childId = String(rawId || '').trim();
+        if (childId) {
+            normalized.add(childId);
+        }
+    });
+    selectedZwaveChildIds = normalized;
+    renderSelectedZwaveClients();
+}
+
+function setZwaveChildrenFromControllerDevice(controllerId) {
+    const normalizedControllerId = String(controllerId || '').trim();
+    if (!normalizedControllerId) {
+        setSelectedZwaveChildIds([]);
+        return;
+    }
+    const linkedChildren = devices
+        .filter((device) => String(device.id || '') !== normalizedControllerId)
+        .filter((device) => isZwaveConnectivity(device.connectivity))
+        .filter((device) => String(device.zwaveControllerId || '').trim() === normalizedControllerId)
+        .map((device) => String(device.id || '').trim())
+        .filter(Boolean);
+    setSelectedZwaveChildIds(linkedChildren);
+}
+
+function updateZwaveClientsManagerVisibility() {
+    const group = document.getElementById('zwave-linked-devices-group');
+    if (!group) return;
+    const shouldShow = Boolean(document.getElementById('device-zwave-controller')?.checked);
+    group.classList.toggle('is-hidden', !shouldShow);
+    renderSelectedZwaveClients();
+}
+
+function renderSelectedZwaveClients() {
+    renderProtocolLinkedDevices({
+        protocol: 'zwave',
+        listId: 'zwave-linked-devices-list',
+        emptyId: 'zwave-linked-devices-empty',
+        getIds: getSelectedZwaveChildIds,
+        removeAttrName: 'data-zwave-client-remove'
+    });
+}
+
+function setupZwaveClientsManager() {
+    setupProtocolClientsManager({
+        protocol: 'zwave',
+        searchInputId: 'device-zwave-client-search',
+        resultsId: 'device-zwave-client-results',
+        noResultsText: 'No Z-Wave devices found',
+        isChildDevice: (device) => isZwaveConnectivity(device.connectivity),
+        renderSelected: renderSelectedZwaveClients
+    });
+}
+
+function clearZwaveCoordinatorSelection() {
+    clearProtocolParentSelection('device-zwave-coordinator', 'device-zwave-coordinator-results');
+}
+
+function setZwaveCoordinatorSelection(deviceId) {
+    setProtocolParentSelection(deviceId, 'device-zwave-coordinator', 'device-zwave-coordinator-results');
+}
+
+function setupZwaveCoordinatorSearch() {
+    setupProtocolParentSearch({
+        inputId: 'device-zwave-coordinator',
+        resultsId: 'device-zwave-coordinator-results',
+        noResultsText: 'No Z-Wave coordinators found',
+        isParentDevice: isZwaveParentDevice
     });
 }
 
@@ -3761,6 +4315,90 @@ async function syncWifiClientsForAccessPoint(currentDeviceId, linkedClientIds) {
     devices = storedDevices;
 }
 
+async function syncZigbeeChildrenForParent(currentDeviceId, linkedChildIds) {
+    const normalizedCurrentDeviceId = String(currentDeviceId || '').trim();
+    if (!normalizedCurrentDeviceId) return;
+
+    const allData = await loadData();
+    const storedDevices = Array.isArray(allData.devices) ? allData.devices : [];
+    const currentDevice = storedDevices.find((device) => String(device.id || '') === normalizedCurrentDeviceId);
+    const currentDeviceIsParent = Boolean(currentDevice && isZigbeeParentDevice(currentDevice));
+    const desiredLinkedChildren = new Set(
+        (Array.isArray(linkedChildIds) ? linkedChildIds : [])
+            .map((id) => String(id || '').trim())
+            .filter((id) => id && id !== normalizedCurrentDeviceId)
+    );
+
+    storedDevices.forEach((device) => {
+        const deviceId = String(device.id || '').trim();
+        if (!deviceId || deviceId === normalizedCurrentDeviceId) return;
+
+        const linkedToCurrentDevice = String(device.zigbeeParentId || '').trim() === normalizedCurrentDeviceId;
+        if (!currentDeviceIsParent) {
+            if (linkedToCurrentDevice) {
+                device.zigbeeParentId = '';
+            }
+            return;
+        }
+
+        const isZigbeeChild = isZigbeeConnectivity(device.connectivity);
+        if (desiredLinkedChildren.has(deviceId) && isZigbeeChild) {
+            device.zigbeeParentId = normalizedCurrentDeviceId;
+            return;
+        }
+        if (linkedToCurrentDevice) {
+            device.zigbeeParentId = '';
+        }
+    });
+
+    allData.devices = storedDevices;
+    await saveData(allData);
+    allDevices = storedDevices;
+    devices = storedDevices;
+}
+
+async function syncZwaveChildrenForController(currentDeviceId, linkedChildIds) {
+    const normalizedCurrentDeviceId = String(currentDeviceId || '').trim();
+    if (!normalizedCurrentDeviceId) return;
+
+    const allData = await loadData();
+    const storedDevices = Array.isArray(allData.devices) ? allData.devices : [];
+    const currentDevice = storedDevices.find((device) => String(device.id || '') === normalizedCurrentDeviceId);
+    const currentDeviceIsController = Boolean(currentDevice && isZwaveParentDevice(currentDevice));
+    const desiredLinkedChildren = new Set(
+        (Array.isArray(linkedChildIds) ? linkedChildIds : [])
+            .map((id) => String(id || '').trim())
+            .filter((id) => id && id !== normalizedCurrentDeviceId)
+    );
+
+    storedDevices.forEach((device) => {
+        const deviceId = String(device.id || '').trim();
+        if (!deviceId || deviceId === normalizedCurrentDeviceId) return;
+
+        const linkedToCurrentDevice = String(device.zwaveControllerId || '').trim() === normalizedCurrentDeviceId;
+        if (!currentDeviceIsController) {
+            if (linkedToCurrentDevice) {
+                device.zwaveControllerId = '';
+            }
+            return;
+        }
+
+        const isZwaveChild = isZwaveConnectivity(device.connectivity);
+        if (desiredLinkedChildren.has(deviceId) && isZwaveChild) {
+            device.zwaveControllerId = normalizedCurrentDeviceId;
+            return;
+        }
+        if (linkedToCurrentDevice) {
+            device.zwaveControllerId = '';
+        }
+    });
+
+    allData.devices = storedDevices;
+    await saveData(allData);
+    allDevices = storedDevices;
+    devices = storedDevices;
+}
+
 // Make removePort available globally
 window.removePort = removePort;
 
@@ -3820,12 +4458,15 @@ async function createDevice(deviceData) {
         wifiUploadSpeed: Number.isFinite(deviceData.wifiUploadSpeed) ? deviceData.wifiUploadSpeed : null,
         wifiBand: normalizeWifiBand(deviceData.wifiBand),
         wifiAccessPointId: deviceData.wifiAccessPointId || '',
+        zigbeeParentId: deviceData.zigbeeParentId || '',
+        zwaveControllerId: deviceData.zwaveControllerId || '',
         area: deviceData.area,
         controlledArea: deviceData.controlledArea || '',
         threadBorderRouter: deviceData.threadBorderRouter || false,
         matterHub: deviceData.matterHub || false,
         zigbeeController: deviceData.zigbeeController || false,
         zigbeeRepeater: deviceData.zigbeeRepeater || false,
+        zwaveController: deviceData.zwaveController || false,
         homeAssistant: false,
         googleHome: deviceData.googleHome || false,
         alexa: deviceData.alexa || false,
@@ -3847,6 +4488,8 @@ async function createDevice(deviceData) {
     // Sync ports bidirectionally
     await syncDevicePorts(device.id, device.ports);
     await syncWifiClientsForAccessPoint(device.id, deviceData.wifiLinkedDeviceIds || []);
+    await syncZigbeeChildrenForParent(device.id, deviceData.zigbeeLinkedDeviceIds || []);
+    await syncZwaveChildrenForController(device.id, deviceData.zwaveLinkedDeviceIds || []);
     
     window.location.href = 'devices.html';
 }
@@ -3904,12 +4547,15 @@ async function updateDevice(id, deviceData, options = {}) {
         device.wifiUploadSpeed = Number.isFinite(deviceData.wifiUploadSpeed) ? deviceData.wifiUploadSpeed : null;
         device.wifiBand = normalizeWifiBand(deviceData.wifiBand);
         device.wifiAccessPointId = deviceData.wifiAccessPointId || '';
+        device.zigbeeParentId = deviceData.zigbeeParentId || '';
+        device.zwaveControllerId = deviceData.zwaveControllerId || '';
         device.area = deviceData.area;
         device.controlledArea = deviceData.controlledArea || '';
         device.threadBorderRouter = deviceData.threadBorderRouter || false;
         device.matterHub = deviceData.matterHub || false;
         device.zigbeeController = deviceData.zigbeeController || false;
         device.zigbeeRepeater = deviceData.zigbeeRepeater || false;
+        device.zwaveController = deviceData.zwaveController || false;
         device.googleHome = deviceData.googleHome || false;
         device.alexa = deviceData.alexa || false;
         device.appleHomeKit = deviceData.appleHomeKit || false;
@@ -3928,6 +4574,8 @@ async function updateDevice(id, deviceData, options = {}) {
         // Sync ports bidirectionally
         await syncDevicePorts(device.id, device.ports);
         await syncWifiClientsForAccessPoint(device.id, deviceData.wifiLinkedDeviceIds || []);
+        await syncZigbeeChildrenForParent(device.id, deviceData.zigbeeLinkedDeviceIds || []);
+        await syncZwaveChildrenForController(device.id, deviceData.zwaveLinkedDeviceIds || []);
         if (isHomeAssistantLinked(device.homeAssistant)) {
             const currentName = String(device.name || '').trim();
             const shouldSyncName = previousName !== currentName;
@@ -4014,6 +4662,12 @@ async function handleDeleteDevice() {
         }
         if (String(device.wifiAccessPointId || '').trim() === String(editingDeviceId || '').trim()) {
             device.wifiAccessPointId = '';
+        }
+        if (String(device.zigbeeParentId || '').trim() === String(editingDeviceId || '').trim()) {
+            device.zigbeeParentId = '';
+        }
+        if (String(device.zwaveControllerId || '').trim() === String(editingDeviceId || '').trim()) {
+            device.zwaveControllerId = '';
         }
     });
 

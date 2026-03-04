@@ -2270,13 +2270,15 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     color: var(--text-secondary);
 }
 
-.wifi-linked-devices-list {
+.wifi-linked-devices-list,
+.protocol-linked-devices-list {
     display: grid;
     gap: 0.5rem;
     margin-top: 0.35rem;
 }
 
-.wifi-linked-device-item {
+.wifi-linked-device-item,
+.protocol-linked-device-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2287,14 +2289,16 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     background: var(--bg-secondary);
 }
 
-.wifi-linked-device-meta {
+.wifi-linked-device-meta,
+.protocol-linked-device-meta {
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
 }
 
-.wifi-linked-device-name {
+.wifi-linked-device-name,
+.protocol-linked-device-name {
     font-size: 0.875rem;
     color: var(--text-color);
     font-weight: 500;
@@ -2303,7 +2307,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
-.wifi-linked-device-details {
+.wifi-linked-device-details,
+.protocol-linked-device-details {
     font-size: 0.75rem;
     color: var(--text-secondary);
     overflow: hidden;
@@ -2311,17 +2316,20 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     white-space: nowrap;
 }
 
-.wifi-linked-devices-empty {
+.wifi-linked-devices-empty,
+.protocol-linked-devices-empty {
     color: var(--text-secondary);
     font-size: 0.8125rem;
     margin-top: 0.45rem;
 }
 
-.wifi-linked-devices-empty.is-hidden {
+.wifi-linked-devices-empty.is-hidden,
+.protocol-linked-devices-empty.is-hidden {
     display: none;
 }
 
-.wifi-client-search-row {
+.wifi-client-search-row,
+.protocol-client-search-row {
     margin-top: 0.65rem;
 }
 

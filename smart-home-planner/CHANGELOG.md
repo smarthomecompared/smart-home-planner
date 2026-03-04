@@ -2,6 +2,8 @@
 
 ### Added
 - Support to assign a multiple links to each device
+- Support to link Z-Wave and Zigbee devices
+- Display Z-Wave and Zigbee connections on diagram
 
 ## 1.4.0 - 2026-02-27
 

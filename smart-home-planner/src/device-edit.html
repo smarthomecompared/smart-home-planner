@@ -425,9 +425,9 @@
                         <div class="form-row is-hidden" id="wifi-linked-devices-group">
                             <div class="form-group">
                                 <label for="device-wifi-client-search">Linked Wi-Fi Devices</label>
-                                <div id="wifi-linked-devices-list" class="wifi-linked-devices-list"></div>
-                                <div id="wifi-linked-devices-empty" class="wifi-linked-devices-empty">No Wi-Fi devices linked.</div>
-                                <div class="port-search-wrapper wifi-client-search-row">
+                                <div id="wifi-linked-devices-list" class="wifi-linked-devices-list protocol-linked-devices-list"></div>
+                                <div id="wifi-linked-devices-empty" class="wifi-linked-devices-empty protocol-linked-devices-empty">No Wi-Fi devices linked.</div>
+                                <div class="port-search-wrapper wifi-client-search-row protocol-client-search-row">
                                     <input
                                         type="text"
                                         id="device-wifi-client-search"
@@ -435,6 +435,66 @@
                                         placeholder="Link a Wi-Fi device..."
                                         autocomplete="off">
                                     <div id="device-wifi-client-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="zigbee-parent-group">
+                            <div class="form-group">
+                                <label for="device-zigbee-parent">Connected To (Zigbee Router / Coordinator)</label>
+                                <div class="port-search-wrapper">
+                                    <input
+                                        type="text"
+                                        id="device-zigbee-parent"
+                                        class="port-device-search"
+                                        placeholder="Search Zigbee router or coordinator..."
+                                        autocomplete="off">
+                                    <div id="device-zigbee-parent-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="zigbee-linked-devices-group">
+                            <div class="form-group">
+                                <label for="device-zigbee-client-search">Linked Zigbee Devices</label>
+                                <div id="zigbee-linked-devices-list" class="protocol-linked-devices-list"></div>
+                                <div id="zigbee-linked-devices-empty" class="protocol-linked-devices-empty">No Zigbee devices linked.</div>
+                                <div class="port-search-wrapper protocol-client-search-row">
+                                    <input
+                                        type="text"
+                                        id="device-zigbee-client-search"
+                                        class="port-device-search"
+                                        placeholder="Link a Zigbee device..."
+                                        autocomplete="off">
+                                    <div id="device-zigbee-client-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="zwave-coordinator-group">
+                            <div class="form-group">
+                                <label for="device-zwave-coordinator">Connected To (Z-Wave Coordinator)</label>
+                                <div class="port-search-wrapper">
+                                    <input
+                                        type="text"
+                                        id="device-zwave-coordinator"
+                                        class="port-device-search"
+                                        placeholder="Search Z-Wave coordinator..."
+                                        autocomplete="off">
+                                    <div id="device-zwave-coordinator-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="zwave-linked-devices-group">
+                            <div class="form-group">
+                                <label for="device-zwave-client-search">Linked Z-Wave Devices</label>
+                                <div id="zwave-linked-devices-list" class="protocol-linked-devices-list"></div>
+                                <div id="zwave-linked-devices-empty" class="protocol-linked-devices-empty">No Z-Wave devices linked.</div>
+                                <div class="port-search-wrapper protocol-client-search-row">
+                                    <input
+                                        type="text"
+                                        id="device-zwave-client-search"
+                                        class="port-device-search"
+                                        placeholder="Link a Z-Wave device..."
+                                        autocomplete="off">
+                                    <div id="device-zwave-client-results" class="port-search-results is-hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -503,9 +563,9 @@
                                 <div class="form-label-row form-label-row-compact">
                                     <label class="checkbox-label">
                                         <input type="checkbox" id="device-zwave-controller">
-                                        <span>Z-Wave Controller</span>
+                                        <span>Z-Wave Coordinator</span>
                                     </label>
-                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="zwave-controller-help-btn" aria-label="Z-Wave Controller guidance" title="More Info">
+                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="zwave-controller-help-btn" aria-label="Z-Wave Coordinator guidance" title="More Info">
                                         <svg viewBox="0 0 24 24" aria-hidden="true">
                                             <circle cx="12" cy="12" r="9"></circle>
                                             <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
@@ -945,7 +1005,7 @@
         <div class="modal-overlay" id="zwave-controller-help-overlay"></div>
         <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="zwave-controller-help-title">
             <div class="modal-header">
-                <div class="modal-title" id="zwave-controller-help-title">Z-Wave Controller</div>
+                <div class="modal-title" id="zwave-controller-help-title">Z-Wave Coordinator</div>
                 <button class="btn btn-secondary btn-sm btn-icon" type="button" id="zwave-controller-help-close">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6 6l12 12"></path>
@@ -954,7 +1014,7 @@
                 </button>
             </div>
             <div class="help-modal-body">
-                <p>A Z-Wave controller is the central device that creates and manages a Z-Wave network. It includes devices, routes commands through the mesh, and enforces network security so your hub or app can reliably control Z-Wave devices.</p>
+                <p>A Z-Wave coordinator is the central device that creates and manages a Z-Wave network. It includes devices, routes commands through the mesh, and enforces network security so your hub or app can reliably control Z-Wave devices.</p>
             </div>
         </div>
     </div>

@@ -1349,6 +1349,14 @@ window.DeviceDiagram = (() => {
     if (wifiToggle) {
         wifiToggle.addEventListener('change', renderNetwork);
     }
+    const zigbeeToggle = document.getElementById('show-zigbee-connections');
+    if (zigbeeToggle) {
+        zigbeeToggle.addEventListener('change', renderNetwork);
+    }
+    const zwaveToggle = document.getElementById('show-zwave-connections');
+    if (zwaveToggle) {
+        zwaveToggle.addEventListener('change', renderNetwork);
+    }
     const powerLabelMode = document.getElementById('power-label-mode');
     if (powerLabelMode) {
         powerLabelMode.addEventListener('change', renderNetwork);
@@ -1957,6 +1965,46 @@ function initializeCytoscape() {
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
                 }
+            },
+            {
+                selector: 'edge[connectionType="zigbee"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#facc15',
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [7, 5],
+                    'target-arrow-shape': 'none',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
+            },
+            {
+                selector: 'edge[connectionType="zwave"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#22c55e',
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [7, 5],
+                    'target-arrow-shape': 'none',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f8fafc',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
+                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
             }
         ],
         
@@ -2210,10 +2258,14 @@ async function renderNetwork() {
     const usbToggle = document.getElementById('show-usb-connections');
     const powerToggle = document.getElementById('show-power-connections');
     const wifiToggle = document.getElementById('show-wifi-connections');
+    const zigbeeToggle = document.getElementById('show-zigbee-connections');
+    const zwaveToggle = document.getElementById('show-zwave-connections');
     const showEthernet = ethernetToggle ? ethernetToggle.checked : true;
     const showUsb = usbToggle ? usbToggle.checked : true;
     const showPower = powerToggle ? powerToggle.checked : true;
     const showWifi = wifiToggle ? wifiToggle.checked : false;
+    const showZigbee = zigbeeToggle ? zigbeeToggle.checked : false;
+    const showZwave = zwaveToggle ? zwaveToggle.checked : false;
     
     const sourceDevices = Array.isArray(filteredDevices)
         ? filteredDevices
@@ -2603,6 +2655,60 @@ async function renderNetwork() {
             });
         });
     }
+
+    if (showZigbee) {
+        const processedZigbeeConnections = new Set();
+        filteredDevicesList.forEach((device) => {
+            const zigbeeParentId = String(device.zigbeeParentId || '').trim();
+            if (!zigbeeParentId || zigbeeParentId === String(device.id || '')) return;
+            if (!isZigbeeConnectionDevice(device)) return;
+
+            const zigbeeParent = filteredDevicesList.find((item) => item.id === zigbeeParentId);
+            if (!isZigbeeParentDiagramDevice(zigbeeParent)) return;
+
+            const connectionId = [String(device.id || ''), zigbeeParentId].sort().join('-zigbee-');
+            if (processedZigbeeConnections.has(connectionId)) return;
+            processedZigbeeConnections.add(connectionId);
+
+            elements.push({
+                group: 'edges',
+                data: {
+                    id: `zigbee-${connectionId}`,
+                    source: String(device.id || ''),
+                    target: zigbeeParentId,
+                    connectionType: 'zigbee',
+                    label: ''
+                }
+            });
+        });
+    }
+
+    if (showZwave) {
+        const processedZwaveConnections = new Set();
+        filteredDevicesList.forEach((device) => {
+            const zwaveControllerId = String(device.zwaveControllerId || '').trim();
+            if (!zwaveControllerId || zwaveControllerId === String(device.id || '')) return;
+            if (!isZwaveConnectionDevice(device)) return;
+
+            const zwaveCoordinator = filteredDevicesList.find((item) => item.id === zwaveControllerId);
+            if (!isZwaveParentDiagramDevice(zwaveCoordinator)) return;
+
+            const connectionId = [String(device.id || ''), zwaveControllerId].sort().join('-zwave-');
+            if (processedZwaveConnections.has(connectionId)) return;
+            processedZwaveConnections.add(connectionId);
+
+            elements.push({
+                group: 'edges',
+                data: {
+                    id: `zwave-${connectionId}`,
+                    source: String(device.id || ''),
+                    target: zwaveControllerId,
+                    connectionType: 'zwave',
+                    label: ''
+                }
+            });
+        });
+    }
     
     // Update cytoscape
     hideEmptyMapMessage();
@@ -2704,6 +2810,36 @@ function isWifiConnectionDevice(device) {
         ? normalizeOptionValue(rawConnectivity)
         : String(rawConnectivity || '').trim().toLowerCase();
     return normalized === 'wifi';
+}
+
+function isZigbeeConnectionDevice(device) {
+    if (!device || typeof device !== 'object') {
+        return false;
+    }
+    const rawConnectivity = device.connectivity;
+    const normalized = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(rawConnectivity)
+        : String(rawConnectivity || '').trim().toLowerCase();
+    return normalized === 'zigbee';
+}
+
+function isZwaveConnectionDevice(device) {
+    if (!device || typeof device !== 'object') {
+        return false;
+    }
+    const rawConnectivity = device.connectivity;
+    const normalized = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(rawConnectivity)
+        : String(rawConnectivity || '').trim().toLowerCase();
+    return normalized === 'z-wave' || normalized === 'zwave';
+}
+
+function isZigbeeParentDiagramDevice(device) {
+    return Boolean(device && isZigbeeConnectionDevice(device) && (device.zigbeeController || device.zigbeeRepeater));
+}
+
+function isZwaveParentDiagramDevice(device) {
+    return Boolean(device && isZwaveConnectionDevice(device) && device.zwaveController);
 }
 
 function formatWifiBandLabel(value) {
