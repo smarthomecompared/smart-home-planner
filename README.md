@@ -83,6 +83,13 @@ Document which VLAN each device uses so network assignments stay clear across th
 - Reddit: https://www.reddit.com/user/smarthomecompared
 - Stacker News: https://stacker.news/shcompared
 
+## Donations
+
+If Smart Home Planner saves you time, helps you stay organized, or keeps your setup running smoothly, consider supporting the project.
+Your donation helps maintain the app, ship new features, and keep everything free for the community.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/C0C7E7OEA)
+
 ## Other Products
 
 - Smart Home Compared: Comparing the best Smart Home devices: thermostats, cameras, doorbells, lights, sensors, sirens, air quality monitors, smoke & CO alarms and more. https://smarthomecompared.com/
