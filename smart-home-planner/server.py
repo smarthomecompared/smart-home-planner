@@ -39,7 +39,7 @@ MAX_DEBUG_FILE_BYTES = 1024 * 1024 * 2
 MAX_UPLOAD_FILE_BYTES = int(os.environ.get("SHP_MAX_UPLOAD_FILE_BYTES", str(20 * 1024 * 1024)))
 MAX_IMPORT_ARCHIVE_BYTES = int(os.environ.get("SHP_MAX_IMPORT_ARCHIVE_BYTES", str(300 * 1024 * 1024)))
 FILENAME_SAFE_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
-SMART_HOME_PLANNER_ADDON_SLUG = "smart-home-planner"
+SMART_HOME_PLANNER_ADDON_SLUG = "1750ef26_smart-home-planner"
 
 _lock = threading.Lock()
 
@@ -586,22 +586,34 @@ def _normalize_addon_slug(value):
 
 
 def _extract_backup_addons(raw):
-    addons_raw = raw.get("addons")
-    if not isinstance(addons_raw, list):
+    addon_sources = []
+    top_level_addons = raw.get("addons")
+    if isinstance(top_level_addons, list):
+        addon_sources.append(top_level_addons)
+
+    content_payload = raw.get("content")
+    if isinstance(content_payload, dict):
+        content_addons = content_payload.get("addons")
+        if isinstance(content_addons, list):
+            addon_sources.append(content_addons)
+
+    if not addon_sources:
         return []
+
     result = []
     seen = set()
-    for item in addons_raw:
-        addon_slug = ""
-        if isinstance(item, str):
-            addon_slug = item
-        elif isinstance(item, dict):
-            addon_slug = item.get("slug") or item.get("addon") or item.get("name") or ""
-        normalized_slug = _normalize_addon_slug(addon_slug)
-        if not normalized_slug or normalized_slug in seen:
-            continue
-        seen.add(normalized_slug)
-        result.append(normalized_slug)
+    for addons_raw in addon_sources:
+        for item in addons_raw:
+            addon_slug = ""
+            if isinstance(item, str):
+                addon_slug = item
+            elif isinstance(item, dict):
+                addon_slug = item.get("slug") or item.get("addon") or item.get("name") or ""
+            normalized_slug = _normalize_addon_slug(addon_slug)
+            if not normalized_slug or normalized_slug in seen:
+                continue
+            seen.add(normalized_slug)
+            result.append(normalized_slug)
     return result
 
 
