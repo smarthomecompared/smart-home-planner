@@ -43,6 +43,55 @@ jobs:
                   echo "tag=$tag" >> "$GITHUB_OUTPUT"
                   echo "version=$version" >> "$GITHUB_OUTPUT"
                   echo "notes_path=$notes_path" >> "$GITHUB_OUTPUT"
+                  echo "tag=$tag"
+                  echo "version=$version"
+
+            - name: Fail if tag or release already exists
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const tag = `${{ steps.release.outputs.tag }}`.trim();
+                      if (!tag) {
+                          core.setFailed('Missing release tag output.');
+                          return;
+                      }
+
+                      const { owner, repo } = context.repo;
+                      let tagExists = false;
+                      let releaseExists = false;
+
+                      try {
+                          await github.rest.git.getRef({
+                              owner,
+                              repo,
+                              ref: `tags/${tag}`
+                          });
+                          tagExists = true;
+                      } catch (error) {
+                          if (error.status !== 404) {
+                              throw error;
+                          }
+                      }
+
+                      try {
+                          await github.rest.repos.getReleaseByTag({
+                              owner,
+                              repo,
+                              tag
+                          });
+                          releaseExists = true;
+                      } catch (error) {
+                          if (error.status !== 404) {
+                              throw error;
+                          }
+                      }
+
+                      if (tagExists || releaseExists) {
+                          core.setFailed(`Release aborted: tag "${tag}" already exists=${tagExists}, release already exists=${releaseExists}.`);
+                          return;
+                      }
+
+                      core.info(`Tag "${tag}" and release do not exist. Continuing.`);
 
             - name: Create GitHub release
               uses: softprops/action-gh-release@v2
