@@ -1,4 +1,4 @@
-name: Update History
+name: Update Stats
 
 on:
     schedule:
@@ -9,11 +9,11 @@ permissions:
     contents: write
 
 concurrency:
-    group: update-history
+    group: update-stats
     cancel-in-progress: false
 
 jobs:
-    update-history:
+    update-stats:
         runs-on: ubuntu-latest
 
         steps:
@@ -38,11 +38,11 @@ jobs:
               working-directory: pages
               run: node update-stats.js
 
-            - name: Commit updated history
+            - name: Commit updated stats
               working-directory: pages
               run: |
                   if git diff --quiet -- docs/history.json; then
-                    echo "No history changes to commit."
+                    echo "No stats changes to commit."
                     exit 0
                   fi
 
