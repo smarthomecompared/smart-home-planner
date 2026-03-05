@@ -5,6 +5,10 @@
 - Support to link Z-Wave and Zigbee devices
 - Display Z-Wave and Zigbee connections on diagram
 - Persist diagram display settings
+- Show warning when there is no backup in the last 7 days that includes the `smart-home-planner` add-on.
+
+### Fixed
+- Changing any Diagram Settings doesn't reset the diagram zoom anymore
 
 ## 1.4.0 - 2026-02-27
 

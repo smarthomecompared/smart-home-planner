@@ -187,9 +187,11 @@ window.DeviceDiagram = (() => {
         void renderNetwork({ preserveViewport: true });
     }
 
-    function handleDiagramDisplaySelectChange() {
+    function handleDiagramDisplaySelectChange(event) {
+        const targetId = String(event?.target?.id || "");
+        const preserveViewport = targetId === "device-area-mode" || targetId === "power-label-mode";
         void persistDiagramDisplaySettings();
-        void renderNetwork();
+        void renderNetwork({ preserveViewport });
     }
 
     function init(options = {}) {

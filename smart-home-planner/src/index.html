@@ -1836,6 +1836,34 @@
             return `${scaled.toFixed(scaled >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
         }
 
+        function normalizeAddonSlug(value) {
+            return String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/_/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function backupIncludesAddon(latestBackup, requiredAddonSlug) {
+            if (!latestBackup || !requiredAddonSlug) return null;
+            if (latestBackup.type === 'full') return true;
+
+            const explicitFlag = latestBackup.includesSmartHomePlannerAddon;
+            if (typeof explicitFlag === 'boolean') {
+                return explicitFlag;
+            }
+
+            const normalizedRequired = normalizeAddonSlug(requiredAddonSlug);
+            const addons = Array.isArray(latestBackup.addons) ? latestBackup.addons : [];
+            if (!normalizedRequired || !addons.length) return null;
+
+            return addons.some((addon) => {
+                const normalizedAddon = normalizeAddonSlug(addon);
+                return normalizedAddon === normalizedRequired || normalizedAddon.endsWith(`-${normalizedRequired}`);
+            });
+        }
+
         function renderBackupStatusCard(cardId, targetId, backupStatus) {
             const card = document.getElementById(cardId);
             const target = document.getElementById(targetId);
@@ -1853,10 +1881,18 @@
             const hasRecent = typeof backupStatus?.hasRecentBackup === 'boolean'
                 ? Boolean(backupStatus.hasRecentBackup)
                 : Boolean(backupStatus?.hasRecentFullBackup);
+            const requiredAddonSlug = String(backupStatus?.requiredAddonSlug || 'smart-home-planner').trim() || 'smart-home-planner';
+            const includesSmartHomePlannerAddon = backupIncludesAddon(latest, requiredAddonSlug);
+            const hasRecentBackupWithRequiredAddon = typeof backupStatus?.hasRecentBackupWithRequiredAddon === 'boolean'
+                ? Boolean(backupStatus.hasRecentBackupWithRequiredAddon)
+                : (includesSmartHomePlannerAddon === true && hasRecent);
             const warningMessages = [];
             if (!hasError && latest) {
                 if (!hasRecent) {
                     warningMessages.push(`Latest backup is older than ${maxAgeDays} days.`);
+                }
+                if (!hasRecentBackupWithRequiredAddon) {
+                    warningMessages.push(`No backup from the last ${maxAgeDays} days includes add-on "${requiredAddonSlug}".`);
                 }
             }
             const missingBackup = hasError || !latest;
@@ -1881,6 +1917,12 @@
                 { label: 'Type', value: latest?.type ? formatDeviceType(latest.type) : 'Unknown' },
                 { label: 'Name', value: latest?.name || latest?.slug || 'Unknown' },
                 { label: 'Size', value: formatBackupSize(latest?.sizeBytes) },
+                {
+                    label: 'Smart Home Planner add-on',
+                    value: includesSmartHomePlannerAddon === true
+                        ? 'Included'
+                        : (includesSmartHomePlannerAddon === false ? 'Not included' : 'Unknown')
+                },
                 {
                     label: 'Protection',
                     value: latest

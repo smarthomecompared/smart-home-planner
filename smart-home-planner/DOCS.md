@@ -63,7 +63,7 @@ Lists working devices with no area assigned in the area field currently mapped t
 Highlights manual test cases that need attention, including failed runs, overdue checks, and tests due within the next 7 days.
 
 ### Last Backup
-Shows the health and details of the latest Home Assistant backup (full or partial), including age, size, and protection. The card is highlighted as warning when the latest backup is older than 7 days.
+Shows the health and details of the latest Home Assistant backup (full or partial), including age, size, and protection. The card is highlighted as warning when the latest backup is older than 7 days or when there is no backup in the last 7 days that includes the `smart-home-planner` add-on.
 
 ### Wishlist Devices
 Lists planned or desired devices that are not part of your active setup yet.

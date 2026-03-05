@@ -39,6 +39,7 @@ MAX_DEBUG_FILE_BYTES = 1024 * 1024 * 2
 MAX_UPLOAD_FILE_BYTES = int(os.environ.get("SHP_MAX_UPLOAD_FILE_BYTES", str(20 * 1024 * 1024)))
 MAX_IMPORT_ARCHIVE_BYTES = int(os.environ.get("SHP_MAX_IMPORT_ARCHIVE_BYTES", str(300 * 1024 * 1024)))
 FILENAME_SAFE_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
+SMART_HOME_PLANNER_ADDON_SLUG = "smart-home-planner"
 
 _lock = threading.Lock()
 
@@ -578,6 +579,60 @@ def _normalize_backup_type(value):
     return ""
 
 
+def _normalize_addon_slug(value):
+    normalized = str(value or "").strip().lower().replace("_", "-")
+    normalized = re.sub(r"-{2,}", "-", normalized)
+    return normalized.strip("-")
+
+
+def _extract_backup_addons(raw):
+    addons_raw = raw.get("addons")
+    if not isinstance(addons_raw, list):
+        return []
+    result = []
+    seen = set()
+    for item in addons_raw:
+        addon_slug = ""
+        if isinstance(item, str):
+            addon_slug = item
+        elif isinstance(item, dict):
+            addon_slug = item.get("slug") or item.get("addon") or item.get("name") or ""
+        normalized_slug = _normalize_addon_slug(addon_slug)
+        if not normalized_slug or normalized_slug in seen:
+            continue
+        seen.add(normalized_slug)
+        result.append(normalized_slug)
+    return result
+
+
+def _addons_include_slug(addons, target_slug):
+    normalized_target = _normalize_addon_slug(target_slug)
+    if not normalized_target:
+        return False
+    for addon_slug in addons:
+        normalized_addon = _normalize_addon_slug(addon_slug)
+        if not normalized_addon:
+            continue
+        if normalized_addon == normalized_target or normalized_addon.endswith(f"-{normalized_target}"):
+            return True
+    return False
+
+
+def _backup_includes_required_addon(backup_entry, required_slug):
+    if not isinstance(backup_entry, dict):
+        return False
+    backup_type = _normalize_backup_type(backup_entry.get("type"))
+    if backup_type == "full":
+        return True
+    if backup_type != "partial":
+        return False
+    explicit = backup_entry.get("includesSmartHomePlannerAddon")
+    if isinstance(explicit, bool):
+        return explicit
+    addons = backup_entry.get("addons") if isinstance(backup_entry.get("addons"), list) else []
+    return _addons_include_slug(addons, required_slug)
+
+
 def _normalize_location_value(value):
     if value is None:
         return ""
@@ -601,6 +656,12 @@ def _normalize_backup_entry(raw):
             # Supervisor backup/snapshot models can report size in MB.
             size_bytes = int(size_mb * 1024 * 1024)
     backup_type = _normalize_backup_type(raw.get("type"))
+    addons = _extract_backup_addons(raw)
+    includes_smart_home_planner = None
+    if backup_type == "full":
+        includes_smart_home_planner = True
+    elif backup_type == "partial":
+        includes_smart_home_planner = _addons_include_slug(addons, SMART_HOME_PLANNER_ADDON_SLUG)
     locations = []
     seen_locations = set()
 
@@ -631,6 +692,8 @@ def _normalize_backup_entry(raw):
         "protected": bool(raw.get("protected", False)),
         "compressed": bool(raw.get("compressed", False)),
         "sizeBytes": size_bytes,
+        "addons": addons,
+        "includesSmartHomePlannerAddon": includes_smart_home_planner,
     }
 
 
@@ -694,7 +757,19 @@ def _build_backup_status_payload(write_debug_dump=False):
         delta = now_utc - latest_backup.get("parsedDate")
         latest_backup_age_days = max(0, int(delta.total_seconds() // 86400))
 
-    has_recent_backup = latest_backup_age_days is not None and latest_backup_age_days <= 7
+    stale_after_days = 7
+    has_recent_backup = latest_backup_age_days is not None and latest_backup_age_days <= stale_after_days
+    has_recent_backup_with_required_addon = False
+    for backup in normalized_backups:
+        parsed_date = backup.get("parsedDate")
+        if not parsed_date:
+            continue
+        age_days = max(0, int((now_utc - parsed_date).total_seconds() // 86400))
+        if age_days > stale_after_days:
+            continue
+        if _backup_includes_required_addon(backup, SMART_HOME_PLANNER_ADDON_SLUG):
+            has_recent_backup_with_required_addon = True
+            break
 
     unique_locations = []
     seen_locations = set()
@@ -724,6 +799,8 @@ def _build_backup_status_payload(write_debug_dump=False):
             "protected": latest_backup.get("protected", False),
             "compressed": latest_backup.get("compressed", False),
             "sizeBytes": latest_backup.get("sizeBytes"),
+            "addons": latest_backup.get("addons") or [],
+            "includesSmartHomePlannerAddon": latest_backup.get("includesSmartHomePlannerAddon"),
         }
 
     result = {
@@ -732,10 +809,12 @@ def _build_backup_status_payload(write_debug_dump=False):
         "latestBackup": latest_backup_payload,
         "latestBackupAgeDays": latest_backup_age_days,
         "hasRecentBackup": has_recent_backup,
+        "hasRecentBackupWithRequiredAddon": has_recent_backup_with_required_addon,
         "uniqueLocations": unique_locations,
         "locationsCount": len(unique_locations),
         "hasSingleLocation": has_single_location,
-        "staleAfterDays": 7,
+        "staleAfterDays": stale_after_days,
+        "requiredAddonSlug": SMART_HOME_PLANNER_ADDON_SLUG,
     }
     if write_debug_dump:
         try:
