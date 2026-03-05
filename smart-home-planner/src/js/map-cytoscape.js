@@ -2439,8 +2439,23 @@ async function renderNetwork(options = {}) {
         .map(d => d[areaKey])
         .filter(areaId => areaId && validAreaIds.has(areaId)))];
     const filteredAreas = areas.filter(a => deviceAreaIds.includes(a.id));
-    const floorIds = [...new Set(filteredAreas.map(a => a.floor).filter(Boolean))];
-    const filteredFloors = floors.filter(f => floorIds.includes(f.id));
+    const floorById = new Map(
+        floors
+            .map((floor) => [String(floor?.id || '').trim(), floor])
+            .filter(([floorId]) => Boolean(floorId))
+    );
+    const areasWithValidFloor = [];
+    const areasWithoutValidFloor = [];
+    filteredAreas.forEach((area) => {
+        const floorId = String(area?.floor || '').trim();
+        if (floorId && floorById.has(floorId)) {
+            areasWithValidFloor.push(area);
+            return;
+        }
+        areasWithoutValidFloor.push(area);
+    });
+    const floorIds = [...new Set(areasWithValidFloor.map((area) => String(area.floor || '').trim()).filter(Boolean))];
+    const filteredFloors = floors.filter((floor) => floorIds.includes(String(floor?.id || '').trim()));
     const unassignedDevices = filteredDevicesList.filter(d => !d[areaKey] || !validAreaIds.has(d[areaKey]));
     
     console.log('Map data:', {
@@ -2501,8 +2516,18 @@ async function renderNetwork(options = {}) {
         });
     }
     
-    // Sort floors by level (highest first)
+    // Sort floors by level (highest first) and add a synthetic floor for areas/devices missing floor assignment.
+    const NO_FLOOR_FLOOR_KEY = '__no_floor__';
+    const NO_FLOOR_NODE_ID = `floor-${NO_FLOOR_FLOOR_KEY}`;
     const sortedFloors = [...filteredFloors].sort((a, b) => (b.level || 0) - (a.level || 0));
+    if (areasWithoutValidFloor.length || unassignedDevices.length) {
+        sortedFloors.push({
+            id: NO_FLOOR_FLOOR_KEY,
+            name: 'No Floor',
+            level: -10000,
+            isSyntheticNoFloor: true
+        });
+    }
     
     let yOffset = 0;
     const floorSpacing = 300;
@@ -2512,7 +2537,9 @@ async function renderNetwork(options = {}) {
     
     // Add floors, areas, and devices
     sortedFloors.forEach((floor, floorIndex) => {
-        const areasInFloor = filteredAreas.filter(a => a.floor === floor.id);
+        const areasInFloor = floor.isSyntheticNoFloor
+            ? areasWithoutValidFloor
+            : filteredAreas.filter((area) => String(area?.floor || '').trim() === String(floor.id || '').trim());
         
         if (areasInFloor.length === 0) return;
         
@@ -2612,20 +2639,23 @@ async function renderNetwork(options = {}) {
     });
 
     if (unassignedDevices.length) {
-        const floorId = 'floor-unassigned';
+        const floorId = NO_FLOOR_NODE_ID;
         const areaId = 'area-unassigned';
 
-        elements.push({
-            group: 'nodes',
-            data: {
-                id: floorId,
-                label: 'Unassigned',
-                type: 'floor',
-                level: -9999,
-                transparentBackground: hasBackground ? 'true' : 'false',
-                hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
-            }
-        });
+        const hasNoFloorNode = elements.some((element) => element?.group === 'nodes' && element?.data?.id === floorId);
+        if (!hasNoFloorNode) {
+            elements.push({
+                group: 'nodes',
+                data: {
+                    id: floorId,
+                    label: 'No Floor',
+                    type: 'floor',
+                    level: -10000,
+                    transparentBackground: hasBackground ? 'true' : 'false',
+                    hideOutline: hasBackground && !isLayoutEditable ? 'true' : 'false'
+                }
+            });
+        }
 
         elements.push({
             group: 'nodes',

@@ -9,6 +9,7 @@
 
 ### Fixed
 - Changing any Diagram Settings doesn't reset the diagram zoom anymore
+- Devices without floor now are displayed on the diagram
 
 ## 1.4.0 - 2026-02-27
 
