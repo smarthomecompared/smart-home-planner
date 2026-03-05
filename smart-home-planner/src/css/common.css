@@ -594,6 +594,121 @@ nav.site-nav a.active .site-nav-icon {
     color: var(--text-secondary);
 }
 
+.app-footer {
+    margin-top: 0.95rem;
+    border-radius: 12px;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    background:
+        radial-gradient(circle at 14% -8%, rgba(56, 189, 248, 0.15), transparent 42%),
+        radial-gradient(circle at 86% 128%, rgba(34, 197, 94, 0.14), transparent 46%),
+        rgba(15, 23, 42, 0.62);
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.25);
+    padding: 0.52rem 0.58rem;
+}
+
+.app-footer-grid {
+    display: flex;
+    align-items: stretch;
+    gap: 0.45rem;
+}
+
+.app-footer-card {
+    border-radius: 9px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(15, 23, 42, 0.66);
+    padding: 0.5rem 0.62rem;
+}
+
+.app-footer-title {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+}
+
+.app-footer-copy {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.25;
+    font-size: 0.72rem;
+}
+
+.app-footer-donation-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0;
+    border-radius: 8px;
+    line-height: 0;
+}
+
+.app-footer-donation-link img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    height: 30px;
+}
+
+.app-footer-ad {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+    transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), background-color var(--transition-base);
+}
+
+.app-footer-ad:hover,
+.app-footer-ad:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(125, 211, 252, 0.54);
+    box-shadow: 0 12px 24px rgba(8, 47, 73, 0.28);
+    background: rgba(15, 23, 42, 0.86);
+    outline: none;
+}
+
+.app-footer-donation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: fit-content;
+}
+
+.app-footer-ad-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.55);
+    padding: 0.15rem;
+    flex: 0 0 auto;
+}
+
+.app-footer-ad-text {
+    display: grid;
+    gap: 0.22rem;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .app-footer-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+
+    .app-footer-card {
+        padding: 0.5rem 0.56rem;
+    }
+
+    .app-footer-copy {
+        font-size: 0.7rem;
+    }
+}
+
 .view-toggle {
     display: inline-flex;
     align-items: center;

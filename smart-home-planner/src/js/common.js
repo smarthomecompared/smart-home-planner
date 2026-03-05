@@ -853,6 +853,38 @@ async function initDebugSettingsNav() {
     nav.appendChild(debugLink);
 }
 
+function ensureAppFooter() {
+    const container = document.querySelector(".container");
+    if (!container) return null;
+
+    let footer = container.querySelector("#app-global-footer");
+    if (footer) return footer;
+
+    footer = document.createElement("footer");
+    footer.id = "app-global-footer";
+    footer.className = "app-footer";
+    footer.setAttribute("role", "contentinfo");
+    footer.innerHTML = `
+        <div class="app-footer-grid">
+            <section class="app-footer-card app-footer-donation" aria-label="Donations">
+                <a class="app-footer-donation-link" href="https://ko-fi.com/C0C7E7OEA" target="_blank" rel="noopener noreferrer" aria-label="Support Smart Home Planner on Ko-fi">
+                    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support us on Ko-fi">
+                </a>
+            </section>
+            <a class="app-footer-card app-footer-ad" href="https://smarthomecompared.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit Smart Home Compared">
+                <img class="app-footer-ad-logo" src="img/logo.png" alt="Smart Home Planner logo">
+                <div class="app-footer-ad-text">
+                    <h3 class="app-footer-title">Smart Home Compared</h3>
+                    <p class="app-footer-copy">Comparing the best Smart Home devices: thermostats, cameras, doorbells, lights, sensors, sirens, air quality monitors, smoke &amp; CO alarms and more.</p>
+                </div>
+            </a>
+        </div>
+    `;
+
+    container.appendChild(footer);
+    return footer;
+}
+
 function applyIconTooltip(el) {
     if (!el || !el.classList || !el.classList.contains('btn-icon')) return;
     if (el.classList.contains('no-tooltip')) return;
@@ -1383,6 +1415,7 @@ async function clearMapImagePositions() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    ensureAppFooter();
     await initDebugSettingsNav();
     initPrimaryNavIcons();
     initMobileNav();

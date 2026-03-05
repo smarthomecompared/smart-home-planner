@@ -381,7 +381,7 @@
 
 #network-map {
     width: 100%;
-    height: 700px;
+    height: 912px;
     background: transparent;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -413,6 +413,7 @@
 
 .map-stage {
     position: relative;
+    min-height: 912px;
     border-radius: 8px;
     overflow: hidden;
 }
@@ -500,7 +501,8 @@ body.map-fullscreen .filters-container,
 body.map-fullscreen .map-display-settings,
 body.map-fullscreen .map-info,
 body.map-fullscreen .devices-header,
-body.map-fullscreen .pagination-container {
+body.map-fullscreen .pagination-container,
+body.map-fullscreen .app-footer {
     display: none;
 }
 
@@ -892,7 +894,11 @@ body.map-fullscreen .map-controls-overlay {
     }
     
     #network-map {
-        height: 500px;
+        height: 672px;
+    }
+
+    .map-stage {
+        min-height: 672px;
     }
     
     .device-tooltip {
@@ -930,7 +936,11 @@ body.map-fullscreen .map-controls-overlay {
 
 @media (max-width: 480px) {
     #network-map {
-        height: 420px;
+        height: 564px;
+    }
+
+    .map-stage {
+        min-height: 564px;
     }
 
     .map-controls-overlay .btn-icon {
