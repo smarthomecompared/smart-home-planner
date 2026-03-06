@@ -900,6 +900,34 @@
             return version.startsWith("v") ? version : `v${version}`;
         }
 
+        function normalizeVersionToken(version) {
+            if (typeof version !== "string") {
+                return "";
+            }
+
+            return version.trim().replace(/^v/i, "").toLowerCase();
+        }
+
+        function getVersionShare(entry, version) {
+            if (!entry || !version) {
+                return null;
+            }
+
+            const targetVersion = normalizeVersionToken(version);
+            if (!targetVersion) {
+                return null;
+            }
+
+            const installs = Object.entries(entry.versions || {}).reduce((total, [versionKey, count]) => {
+                if (normalizeVersionToken(versionKey) !== targetVersion || !Number.isFinite(count)) {
+                    return total;
+                }
+                return total + count;
+            }, 0);
+
+            return formatPercent(installs, entry.total);
+        }
+
         function getHistoryForRange(history, rangeKey) {
             const rangeOption = chartRangeOptions.find((option) => option.key === rangeKey);
             if (!rangeOption || rangeOption.days === null) {
@@ -1037,6 +1065,8 @@
             const growthDisplay = growth.value === null ? "—" : `${growth.value >= 0 ? "+" : ""}${growth.value}%`;
             const topPercent = getTopPercent(latest);
             const latestRelease = metaLatestRelease || (typeof latest.latest_release === "string" && latest.latest_release.trim() ? latest.latest_release.trim() : "N/A");
+            const latestReleaseLabel = latestRelease === "N/A" ? "N/A" : formatVersionLabel(latestRelease);
+            const latestReleaseShare = latestRelease === "N/A" ? null : getVersionShare(latest, latestRelease);
 
             document.getElementById("content").innerHTML = `
                 <div class="dashboard-stack">
@@ -1067,7 +1097,7 @@
                                 <p class="eyebrow mb-2">Leading version</p>
                                 <div class="meta-card-row">
                                     <div class="meta-card-copy">
-                                        <p class="meta-value">${topVersion ? `${topVersion.version} <span class="meta-value-sub">(${topVersion.share})</span>` : "N/A"}</p>
+                                        <p class="meta-value">${topVersion ? `${formatVersionLabel(topVersion.version)} <span class="meta-value-sub">(${topVersion.share})</span>` : "N/A"}</p>
                                     </div>
                                     <span class="metric-icon accent-bg-emerald accent-emerald">
                                         <i class="fa-solid fa-arrow-trend-up"></i>
@@ -1078,7 +1108,7 @@
                                 <p class="eyebrow mb-2">Latest version</p>
                                 <div class="meta-card-row">
                                     <div class="meta-card-copy">
-                                        <p class="meta-value">${latestRelease}</p>
+                                        <p class="meta-value">${latestReleaseShare ? `${latestReleaseLabel} <span class="meta-value-sub">(${latestReleaseShare})</span>` : latestReleaseLabel}</p>
                                     </div>
                                     <span class="metric-icon accent-bg-amber accent-amber">
                                         <i class="fa-solid fa-tag"></i>
