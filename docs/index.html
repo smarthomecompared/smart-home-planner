@@ -178,6 +178,16 @@
             line-height: 1;
         }
 
+        .meta-value-sub {
+            font-family: "Manrope", sans-serif;
+            font-size: 0.62em;
+            font-weight: 700;
+            letter-spacing: 0;
+            color: var(--text-soft);
+            margin-left: 0.28rem;
+            vertical-align: middle;
+        }
+
         .meta-inline {
             display: flex;
             align-items: center;
@@ -187,7 +197,7 @@
 
         .meta-card-row {
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             justify-content: space-between;
             gap: 1rem;
         }
@@ -287,6 +297,14 @@
             margin-bottom: 0;
         }
 
+        .chart-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
         .range-control {
             display: inline-flex;
             align-items: center;
@@ -321,6 +339,53 @@
         .range-button.is-active {
             color: #0b1220;
             background: #dbe4f0;
+        }
+
+        .flag-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-soft);
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .flag-toggle input {
+            appearance: none;
+            width: 2.2rem;
+            height: 1.3rem;
+            margin: 0;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.08);
+            position: relative;
+            transition: background-color 140ms ease, border-color 140ms ease;
+        }
+
+        .flag-toggle input::before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 0.8rem;
+            height: 0.8rem;
+            border-radius: 999px;
+            background: #dbe4f0;
+            transition: transform 140ms ease, background-color 140ms ease;
+        }
+
+        .flag-toggle input:checked {
+            background: rgba(74, 222, 128, 0.22);
+            border-color: rgba(74, 222, 128, 0.5);
+        }
+
+        .flag-toggle input:checked::before {
+            transform: translateX(0.88rem);
+            background: #4ade80;
         }
 
         .chart-wrap {
@@ -584,6 +649,10 @@
         }
 
         @media (min-width: 960px) {
+            .meta-stack {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
             .details-grid {
                 grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
             }
@@ -599,7 +668,7 @@
 
         @media (min-width: 1180px) {
             .header-grid {
-                grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr);
+                grid-template-columns: minmax(0, 1.2fr) minmax(540px, 1fr);
                 align-items: start;
             }
 
@@ -672,6 +741,11 @@
                 align-items: flex-start;
             }
 
+            .chart-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
             .range-control {
                 width: 100%;
                 justify-content: space-between;
@@ -718,6 +792,7 @@
             year: "numeric"
         });
         const versionPalette = ["#4ade80", "#60a5fa", "#fbbf24", "#fb7185", "#38bdf8", "#a78bfa"];
+        const lineVersionPalette = ["#60a5fa", "#fbbf24", "#fb7185", "#38bdf8", "#a78bfa", "#34d399", "#f97316", "#f472b6"];
         const chartRangeOptions = [
             { key: "30d", label: "30D", days: 30 },
             { key: "90d", label: "90D", days: 90 },
@@ -817,6 +892,14 @@
                 }));
         }
 
+        function formatVersionLabel(version) {
+            if (typeof version !== "string" || !version.trim()) {
+                return "N/A";
+            }
+
+            return version.startsWith("v") ? version : `v${version}`;
+        }
+
         function getHistoryForRange(history, rangeKey) {
             const rangeOption = chartRangeOptions.find((option) => option.key === rangeKey);
             if (!rangeOption || rangeOption.days === null) {
@@ -856,7 +939,7 @@
                     <div class="version-item-left">
                         <span class="version-dot" style="background:${entry.color}"></span>
                         <div class="version-copy">
-                            <p class="version-name">${entry.version}</p>
+                            <p class="version-name">${formatVersionLabel(entry.version)}</p>
                         </div>
                     </div>
                     <div class="version-value">
@@ -865,6 +948,15 @@
                     </div>
                 </div>
             `).join("");
+        }
+
+        function getLineVersionColor(index) {
+            if (index < lineVersionPalette.length) {
+                return lineVersionPalette[index];
+            }
+
+            const hue = (index * 43 + 210) % 360;
+            return `hsl(${hue} 72% 62%)`;
         }
 
         function buildMetricCard(label, accentClass, accentBgClass, value, helper, icon) {
@@ -914,7 +1006,15 @@
             return currentPage;
         }
 
-        function renderDashboard(history) {
+        function renderDashboard(payload) {
+            const resolvedHistory = Array.isArray(payload)
+                ? payload
+                : (Array.isArray(payload?.history) ? payload.history : []);
+            const metaLatestRelease = typeof payload?.meta?.latest_release === "string" && payload.meta.latest_release.trim()
+                ? payload.meta.latest_release.trim()
+                : "";
+
+            const history = resolvedHistory;
             if (!Array.isArray(history) || history.length === 0) {
                 document.getElementById("content").innerHTML = `
                     <section class="surface state-card">
@@ -936,6 +1036,7 @@
             const growthAccentBgClass = growth.value === null ? "accent-bg-neutral" : (growth.value >= 0 ? "accent-bg-emerald" : "accent-bg-rose");
             const growthDisplay = growth.value === null ? "—" : `${growth.value >= 0 ? "+" : ""}${growth.value}%`;
             const topPercent = getTopPercent(latest);
+            const latestRelease = metaLatestRelease || (typeof latest.latest_release === "string" && latest.latest_release.trim() ? latest.latest_release.trim() : "N/A");
 
             document.getElementById("content").innerHTML = `
                 <div class="dashboard-stack">
@@ -956,7 +1057,6 @@
                                 <div class="meta-card-row">
                                     <div class="meta-card-copy">
                                         <p class="meta-value">${dateFormatter.format(parseHistoryDate(latest.date))}</p>
-                                        <p class="text-sm text-slate-300">Most recent analytics refresh</p>
                                     </div>
                                     <span class="metric-icon accent-bg-sky accent-sky">
                                         <i class="fa-regular fa-clock"></i>
@@ -967,11 +1067,21 @@
                                 <p class="eyebrow mb-2">Leading version</p>
                                 <div class="meta-card-row">
                                     <div class="meta-card-copy">
-                                        <p class="meta-value">${topVersion ? topVersion.version : "N/A"}</p>
-                                        <p class="text-sm text-slate-300">${topVersion ? `${formatNumber(topVersion.count)} installs • ${topVersion.share}` : "No version data available"}</p>
+                                        <p class="meta-value">${topVersion ? `${topVersion.version} <span class="meta-value-sub">(${topVersion.share})</span>` : "N/A"}</p>
                                     </div>
                                     <span class="metric-icon accent-bg-emerald accent-emerald">
                                         <i class="fa-solid fa-arrow-trend-up"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="surface-soft meta-card">
+                                <p class="eyebrow mb-2">Latest version</p>
+                                <div class="meta-card-row">
+                                    <div class="meta-card-copy">
+                                        <p class="meta-value">${latestRelease}</p>
+                                    </div>
+                                    <span class="metric-icon accent-bg-amber accent-amber">
+                                        <i class="fa-solid fa-tag"></i>
                                     </span>
                                 </div>
                             </div>
@@ -1037,7 +1147,13 @@
                                 <p class="eyebrow">Trend</p>
                                 <h2 class="section-title">Installation growth over time</h2>
                             </div>
-                            ${buildTimeRangeControl("line")}
+                            <div class="chart-actions">
+                                ${buildTimeRangeControl("line")}
+                                <label class="flag-toggle" for="lineVersionToggle">
+                                    <input id="lineVersionToggle" type="checkbox">
+                                    <span>By version</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="chart-wrap">
                             <canvas id="lineChart"></canvas>
@@ -1153,6 +1269,7 @@
                 rank: null,
                 topRank: null
             };
+            const lineVersionToggle = document.getElementById("lineVersionToggle");
 
             function getRangeLabels(rangeHistory) {
                 return rangeHistory.map((entry) => dateFormatter.format(parseHistoryDate(entry.date)));
@@ -1164,6 +1281,67 @@
 
             function renderLineChart() {
                 const rangeHistory = getHistoryForRange(history, chartRanges.line);
+                const showVersionLines = Boolean(lineVersionToggle?.checked);
+                const pointRadius = getRangePointRadius(rangeHistory);
+                const datasets = [{
+                    label: "Total Installations",
+                    data: rangeHistory.map((entry) => entry.total),
+                    borderColor: "#4ade80",
+                    backgroundColor: "rgba(74, 222, 128, 0.12)",
+                    borderWidth: showVersionLines ? 2.5 : 3,
+                    pointRadius,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: "#bbf7d0",
+                    pointBorderWidth: 0,
+                    tension: 0,
+                    fill: !showVersionLines
+                }];
+
+                if (showVersionLines) {
+                    const latestVersionMap = rangeHistory[rangeHistory.length - 1]?.versions || {};
+                    const versionTotalsInRange = {};
+
+                    rangeHistory.forEach((entry) => {
+                        Object.entries(entry.versions || {}).forEach(([version, count]) => {
+                            if (!Number.isFinite(count)) {
+                                return;
+                            }
+                            versionTotalsInRange[version] = (versionTotalsInRange[version] || 0) + count;
+                        });
+                    });
+
+                    const versionNames = Object.keys(versionTotalsInRange)
+                        .filter((version) => versionTotalsInRange[version] > 0)
+                        .sort((left, right) => {
+                        const diff = (latestVersionMap[right] || 0) - (latestVersionMap[left] || 0);
+                        if (diff !== 0) {
+                            return diff;
+                        }
+                        return right.localeCompare(left, undefined, { numeric: true, sensitivity: "base" });
+                    });
+
+                    versionNames.forEach((version, index) => {
+                        const color = getLineVersionColor(index);
+                        datasets.push({
+                            label: formatVersionLabel(version),
+                            data: rangeHistory.map((entry) => {
+                                const value = entry.versions?.[version];
+                                return Number.isFinite(value) ? value : 0;
+                            }),
+                            borderColor: color,
+                            backgroundColor: "transparent",
+                            borderWidth: 2,
+                            pointRadius,
+                            pointHoverRadius: 4,
+                            pointBackgroundColor: color,
+                            pointBorderWidth: 0,
+                            tension: 0,
+                            fill: false,
+                            spanGaps: true
+                        });
+                    });
+                }
+
                 if (chartInstances.line) {
                     chartInstances.line.destroy();
                 }
@@ -1172,19 +1350,7 @@
                     type: "line",
                     data: {
                         labels: getRangeLabels(rangeHistory),
-                        datasets: [{
-                            label: "Total Installations",
-                            data: rangeHistory.map((entry) => entry.total),
-                            borderColor: "#4ade80",
-                            backgroundColor: "rgba(74, 222, 128, 0.12)",
-                            borderWidth: 3,
-                            pointRadius: getRangePointRadius(rangeHistory),
-                            pointHoverRadius: 5,
-                            pointBackgroundColor: "#bbf7d0",
-                            pointBorderWidth: 0,
-                            tension: 0,
-                            fill: true
-                        }]
+                        datasets
                     },
                     options: {
                         responsive: true,
@@ -1195,7 +1361,13 @@
                         },
                         plugins: {
                             legend: {
-                                display: false
+                                display: showVersionLines,
+                                position: "bottom",
+                                labels: {
+                                    color: "#93a4ba",
+                                    usePointStyle: true,
+                                    pointStyle: "line"
+                                }
                             },
                             tooltip: {
                                 backgroundColor: "#111827",
@@ -1204,7 +1376,12 @@
                                 titleColor: "#f8fafc",
                                 bodyColor: "#dbe4f0",
                                 padding: 12,
-                                displayColors: false
+                                displayColors: showVersionLines,
+                                callbacks: {
+                                    label(context) {
+                                        return `${context.dataset.label}: ${formatNumber(context.raw)}`;
+                                    }
+                                }
                             }
                         },
                         scales: {
@@ -1252,7 +1429,7 @@
                 chartInstances.pie = new Chart(document.getElementById("pieChart"), {
                     type: "doughnut",
                     data: {
-                        labels: rangeVersionEntries.map((entry) => entry.version),
+                        labels: rangeVersionEntries.map((entry) => formatVersionLabel(entry.version)),
                         datasets: [{
                             data: rangeVersionEntries.map((entry) => entry.count),
                             backgroundColor: rangeVersionEntries.map((entry) => entry.color),
@@ -1546,6 +1723,12 @@
 
             Object.values(chartRenderers).forEach((renderChart) => renderChart());
 
+            if (lineVersionToggle) {
+                lineVersionToggle.addEventListener("change", () => {
+                    renderLineChart();
+                });
+            }
+
             document.querySelectorAll("[data-range-control]").forEach((control) => {
                 control.addEventListener("click", (event) => {
                     const clickedButton = event.target.closest("[data-range-value]");
@@ -1582,8 +1765,27 @@
             if (!response.ok) {
                 throw new Error(`History request failed: ${response.status}`);
             }
-            const history = await response.json();
-            return history.slice().sort((left, right) => parseHistoryDate(left.date) - parseHistoryDate(right.date));
+            const payload = await response.json();
+            const rawHistory = Array.isArray(payload)
+                ? payload
+                : (Array.isArray(payload?.history) ? payload.history : []);
+            const history = rawHistory
+                .slice()
+                .sort((left, right) => parseHistoryDate(left.date) - parseHistoryDate(right.date));
+
+            const releaseFromMeta = typeof payload?.meta?.latest_release === "string" && payload.meta.latest_release.trim()
+                ? payload.meta.latest_release.trim()
+                : null;
+            const releaseFromHistory = [...history]
+                .reverse()
+                .find((entry) => typeof entry?.latest_release === "string" && entry.latest_release.trim())?.latest_release?.trim() || null;
+
+            return {
+                meta: {
+                    latest_release: releaseFromMeta || releaseFromHistory
+                },
+                history
+            };
         }
 
         loadData()

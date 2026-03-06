@@ -7,6 +7,7 @@ import fetch from "node-fetch";
 
 const SLUG = "1750ef26_smart-home-planner";
 const REPO_API_URL = "https://api.github.com/repos/smarthomecompared/smart-home-planner";
+const REPO_RELEASE_API_URL = `${REPO_API_URL}/releases/latest`;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const HISTORY_FILE = path.join(SCRIPT_DIR, "docs", "history.json");
 const MAX_HISTORY_DAYS = 3650;
@@ -65,11 +66,43 @@ function normalizeHistory(history) {
         .slice(-MAX_HISTORY_DAYS);
 }
 
+function parseStoredPayload(payload) {
+    if (Array.isArray(payload)) {
+        return {
+            history: payload,
+            latestRelease: null
+        };
+    }
+
+    if (payload && typeof payload === "object") {
+        const history = Array.isArray(payload.history) ? payload.history : [];
+        const latestRelease = typeof payload?.meta?.latest_release === "string"
+            ? payload.meta.latest_release
+            : null;
+
+        return {
+            history,
+            latestRelease
+        };
+    }
+
+    return {
+        history: [],
+        latestRelease: null
+    };
+}
+
 async function updateHistory() {
     try {
-        const [analyticsResponse, repoResponse] = await Promise.all([
+        const [analyticsResponse, repoResponse, releaseResponse] = await Promise.all([
             fetch("https://analytics.home-assistant.io/addons.json"),
             fetch(REPO_API_URL, {
+                headers: {
+                    "Accept": "application/vnd.github+json",
+                    "User-Agent": "stats-tracker"
+                }
+            }),
+            fetch(REPO_RELEASE_API_URL, {
                 headers: {
                     "Accept": "application/vnd.github+json",
                     "User-Agent": "stats-tracker"
@@ -80,6 +113,7 @@ async function updateHistory() {
         const allAddons = await analyticsResponse.json();
         const addon = allAddons[SLUG];
         const repo = repoResponse.ok ? await repoResponse.json() : null;
+        const release = releaseResponse.ok ? await releaseResponse.json() : null;
 
         if (!addon) {
             console.error("❌ Add-on not found in analytics.home-assistant.io");
@@ -89,6 +123,7 @@ async function updateHistory() {
         const installRank = getInstallRank(allAddons, SLUG);
         const totalRank = getTotalRank(allAddons);
         const now = new Date();
+        const latestRelease = typeof release?.tag_name === "string" ? release.tag_name : null;
         const entry = {
             date: getDateKey(now),
             total: addon.total,
@@ -100,9 +135,12 @@ async function updateHistory() {
         };
 
         let history = [];
+        let storedLatestRelease = null;
         try {
             const data = await fs.readFile(HISTORY_FILE, "utf8");
-            history = JSON.parse(data);
+            const payload = parseStoredPayload(JSON.parse(data));
+            history = payload.history;
+            storedLatestRelease = payload.latestRelease;
         } catch (error) {
             console.log("📂 Creating new history file...");
         }
@@ -120,9 +158,17 @@ async function updateHistory() {
             .sort((left, right) => left.date.localeCompare(right.date))
             .slice(-MAX_HISTORY_DAYS);
 
-        await fs.writeFile(HISTORY_FILE, JSON.stringify(finalHistory, null, 2));
+        const finalLatestRelease = latestRelease || storedLatestRelease;
+        const finalPayload = {
+            meta: {
+                latest_release: finalLatestRelease
+            },
+            history: finalHistory
+        };
 
-        console.log(`✅ Saved ${entry.date}. Total installations: ${addon.total}. Rank: ${entry.install_rank ?? "n/a"}/${entry.total_rank ?? "n/a"}. GitHub stars: ${entry.stars ?? "n/a"}`);
+        await fs.writeFile(HISTORY_FILE, JSON.stringify(finalPayload, null, 2));
+
+        console.log(`✅ Saved ${entry.date}. Total installations: ${addon.total}. Rank: ${entry.install_rank ?? "n/a"}/${entry.total_rank ?? "n/a"}. GitHub stars: ${entry.stars ?? "n/a"}. Latest release: ${finalLatestRelease ?? "n/a"}`);
     } catch (error) {
         console.error("❌ Error:", error.message);
     }
