@@ -847,6 +847,16 @@
             return `${Math.round((value / total) * 100)}%`;
         }
 
+        function getInstallations(entry) {
+            if (Number.isFinite(entry?.installations)) {
+                return entry.installations;
+            }
+            if (Number.isFinite(entry?.total)) {
+                return entry.total;
+            }
+            return 0;
+        }
+
         function parseHistoryDate(value) {
             if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
                 const [year, month, day] = value.split("-").map(Number);
@@ -896,7 +906,9 @@
             }
 
             const latestEntry = history[history.length - 1];
-            if (!baselineEntry.total) {
+            const latestInstallations = getInstallations(latestEntry);
+            const baselineInstallations = getInstallations(baselineEntry);
+            if (!baselineInstallations) {
                 return {
                     label: "30-Day Growth",
                     helper: "Not enough history for a 30-day comparison yet",
@@ -904,7 +916,7 @@
                 };
             }
 
-            const value = Math.round(((latestEntry.total - baselineEntry.total) / baselineEntry.total) * 100);
+            const value = Math.round(((latestInstallations - baselineInstallations) / baselineInstallations) * 100);
             return {
                 label: "30-Day Growth",
                 helper: `Change since ${dateFormatter.format(parseHistoryDate(baselineEntry.date))}`,
@@ -961,7 +973,7 @@
                     version,
                     count,
                     color: versionPalette[index % versionPalette.length],
-                    share: formatPercent(count, latest.total)
+                    share: formatPercent(count, getInstallations(latest))
                 }));
         }
 
@@ -998,7 +1010,7 @@
                 return total + count;
             }, 0);
 
-            return formatPercent(installs, entry.total);
+            return formatPercent(installs, getInstallations(entry));
         }
 
         function normalizeReleaseEvents(releases) {
@@ -1213,8 +1225,8 @@
             document.getElementById("tableBody").innerHTML = pageEntries.map((entry) => `
                 <tr>
                     <td class="font-medium text-slate-100">${dateFormatter.format(parseHistoryDate(entry.date))}</td>
-                    <td class="text-right font-semibold text-slate-100">${formatNumber(entry.total)}</td>
-                    <td class="text-right">${formatPercent(entry.auto_update, entry.total)}</td>
+                    <td class="text-right font-semibold text-slate-100">${formatNumber(getInstallations(entry))}</td>
+                    <td class="text-right">${formatPercent(entry.auto_update, getInstallations(entry))}</td>
                     <td class="text-right">${formatOptionalNumber(entry.stars)}</td>
                     <td class="text-right">${formatOptionalNumber(entry.forks)}</td>
                     <td class="text-right">${formatRank(entry.install_rank)}</td>
@@ -1256,6 +1268,7 @@
             }
 
             const latest = history[history.length - 1];
+            const latestInstallations = getInstallations(latest);
             const growth = getGrowthSummary(history);
             const versionEntries = getVersionEntries(latest);
             const topVersion = versionEntries[0];
@@ -1320,12 +1333,20 @@
 
                 <section class="kpi-grid">
                     ${buildMetricCard(
-                        "Total Installations",
+                        "Installations",
                         "accent-emerald",
                         "accent-bg-emerald",
-                        `${formatNumber(latest.total)} ${formatMetricExtra(growth.value, "%")}`,
+                        `${formatNumber(latestInstallations)} ${formatMetricExtra(growth.value, "%")}`,
                         "Current installed base across reported Home Assistant instances.",
                         "fa-solid fa-house-signal"
+                    )}
+                    ${buildMetricCard(
+                        "Auto-Update Enabled",
+                        "accent-sky",
+                        "accent-bg-sky",
+                        `${formatNumber(latest.auto_update)} <span class="metric-subvalue">(${formatPercent(latest.auto_update, latestInstallations)})</span>`,
+                        "Installations configured to move with new releases automatically.",
+                        "fa-solid fa-arrows-rotate"
                     )}
                     ${buildMetricCard(
                         "GitHub Stars",
@@ -1342,14 +1363,6 @@
                         `${formatOptionalNumber(latest.forks)} ${formatMetricExtra(forksGrowth, "%")}`,
                         "Public repository forks tracked once per day from GitHub.",
                         "fa-solid fa-code-fork"
-                    )}
-                    ${buildMetricCard(
-                        "Auto-Update Enabled",
-                        "accent-sky",
-                        "accent-bg-sky",
-                        `${formatNumber(latest.auto_update)} <span class="metric-subvalue">(${formatPercent(latest.auto_update, latest.total)})</span>`,
-                        "Installations configured to move with new releases automatically.",
-                        "fa-solid fa-arrows-rotate"
                     )}
                     ${buildMetricCard(
                         "App Rank",
@@ -1374,7 +1387,7 @@
                         <div class="section-heading-row">
                             <div class="section-heading">
                                 <p class="eyebrow">Trend</p>
-                                <h2 class="section-title">Installation growth over time</h2>
+                                <h2 class="section-title">Installation over time</h2>
                             </div>
                             <div class="chart-actions">
                                 ${buildTimeRangeControl("line")}
@@ -1539,7 +1552,7 @@
                 const pointRadius = getRangePointRadius(rangeHistory);
                 const datasets = [{
                     label: "Total Installations",
-                    data: rangeHistory.map((entry) => entry.total),
+                    data: rangeHistory.map((entry) => getInstallations(entry)),
                     borderColor: "#4ade80",
                     backgroundColor: "rgba(74, 222, 128, 0.12)",
                     borderWidth: showVersionLines ? 2.5 : 3,

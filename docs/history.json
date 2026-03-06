@@ -54,8 +54,8 @@
   },
   "history": [
     {
+      "installations": 1,
       "date": "2026-02-16",
-      "total": 1,
       "auto_update": 0,
       "install_rank": 7028,
       "total_rank": 7028,
@@ -66,8 +66,8 @@
       }
     },
     {
+      "installations": 3,
       "date": "2026-02-23",
-      "total": 3,
       "auto_update": 0,
       "install_rank": 7028,
       "total_rank": 7028,
@@ -79,8 +79,8 @@
       }
     },
     {
+      "installations": 42,
       "date": "2026-03-02",
-      "total": 42,
       "auto_update": 0,
       "install_rank": 773,
       "total_rank": 7028,
@@ -93,8 +93,8 @@
       }
     },
     {
+      "installations": 42,
       "date": "2026-03-03",
-      "total": 42,
       "auto_update": 13,
       "install_rank": 773,
       "total_rank": 7028,
@@ -107,8 +107,8 @@
       }
     },
     {
+      "installations": 44,
       "date": "2026-03-04",
-      "total": 44,
       "auto_update": 14,
       "install_rank": 755,
       "total_rank": 7062,
@@ -120,8 +120,8 @@
       }
     },
     {
+      "installations": 44,
       "date": "2026-03-05",
-      "total": 44,
       "auto_update": 14,
       "install_rank": 755,
       "total_rank": 7062,
@@ -133,8 +133,8 @@
       }
     },
     {
+      "installations": 45,
       "date": "2026-03-06",
-      "total": 45,
       "auto_update": 14,
       "install_rank": 745,
       "total_rank": 7070,

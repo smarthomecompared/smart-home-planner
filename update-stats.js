@@ -19,10 +19,13 @@ function getDateKey(value) {
 
 function normalizeEntry(entry) {
     const dateKey = getDateKey(entry.date);
+    const installations = Number.isFinite(entry.installations)
+        ? entry.installations
+        : (Number.isFinite(entry.total) ? entry.total : 0);
 
     return {
         date: dateKey,
-        total: entry.total || 0,
+        installations,
         auto_update: entry.auto_update || 0,
         install_rank: Number.isInteger(entry.install_rank) ? entry.install_rank : null,
         total_rank: Number.isInteger(entry.total_rank) ? entry.total_rank : null,
@@ -170,7 +173,7 @@ async function updateHistory() {
         const latestRelease = typeof release?.tag_name === "string" ? release.tag_name : null;
         const entry = {
             date: getDateKey(now),
-            total: addon.total,
+            installations: addon.total,
             auto_update: addon.auto_update || 0,
             install_rank: installRank,
             total_rank: totalRank,
