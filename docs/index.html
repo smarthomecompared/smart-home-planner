@@ -1038,6 +1038,47 @@
             });
         }
 
+        function isReleaseEndingInZero(versionTag) {
+            if (typeof versionTag !== "string") {
+                return false;
+            }
+
+            const cleaned = versionTag.trim().replace(/^v/i, "").replace(/[-+].*$/, "");
+            const lastDigitMatch = cleaned.match(/(\d)(?!.*\d)/);
+            if (!lastDigitMatch) {
+                return false;
+            }
+
+            return lastDigitMatch[1] === "0";
+        }
+
+        function getReleaseMarkerPalette(tone) {
+            if (tone === "green") {
+                return {
+                    line: "rgba(74, 222, 128, 0.5)",
+                    boxFill: "rgba(74, 222, 128, 0.16)",
+                    boxStroke: "rgba(74, 222, 128, 0.42)",
+                    text: "#dcfce7"
+                };
+            }
+
+            if (tone === "red") {
+                return {
+                    line: "rgba(251, 113, 133, 0.5)",
+                    boxFill: "rgba(251, 113, 133, 0.16)",
+                    boxStroke: "rgba(251, 113, 133, 0.42)",
+                    text: "#ffe4e6"
+                };
+            }
+
+            return {
+                line: "rgba(251, 191, 36, 0.5)",
+                boxFill: "rgba(251, 191, 36, 0.16)",
+                boxStroke: "rgba(251, 191, 36, 0.42)",
+                text: "#fef3c7"
+            };
+        }
+
         function getReleaseAnnotations(rangeHistory, releaseEvents) {
             if (!Array.isArray(rangeHistory) || rangeHistory.length === 0 || !Array.isArray(releaseEvents) || releaseEvents.length === 0) {
                 return [];
@@ -1058,17 +1099,35 @@
                     return;
                 }
 
-                const labels = annotationsByIndex.get(targetIndex) || [];
-                labels.push(formatVersionLabel(release.tag));
-                annotationsByIndex.set(targetIndex, labels);
+                const details = annotationsByIndex.get(targetIndex) || [];
+                details.push({
+                    label: formatVersionLabel(release.tag),
+                    endsInZero: isReleaseEndingInZero(release.tag)
+                });
+                annotationsByIndex.set(targetIndex, details);
             });
 
             return Array.from(annotationsByIndex.entries())
                 .sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
-                .map(([index, labels]) => ({
-                    index,
-                    label: Array.from(new Set(labels)).join(" · ")
-                }));
+                .map(([index, details]) => {
+                    const uniqueLabels = [];
+                    const seen = new Set();
+                    details.forEach((item) => {
+                        if (seen.has(item.label)) {
+                            return;
+                        }
+                        seen.add(item.label);
+                        uniqueLabels.push(item.label);
+                    });
+
+                    const hasReleaseEndingInZero = details.some((item) => item.endsInZero);
+
+                    return {
+                        index,
+                        label: uniqueLabels.join(" · "),
+                        tone: hasReleaseEndingInZero ? "green" : "red"
+                    };
+                });
         }
 
         const lineReleaseAnnotationPlugin = {
@@ -1094,7 +1153,9 @@
                         return;
                     }
 
-                    ctx.strokeStyle = "rgba(251, 191, 36, 0.5)";
+                    const palette = getReleaseMarkerPalette(annotation.tone);
+
+                    ctx.strokeStyle = palette.line;
                     ctx.lineWidth = 1;
                     ctx.setLineDash([4, 4]);
                     ctx.beginPath();
@@ -1125,12 +1186,12 @@
                     }
                     const boxY = chartArea.top + 6 + ((index % 2) * (boxHeight + 4));
 
-                    ctx.fillStyle = "rgba(251, 191, 36, 0.16)";
-                    ctx.strokeStyle = "rgba(251, 191, 36, 0.42)";
+                    ctx.fillStyle = palette.boxFill;
+                    ctx.strokeStyle = palette.boxStroke;
                     ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
                     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
 
-                    ctx.fillStyle = "#fef3c7";
+                    ctx.fillStyle = palette.text;
                     ctx.fillText(label, boxX + paddingX, boxY + (boxHeight / 2) + 0.5);
                 });
                 ctx.restore();

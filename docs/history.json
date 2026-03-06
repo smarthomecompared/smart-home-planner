@@ -55,7 +55,163 @@
   "history": [
     {
       "installations": 1,
+      "date": "2026-02-09",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.1.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-10",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.1.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-11",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.1.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-12",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.1.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-13",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.1.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-14",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-15",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
       "date": "2026-02-16",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-17",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-18",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-19",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-20",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-21",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 1,
+      "forks": 0,
+      "versions": {
+        "0.2.0": 1
+      }
+    },
+    {
+      "installations": 1,
+      "date": "2026-02-22",
       "auto_update": 0,
       "install_rank": 7028,
       "total_rank": 7028,
@@ -68,6 +224,84 @@
     {
       "installations": 3,
       "date": "2026-02-23",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-02-24",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-02-25",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-02-26",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-02-27",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-02-28",
+      "auto_update": 0,
+      "install_rank": 7028,
+      "total_rank": 7028,
+      "stars": 25,
+      "forks": 0,
+      "versions": {
+        "1.0.0": 2,
+        "0.5.0": 1
+      }
+    },
+    {
+      "installations": 3,
+      "date": "2026-03-01",
       "auto_update": 0,
       "install_rank": 7028,
       "total_rank": 7028,
