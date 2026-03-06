@@ -99,6 +99,12 @@
             gap: 0.5rem;
         }
 
+        .header-copy-block {
+            justify-items: center;
+            text-align: center;
+            margin-inline: auto;
+        }
+
         .eyebrow {
             font-size: 0.76rem;
             font-weight: 700;
@@ -129,7 +135,22 @@
 
         .header-copy {
             max-width: 56rem;
-            font-size: 1.02rem;
+            font-size: 16px;
+        }
+
+        .header-link {
+            color: #93c5fd;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .header-link:hover {
+            color: #bfdbfe;
+            text-decoration: underline;
+            text-underline-offset: 0.2em;
         }
 
         .meta-stack {
@@ -252,6 +273,54 @@
 
         .section-heading {
             margin-bottom: 1.4rem;
+        }
+
+        .section-heading-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.4rem;
+        }
+
+        .section-heading-row .section-heading {
+            margin-bottom: 0;
+        }
+
+        .range-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.28rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.03);
+            flex: 0 0 auto;
+        }
+
+        .range-button {
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text-soft);
+            font: inherit;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.4rem 0.65rem;
+            cursor: pointer;
+            transition: background-color 140ms ease, color 140ms ease;
+        }
+
+        .range-button:hover {
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .range-button.is-active {
+            color: #0b1220;
+            background: #dbe4f0;
         }
 
         .chart-wrap {
@@ -597,6 +666,20 @@
                 flex-direction: column;
                 align-items: flex-start;
             }
+
+            .section-heading-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .range-control {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .range-button {
+                flex: 1 1 0;
+            }
         }
 
         @media (max-width: 560px) {
@@ -635,6 +718,14 @@
             year: "numeric"
         });
         const versionPalette = ["#4ade80", "#60a5fa", "#fbbf24", "#fb7185", "#38bdf8", "#a78bfa"];
+        const chartRangeOptions = [
+            { key: "30d", label: "30D", days: 30 },
+            { key: "90d", label: "90D", days: 90 },
+            { key: "180d", label: "180D", days: 180 },
+            { key: "1y", label: "1Y", days: 365 },
+            { key: "all", label: "All", days: null }
+        ];
+        const defaultChartRange = "all";
 
         function formatNumber(value) {
             return numberFormatter.format(value || 0);
@@ -726,6 +817,56 @@
                 }));
         }
 
+        function getHistoryForRange(history, rangeKey) {
+            const rangeOption = chartRangeOptions.find((option) => option.key === rangeKey);
+            if (!rangeOption || rangeOption.days === null) {
+                return history;
+            }
+
+            const latestEntry = history[history.length - 1];
+            const latestDate = parseHistoryDate(latestEntry.date);
+            const cutoffDate = new Date(latestDate);
+            cutoffDate.setDate(cutoffDate.getDate() - rangeOption.days);
+
+            const filteredHistory = history.filter((entry) => parseHistoryDate(entry.date) >= cutoffDate);
+            return filteredHistory.length > 0 ? filteredHistory : [latestEntry];
+        }
+
+        function buildTimeRangeControl(chartId) {
+            return `
+                <div class="range-control" data-range-control="${chartId}">
+                    ${chartRangeOptions.map((option) => `
+                        <button
+                            class="range-button ${option.key === defaultChartRange ? "is-active" : ""}"
+                            type="button"
+                            data-range-value="${option.key}"
+                        >${option.label}</button>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function buildVersionList(versionEntries) {
+            if (versionEntries.length === 0) {
+                return "<p class=\"text-sm text-slate-300\">No version data available for selected range.</p>";
+            }
+
+            return versionEntries.map((entry) => `
+                <div class="version-item">
+                    <div class="version-item-left">
+                        <span class="version-dot" style="background:${entry.color}"></span>
+                        <div class="version-copy">
+                            <p class="version-name">${entry.version}</p>
+                        </div>
+                    </div>
+                    <div class="version-value">
+                        <p class="version-name">${formatNumber(entry.count)}</p>
+                        <p class="version-share-inline">${entry.share}</p>
+                    </div>
+                </div>
+            `).join("");
+        }
+
         function buildMetricCard(label, accentClass, accentBgClass, value, helper, icon) {
             return `
                 <article class="surface metric-card">
@@ -756,7 +897,7 @@
                 <tr>
                     <td class="font-medium text-slate-100">${dateFormatter.format(parseHistoryDate(entry.date))}</td>
                     <td class="text-right font-semibold text-slate-100">${formatNumber(entry.total)}</td>
-                    <td class="text-right">${formatNumber(entry.auto_update)}</td>
+                    <td class="text-right">${formatPercent(entry.auto_update, entry.total)}</td>
                     <td class="text-right">${formatOptionalNumber(entry.stars)}</td>
                     <td class="text-right">${formatRank(entry.install_rank)}</td>
                     <td class="text-right">${formatTopPercent(getTopPercent(entry))}</td>
@@ -804,14 +945,23 @@
                             <p class="eyebrow mb-3">Historical statistics</p>
                             <h1 class="page-title">Smart Home Planner</h1>
                             <p class="header-copy">Analytics in Home Assistant are opt-in and do not reflect the entire Home Assistant userbase. It is estimated that less than a fourth of all Home Assistant users opt in.</p>
+                            <a class="header-link" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">
+                                <i class="fa-brands fa-github"></i>
+                                <span>View GitHub repository</span>
+                            </a>
                         </div>
                         <div class="meta-stack">
                             <div class="surface-soft meta-card">
                                 <p class="eyebrow mb-2">Latest snapshot</p>
-                                <p class="meta-inline">
-                                    <i class="fa-regular fa-clock accent-sky"></i>
-                                    <span>${dateFormatter.format(parseHistoryDate(latest.date))}</span>
-                                </p>
+                                <div class="meta-card-row">
+                                    <div class="meta-card-copy">
+                                        <p class="meta-value">${dateFormatter.format(parseHistoryDate(latest.date))}</p>
+                                        <p class="text-sm text-slate-300">Most recent analytics refresh</p>
+                                    </div>
+                                    <span class="metric-icon accent-bg-sky accent-sky">
+                                        <i class="fa-regular fa-clock"></i>
+                                    </span>
+                                </div>
                             </div>
                             <div class="surface-soft meta-card">
                                 <p class="eyebrow mb-2">Leading version</p>
@@ -882,9 +1032,12 @@
 
                 <section class="details-grid">
                     <article class="surface section-card">
-                        <div class="section-heading">
-                            <p class="eyebrow">Trend</p>
-                            <h2 class="section-title">Installation growth over time</h2>
+                        <div class="section-heading-row">
+                            <div class="section-heading">
+                                <p class="eyebrow">Trend</p>
+                                <h2 class="section-title">Installation growth over time</h2>
+                            </div>
+                            ${buildTimeRangeControl("line")}
                         </div>
                         <div class="chart-wrap">
                             <canvas id="lineChart"></canvas>
@@ -892,29 +1045,18 @@
                     </article>
 
                     <article class="surface section-card">
-                        <div class="section-heading">
-                            <p class="eyebrow">Versions</p>
-                            <h2 class="section-title">Current version mix</h2>
+                        <div class="section-heading-row">
+                            <div class="section-heading">
+                                <p class="eyebrow">Versions</p>
+                                <h2 class="section-title">Current version mix</h2>
+                            </div>
                         </div>
                         <div class="versions-layout">
                             <div class="pie-wrap">
                                 <canvas id="pieChart"></canvas>
                             </div>
-                            <div class="version-list">
-                                ${versionEntries.map((entry) => `
-                                    <div class="version-item">
-                                        <div class="version-item-left">
-                                            <span class="version-dot" style="background:${entry.color}"></span>
-                                            <div class="version-copy">
-                                                <p class="version-name">${entry.version}</p>
-                                            </div>
-                                        </div>
-                                        <div class="version-value">
-                                            <p class="version-name">${formatNumber(entry.count)}</p>
-                                            <p class="version-share-inline">${entry.share}</p>
-                                        </div>
-                                    </div>
-                                `).join("")}
+                            <div id="versionList" class="version-list">
+                                ${buildVersionList(versionEntries)}
                             </div>
                         </div>
                     </article>
@@ -922,9 +1064,12 @@
 
                 <section>
                     <article class="surface section-card">
-                        <div class="section-heading">
-                            <p class="eyebrow">GitHub</p>
-                            <h2 class="section-title">Stars over time</h2>
+                        <div class="section-heading-row">
+                            <div class="section-heading">
+                                <p class="eyebrow">GitHub</p>
+                                <h2 class="section-title">Stars over time</h2>
+                            </div>
+                            ${buildTimeRangeControl("stars")}
                         </div>
                         <div class="chart-wrap chart-wrap-compact">
                             <canvas id="starsChart"></canvas>
@@ -934,9 +1079,12 @@
 
                 <section class="ranking-grid">
                     <article class="surface section-card">
-                        <div class="section-heading">
-                            <p class="eyebrow">Ranking</p>
-                            <h2 class="section-title">App rank over time</h2>
+                        <div class="section-heading-row">
+                            <div class="section-heading">
+                                <p class="eyebrow">Ranking</p>
+                                <h2 class="section-title">App rank over time</h2>
+                            </div>
+                            ${buildTimeRangeControl("rank")}
                         </div>
                         <div class="chart-wrap chart-wrap-compact">
                             <canvas id="rankChart"></canvas>
@@ -944,9 +1092,12 @@
                     </article>
 
                     <article class="surface section-card">
-                        <div class="section-heading">
-                            <p class="eyebrow">Ranking</p>
-                            <h2 class="section-title">Top rank over time</h2>
+                        <div class="section-heading-row">
+                            <div class="section-heading">
+                                <p class="eyebrow">Ranking</p>
+                                <h2 class="section-title">Top rank over time</h2>
+                            </div>
+                            ${buildTimeRangeControl("topRank")}
                         </div>
                         <div class="chart-wrap chart-wrap-compact">
                             <canvas id="topPercentChart"></canvas>
@@ -966,7 +1117,7 @@
                                     <tr>
                                         <th class="text-left">Date</th>
                                         <th class="text-right">Installations</th>
-                                        <th class="text-right">Auto-update</th>
+                                        <th class="text-right">Auto-update %</th>
                                         <th class="text-right">GitHub Stars</th>
                                         <th class="text-right">App Rank</th>
                                         <th class="text-right">Top Rank</th>
@@ -988,338 +1139,433 @@
                 </div>
             `;
 
-            new Chart(document.getElementById("lineChart"), {
-                type: "line",
-                data: {
-                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
-                    datasets: [{
-                        label: "Total Installations",
-                        data: history.map((entry) => entry.total),
-                        borderColor: "#4ade80",
-                        backgroundColor: "rgba(74, 222, 128, 0.12)",
-                        borderWidth: 3,
-                        pointRadius: history.length === 1 ? 4 : 0,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: "#bbf7d0",
-                        pointBorderWidth: 0,
-                        tension: 0,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: "index"
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: "#111827",
-                            borderColor: "rgba(226, 232, 240, 0.08)",
-                            borderWidth: 1,
-                            titleColor: "#f8fafc",
-                            bodyColor: "#dbe4f0",
-                            padding: 12,
-                            displayColors: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.05)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                maxRotation: 0,
-                                autoSkipPadding: 18
-                            }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.06)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                padding: 10,
-                                callback(value) {
-                                    return numberFormatter.format(value);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            const chartRanges = {
+                line: defaultChartRange,
+                pie: defaultChartRange,
+                stars: defaultChartRange,
+                rank: defaultChartRange,
+                topRank: defaultChartRange
+            };
+            const chartInstances = {
+                line: null,
+                pie: null,
+                stars: null,
+                rank: null,
+                topRank: null
+            };
 
-            new Chart(document.getElementById("pieChart"), {
-                type: "doughnut",
-                data: {
-                    labels: versionEntries.map((entry) => entry.version),
-                    datasets: [{
-                        data: versionEntries.map((entry) => entry.count),
-                        backgroundColor: versionEntries.map((entry) => entry.color),
-                        borderColor: "#202a39",
-                        borderWidth: 4,
-                        hoverOffset: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: "70%",
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: "#111827",
-                            borderColor: "rgba(226, 232, 240, 0.08)",
-                            borderWidth: 1,
-                            titleColor: "#f8fafc",
-                            bodyColor: "#dbe4f0",
-                            padding: 12,
-                            callbacks: {
-                                label(context) {
-                                    const value = context.raw || 0;
-                                    return `${context.label}: ${formatNumber(value)} installs`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            function getRangeLabels(rangeHistory) {
+                return rangeHistory.map((entry) => dateFormatter.format(parseHistoryDate(entry.date)));
+            }
 
-            new Chart(document.getElementById("starsChart"), {
-                type: "line",
-                data: {
-                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
-                    datasets: [{
-                        label: "GitHub Stars",
-                        data: history.map((entry) => Number.isFinite(entry.stars) ? entry.stars : null),
-                        borderColor: "#fbbf24",
-                        backgroundColor: "rgba(251, 191, 36, 0.14)",
-                        borderWidth: 3,
-                        pointRadius: history.length === 1 ? 4 : 0,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: "#fde68a",
-                        pointBorderWidth: 0,
-                        tension: 0,
-                        fill: true,
-                        spanGaps: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: "index"
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: "#111827",
-                            borderColor: "rgba(226, 232, 240, 0.08)",
-                            borderWidth: 1,
-                            titleColor: "#f8fafc",
-                            bodyColor: "#dbe4f0",
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label(context) {
-                                    return `GitHub Stars: ${formatOptionalNumber(context.raw)}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.05)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                maxRotation: 0,
-                                autoSkipPadding: 18
-                            }
-                        },
-                        y: {
-                            beginAtZero: false,
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.06)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                padding: 10,
-                                callback(value) {
-                                    return numberFormatter.format(value);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            function getRangePointRadius(rangeHistory) {
+                return rangeHistory.length === 1 ? 4 : 0;
+            }
 
-            new Chart(document.getElementById("rankChart"), {
-                type: "line",
-                data: {
-                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
-                    datasets: [{
-                        label: "App Rank",
-                        data: history.map((entry) => Number.isInteger(entry.install_rank) ? entry.install_rank : null),
-                        borderColor: "#fb7185",
-                        backgroundColor: "rgba(251, 113, 133, 0.14)",
-                        borderWidth: 3,
-                        pointRadius: history.length === 1 ? 4 : 0,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: "#fda4af",
-                        pointBorderWidth: 0,
-                        tension: 0,
-                        fill: true,
-                        spanGaps: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: "index"
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: "#111827",
-                            borderColor: "rgba(226, 232, 240, 0.08)",
-                            borderWidth: 1,
-                            titleColor: "#f8fafc",
-                            bodyColor: "#dbe4f0",
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label(context) {
-                                    return `App Rank: ${formatRank(context.raw)}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.05)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                maxRotation: 0,
-                                autoSkipPadding: 18
-                            }
-                        },
-                        y: {
-                            reverse: true,
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.06)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                padding: 10,
-                                callback(value) {
-                                    return `#${numberFormatter.format(value)}`;
-                                }
-                            }
-                        }
-                    }
+            function renderLineChart() {
+                const rangeHistory = getHistoryForRange(history, chartRanges.line);
+                if (chartInstances.line) {
+                    chartInstances.line.destroy();
                 }
-            });
 
-            new Chart(document.getElementById("topPercentChart"), {
-                type: "line",
-                data: {
-                    labels: history.map((entry) => dateFormatter.format(parseHistoryDate(entry.date))),
-                    datasets: [{
-                        label: "Top Rank",
-                        data: history.map((entry) => getTopPercent(entry)),
-                        borderColor: "#c084fc",
-                        backgroundColor: "rgba(192, 132, 252, 0.14)",
-                        borderWidth: 3,
-                        pointRadius: history.length === 1 ? 4 : 0,
-                        pointHoverRadius: 5,
-                        pointBackgroundColor: "#d8b4fe",
-                        pointBorderWidth: 0,
-                        tension: 0,
-                        fill: true,
-                        spanGaps: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: "index"
+                chartInstances.line = new Chart(document.getElementById("lineChart"), {
+                    type: "line",
+                    data: {
+                        labels: getRangeLabels(rangeHistory),
+                        datasets: [{
+                            label: "Total Installations",
+                            data: rangeHistory.map((entry) => entry.total),
+                            borderColor: "#4ade80",
+                            backgroundColor: "rgba(74, 222, 128, 0.12)",
+                            borderWidth: 3,
+                            pointRadius: getRangePointRadius(rangeHistory),
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#bbf7d0",
+                            pointBorderWidth: 0,
+                            tension: 0,
+                            fill: true
+                        }]
                     },
-                    plugins: {
-                        legend: {
-                            display: false
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: "index"
                         },
-                        tooltip: {
-                            backgroundColor: "#111827",
-                            borderColor: "rgba(226, 232, 240, 0.08)",
-                            borderWidth: 1,
-                            titleColor: "#f8fafc",
-                            bodyColor: "#dbe4f0",
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label(context) {
-                                    return `Top Rank: ${formatTopPercent(context.raw)}`;
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: "#111827",
+                                borderColor: "rgba(226, 232, 240, 0.08)",
+                                borderWidth: 1,
+                                titleColor: "#f8fafc",
+                                bodyColor: "#dbe4f0",
+                                padding: 12,
+                                displayColors: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.05)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    maxRotation: 0,
+                                    autoSkipPadding: 18
                                 }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.05)",
-                                drawBorder: false
                             },
-                            ticks: {
-                                color: "#93a4ba",
-                                maxRotation: 0,
-                                autoSkipPadding: 18
-                            }
-                        },
-                        y: {
-                            reverse: true,
-                            min: 0,
-                            max: 100,
-                            grid: {
-                                color: "rgba(255, 255, 255, 0.06)",
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: "#93a4ba",
-                                padding: 10,
-                                callback(value) {
-                                    return `${value}%`;
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.06)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    padding: 10,
+                                    callback(value) {
+                                        return numberFormatter.format(value);
+                                    }
                                 }
                             }
                         }
                     }
+                });
+            }
+
+            function renderPieChart() {
+                const rangeHistory = getHistoryForRange(history, chartRanges.pie);
+                const latestRangeEntry = rangeHistory[rangeHistory.length - 1];
+                const rangeVersionEntries = getVersionEntries(latestRangeEntry);
+
+                document.getElementById("versionList").innerHTML = buildVersionList(rangeVersionEntries);
+
+                if (chartInstances.pie) {
+                    chartInstances.pie.destroy();
                 }
+
+                chartInstances.pie = new Chart(document.getElementById("pieChart"), {
+                    type: "doughnut",
+                    data: {
+                        labels: rangeVersionEntries.map((entry) => entry.version),
+                        datasets: [{
+                            data: rangeVersionEntries.map((entry) => entry.count),
+                            backgroundColor: rangeVersionEntries.map((entry) => entry.color),
+                            borderColor: "#202a39",
+                            borderWidth: 4,
+                            hoverOffset: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: "70%",
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: "#111827",
+                                borderColor: "rgba(226, 232, 240, 0.08)",
+                                borderWidth: 1,
+                                titleColor: "#f8fafc",
+                                bodyColor: "#dbe4f0",
+                                padding: 12,
+                                callbacks: {
+                                    label(context) {
+                                        const value = context.raw || 0;
+                                        return `${context.label}: ${formatNumber(value)} installs`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderStarsChart() {
+                const rangeHistory = getHistoryForRange(history, chartRanges.stars);
+                if (chartInstances.stars) {
+                    chartInstances.stars.destroy();
+                }
+
+                chartInstances.stars = new Chart(document.getElementById("starsChart"), {
+                    type: "line",
+                    data: {
+                        labels: getRangeLabels(rangeHistory),
+                        datasets: [{
+                            label: "GitHub Stars",
+                            data: rangeHistory.map((entry) => Number.isFinite(entry.stars) ? entry.stars : null),
+                            borderColor: "#fbbf24",
+                            backgroundColor: "rgba(251, 191, 36, 0.14)",
+                            borderWidth: 3,
+                            pointRadius: getRangePointRadius(rangeHistory),
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#fde68a",
+                            pointBorderWidth: 0,
+                            tension: 0,
+                            fill: true,
+                            spanGaps: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: "index"
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: "#111827",
+                                borderColor: "rgba(226, 232, 240, 0.08)",
+                                borderWidth: 1,
+                                titleColor: "#f8fafc",
+                                bodyColor: "#dbe4f0",
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label(context) {
+                                        return `GitHub Stars: ${formatOptionalNumber(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.05)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    maxRotation: 0,
+                                    autoSkipPadding: 18
+                                }
+                            },
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.06)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    padding: 10,
+                                    callback(value) {
+                                        return numberFormatter.format(value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderRankChart() {
+                const rangeHistory = getHistoryForRange(history, chartRanges.rank);
+                if (chartInstances.rank) {
+                    chartInstances.rank.destroy();
+                }
+
+                chartInstances.rank = new Chart(document.getElementById("rankChart"), {
+                    type: "line",
+                    data: {
+                        labels: getRangeLabels(rangeHistory),
+                        datasets: [{
+                            label: "App Rank",
+                            data: rangeHistory.map((entry) => Number.isInteger(entry.install_rank) ? entry.install_rank : null),
+                            borderColor: "#fb7185",
+                            backgroundColor: "rgba(251, 113, 133, 0.14)",
+                            borderWidth: 3,
+                            pointRadius: getRangePointRadius(rangeHistory),
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#fda4af",
+                            pointBorderWidth: 0,
+                            tension: 0,
+                            fill: true,
+                            spanGaps: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: "index"
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: "#111827",
+                                borderColor: "rgba(226, 232, 240, 0.08)",
+                                borderWidth: 1,
+                                titleColor: "#f8fafc",
+                                bodyColor: "#dbe4f0",
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label(context) {
+                                        return `App Rank: ${formatRank(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.05)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    maxRotation: 0,
+                                    autoSkipPadding: 18
+                                }
+                            },
+                            y: {
+                                reverse: true,
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.06)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    padding: 10,
+                                    callback(value) {
+                                        return `#${numberFormatter.format(value)}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderTopRankChart() {
+                const rangeHistory = getHistoryForRange(history, chartRanges.topRank);
+                if (chartInstances.topRank) {
+                    chartInstances.topRank.destroy();
+                }
+
+                chartInstances.topRank = new Chart(document.getElementById("topPercentChart"), {
+                    type: "line",
+                    data: {
+                        labels: getRangeLabels(rangeHistory),
+                        datasets: [{
+                            label: "Top Rank",
+                            data: rangeHistory.map((entry) => getTopPercent(entry)),
+                            borderColor: "#c084fc",
+                            backgroundColor: "rgba(192, 132, 252, 0.14)",
+                            borderWidth: 3,
+                            pointRadius: getRangePointRadius(rangeHistory),
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: "#d8b4fe",
+                            pointBorderWidth: 0,
+                            tension: 0,
+                            fill: true,
+                            spanGaps: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: "index"
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: "#111827",
+                                borderColor: "rgba(226, 232, 240, 0.08)",
+                                borderWidth: 1,
+                                titleColor: "#f8fafc",
+                                bodyColor: "#dbe4f0",
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label(context) {
+                                        return `Top Rank: ${formatTopPercent(context.raw)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.05)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    maxRotation: 0,
+                                    autoSkipPadding: 18
+                                }
+                            },
+                            y: {
+                                reverse: true,
+                                min: 0,
+                                max: 100,
+                                grid: {
+                                    color: "rgba(255, 255, 255, 0.06)",
+                                    drawBorder: false
+                                },
+                                ticks: {
+                                    color: "#93a4ba",
+                                    padding: 10,
+                                    callback(value) {
+                                        return `${value}%`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const chartRenderers = {
+                line: renderLineChart,
+                pie: renderPieChart,
+                stars: renderStarsChart,
+                rank: renderRankChart,
+                topRank: renderTopRankChart
+            };
+
+            Object.values(chartRenderers).forEach((renderChart) => renderChart());
+
+            document.querySelectorAll("[data-range-control]").forEach((control) => {
+                control.addEventListener("click", (event) => {
+                    const clickedButton = event.target.closest("[data-range-value]");
+                    if (!clickedButton) {
+                        return;
+                    }
+
+                    const chartId = control.dataset.rangeControl;
+                    const selectedRange = clickedButton.dataset.rangeValue;
+                    if (!chartRenderers[chartId] || chartRanges[chartId] === selectedRange) {
+                        return;
+                    }
+
+                    chartRanges[chartId] = selectedRange;
+                    control.querySelectorAll("[data-range-value]").forEach((button) => {
+                        button.classList.toggle("is-active", button.dataset.rangeValue === selectedRange);
+                    });
+
+                    chartRenderers[chartId]();
+                });
             });
 
             let currentTablePage = renderHistoryTable(history, 1);
