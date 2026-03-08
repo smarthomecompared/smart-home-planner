@@ -831,6 +831,24 @@
                     </div>
                     <div class="legend" id="label-summary"></div>
                 </div>
+                <div class="chart-card warning-card" id="warranty-alert-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Warranty Expiring Soon</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="warranty-alerts" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="warranty-alerts"></div>
+                </div>
                 <div class="chart-card warning-card" id="battery-alert-card">
                     <div class="chart-header">
                         <div class="chart-title">Battery Changes Soon</div>
@@ -1102,6 +1120,7 @@
                 countFormatter: row => `${formatWatts(row.count)} W`,
                 linkBuilder: row => row.value ? `device-edit.html?id=${encodeURIComponent(row.value)}` : ''
             });
+            renderWarrantyAlerts('warranty-alerts', buildWarrantyAlerts(devices));
             renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices, settings));
             renderPieChart('integration-stats', buildIntegrationStats(devices), 'integration');
             renderPieChart('local-chart', buildLocalStats(devices), 'localOnly');
@@ -2238,6 +2257,54 @@
                 </div>
             `;
             }).join('');
+        }
+
+        function buildWarrantyAlerts(devices) {
+            const now = new Date();
+            const DAYS_AHEAD = 90;
+            const alerts = [];
+
+            devices.forEach(device => {
+                if (!device.warrantyExpiration) return;
+                const exp = new Date(device.warrantyExpiration);
+                if (Number.isNaN(exp.getTime())) return;
+                const daysUntil = Math.floor((exp - now) / (1000 * 60 * 60 * 24));
+                if (daysUntil < 0 || daysUntil > DAYS_AHEAD) return;
+                alerts.push({
+                    id: device.id,
+                    name: device.name || 'Unnamed',
+                    daysUntil,
+                    expirationDate: exp,
+                });
+            });
+
+            alerts.sort((a, b) => a.daysUntil - b.daysUntil);
+            return alerts;
+        }
+
+        function renderWarrantyAlerts(listId, alerts) {
+            const card = document.getElementById('warranty-alert-card');
+            if (!alerts.length) {
+                if (card) card.style.display = 'none';
+                const target = document.getElementById(listId);
+                if (target) target.innerHTML = '';
+                return;
+            }
+            if (card) card.style.display = '';
+
+            const rows = alerts.map(alert => {
+                const meta = alert.daysUntil === 0
+                    ? 'Expires today'
+                    : `Expires in ${alert.daysUntil} day${alert.daysUntil !== 1 ? 's' : ''}`;
+                return {
+                    label: alert.name,
+                    meta,
+                    href: `device-edit.html?id=${encodeURIComponent(alert.id)}`,
+                    dotColor: alert.daysUntil <= 30 ? 'var(--danger-color)' : 'var(--warning-color)',
+                };
+            });
+
+            renderLegendList(listId, rows, { maxItems: 'fit' });
         }
 
         function buildBatteryTypeMetaMap() {

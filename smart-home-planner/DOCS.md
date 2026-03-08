@@ -71,6 +71,10 @@ Lists planned or desired devices that are not part of your active setup yet.
 ### Devices by Label
 Shows how devices are distributed across labels, helping validate your tagging strategy.
 
+### Warranty Expiring Soon
+
+Lists devices whose warranty expires within the next 90 days. Items expiring within 30 days are highlighted in red; items between 31 and 90 days are highlighted in orange.
+
 ### Battery Changes Soon
 Highlights devices approaching battery replacement and includes a purchase-oriented battery summary.
 
