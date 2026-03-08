@@ -248,6 +248,23 @@ Device Options control the selectable lists used throughout the app. Keep these 
 
 Test Cases settings lets you manage the category list used in the Test Cases page. You can add, rename, or remove categories to match your operational check workflows.
 
+### Notifications
+
+Notifications sends Home Assistant persistent notifications for active warnings automatically. The check runs every time you open the dashboard and once every 24 hours in the background.
+
+Notification types you can enable or disable individually:
+
+1. Battery Changes Soon — alerts when devices are approaching their battery replacement date.
+2. Warranty Expiring Soon — alerts when devices have warranty expiring within 90 days.
+3. Last Backup Warning — alerts when the most recent Home Assistant backup is older than 7 days or does not include the Smart Home Planner app.
+4. Tests Overdue or Due Soon — alerts when test cases are overdue or due within the next 7 days.
+
+How notifications work:
+
+1. Each notification type has a fixed ID in Home Assistant so the same alert is updated rather than duplicated.
+2. When a condition resolves, the notification is automatically dismissed from Home Assistant.
+3. If you manually dismiss a notification in Home Assistant, it will not reappear unless the underlying condition changes, such as a new device triggering the same warning.
+
 ### Home Assistant Integration
 
 This section controls how Home Assistant areas map into the app and how synced devices are handled.

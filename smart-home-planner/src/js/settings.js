@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeSettingsSubmenu('general');
     initializeEventListeners();
     renderHaIntegrationSettings();
+    renderNotificationSettings();
     await renderExcludedDevicesManagement();
     await renderNetworksManagement();
     renderOptionsManagement();
@@ -235,6 +236,11 @@ function initializeEventListeners() {
         }
     });
     initializeExcludedDevicesTableControls();
+
+    ['notif-enabled', 'notif-type-battery', 'notif-type-warranty', 'notif-type-backup', 'notif-type-tests'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => { void _notifAutoSave(); });
+    });
 }
 
 function initializeExcludedDevicesTableControls() {
@@ -1313,5 +1319,71 @@ async function handleOptionEditorKeydown(event) {
         event.preventDefault();
         const context = getOptionEditorItemContext(renameInput);
         await renameDeviceOption(context);
+    }
+}
+
+
+// Notification Settings
+
+let _notifFeedbackTimer = null;
+
+function _notifUpdateMasterState(enabled) {
+    const masterCard = document.getElementById('notif-master-card');
+    const typesPanel = document.getElementById('notif-types-panel');
+    if (masterCard) masterCard.classList.toggle('is-on', enabled);
+    if (typesPanel) typesPanel.classList.toggle('is-disabled', !enabled);
+}
+
+function _notifShowFeedback(text, isError) {
+    const el = document.getElementById('notif-status');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'notif-save-feedback' + (isError ? ' is-error' : ' is-success');
+    clearTimeout(_notifFeedbackTimer);
+    _notifFeedbackTimer = setTimeout(() => {
+        if (el) { el.textContent = ''; el.className = 'notif-save-feedback'; }
+    }, 2000);
+}
+
+function renderNotificationSettings() {
+    const notif = (settings && settings.notifications) ? settings.notifications : {};
+    const types = notif.types || {};
+    const enabled = notif.enabled !== false; // default true for new installs
+
+    const enabledEl = document.getElementById('notif-enabled');
+    if (enabledEl) enabledEl.checked = enabled;
+
+    const batteryEl = document.getElementById('notif-type-battery');
+    if (batteryEl) batteryEl.checked = types.battery !== false;
+
+    const warrantyEl = document.getElementById('notif-type-warranty');
+    if (warrantyEl) warrantyEl.checked = types.warranty !== false;
+
+    const backupEl = document.getElementById('notif-type-backup');
+    if (backupEl) backupEl.checked = types.backup !== false;
+
+    const testsEl = document.getElementById('notif-type-tests');
+    if (testsEl) testsEl.checked = types.tests !== false;
+
+    _notifUpdateMasterState(enabled);
+}
+
+async function _notifAutoSave() {
+    const enabled = Boolean(document.getElementById('notif-enabled')?.checked);
+    const battery = Boolean(document.getElementById('notif-type-battery')?.checked);
+    const warranty = Boolean(document.getElementById('notif-type-warranty')?.checked);
+    const backup = Boolean(document.getElementById('notif-type-backup')?.checked);
+    const tests = Boolean(document.getElementById('notif-type-tests')?.checked);
+
+    _notifUpdateMasterState(enabled);
+
+    const notifications = { enabled, types: { battery, warranty, backup, tests } };
+    try {
+        await patchStorage({ settings: { notifications } });
+        if (!settings) settings = {};
+        settings.notifications = notifications;
+        _notifShowFeedback('Saved', false);
+    } catch (error) {
+        _notifShowFeedback(error?.message || 'Failed to save', true);
     }
 }

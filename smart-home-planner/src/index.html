@@ -1122,6 +1122,10 @@
             });
             renderWarrantyAlerts('warranty-alerts', buildWarrantyAlerts(devices));
             renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices, settings));
+
+            // Fire-and-forget: send HA notifications for active warnings
+            const _notifUrl = typeof buildAppUrl === 'function' ? buildAppUrl('api/notifications/check') : '/api/notifications/check';
+            fetch(_notifUrl, { method: 'POST', cache: 'no-store' }).catch(() => {});
             renderPieChart('integration-stats', buildIntegrationStats(devices), 'integration');
             renderPieChart('local-chart', buildLocalStats(devices), 'localOnly');
             renderPieChart('ups-chart', buildUpsStats(devices), 'upsProtected');

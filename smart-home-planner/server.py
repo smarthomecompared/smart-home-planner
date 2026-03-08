@@ -524,6 +524,308 @@ def _fetch_supervisor_json(path):
         return {"raw": payload}
 
 
+def _call_ha_service(domain, service, payload):
+    if not SUPERVISOR_TOKEN:
+        return
+    base_url = str(SUPERVISOR_CORE_URL or "http://supervisor/core").rstrip("/")
+    url = f"{base_url}/api/services/{domain}/{service}"
+    body = json.dumps(payload).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {SUPERVISOR_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlopen(request, timeout=10) as response:
+        response.read()
+
+
+def _send_or_dismiss_notification(notification_id, title, message, active):
+    try:
+        if active:
+            _call_ha_service("persistent_notification", "create", {
+                "notification_id": notification_id,
+                "title": title,
+                "message": message,
+            })
+        else:
+            _call_ha_service("persistent_notification", "dismiss", {
+                "notification_id": notification_id,
+            })
+    except Exception:
+        pass
+
+
+def _notif_check_battery(devices, state):
+    """Returns ("send"|"dismiss"|"skip", message, next_state).
+    Tracks overdue vs due-soon devices separately. Fires when new devices appear in either
+    group, and re-fires when a device graduates from due-soon to overdue (respecting dismiss
+    for devices already notified at the same level)."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    overdue_devices = {}   # id -> name: days_since > duration (past replacement date)
+    soon_devices = {}      # id -> name: 0.8 <= ratio < 1.0 (approaching replacement date)
+    for device in devices:
+        last_str = device.get("lastBatteryChange")
+        if not last_str:
+            continue
+        try:
+            last = datetime.datetime.fromisoformat(str(last_str).replace("Z", "+00:00"))
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            continue
+        duration = int(device.get("batteryDuration") or 730)
+        if duration <= 0:
+            continue
+        days_since = (now - last).days
+        ratio = days_since / duration
+        device_id = str(device.get("id") or "").strip()
+        if not device_id:
+            continue
+        if ratio >= 1.0:
+            overdue_devices[device_id] = device.get("name") or "Unnamed"
+        elif ratio >= 0.8:
+            soon_devices[device_id] = device.get("name") or "Unnamed"
+
+    all_alert_ids = set(overdue_devices) | set(soon_devices)
+    prev_overdue = set(state.get("overdueIds") or [])
+    prev_soon = set(state.get("soonIds") or [])
+    prev_all = prev_overdue | prev_soon
+
+    # Devices still alerting at the same level (or better — keeps tracking)
+    clean_prev_overdue = prev_overdue & set(overdue_devices)
+    clean_prev_soon = prev_soon & set(soon_devices)
+
+    # New overdue: not yet in overdueIds (includes devices graduating from soonIds)
+    new_overdue = set(overdue_devices) - clean_prev_overdue
+    # New soon: not yet notified at any level, and not overdue
+    new_soon = set(soon_devices) - (prev_soon | prev_overdue)
+    new_ids = new_overdue | new_soon
+
+    # Next state: devices that moved to overdue leave soonIds and join overdueIds
+    next_overdue = sorted(clean_prev_overdue | new_overdue)
+    next_soon = sorted((clean_prev_soon | new_soon) - set(overdue_devices))
+    next_state = {"overdueIds": next_overdue, "soonIds": next_soon}
+
+    if not all_alert_ids:
+        action = "dismiss" if prev_all else "skip"
+        return action, "", {"overdueIds": [], "soonIds": []}
+    if new_ids:
+        parts = []
+        if overdue_devices:
+            names = sorted(overdue_devices.values())
+            parts.append(f"{len(names)} overdue: {', '.join(names)}")
+        if soon_devices:
+            names = sorted(soon_devices.values())
+            parts.append(f"{len(names)} due soon: {', '.join(names)}")
+        msg = "Battery replacement needed — " + "; ".join(parts) + "."
+        return "send", msg, next_state
+    return "skip", "", next_state
+
+
+def _notif_check_warranty(devices, state):
+    """Tracks per-device IDs. Fires only for newly expiring devices."""
+    now = datetime.datetime.now(datetime.timezone.utc).date()
+    alert_devices = {}
+    for device in devices:
+        exp_str = device.get("warrantyExpiration")
+        if not exp_str:
+            continue
+        try:
+            exp = datetime.date.fromisoformat(str(exp_str)[:10])
+        except Exception:
+            continue
+        days_until = (exp - now).days
+        if 0 <= days_until <= 90:
+            device_id = str(device.get("id") or "").strip()
+            if device_id:
+                alert_devices[device_id] = (device.get("name") or "Unnamed", days_until)
+    alert_ids = set(alert_devices)
+    prev_notified = set(state.get("notifiedIds") or [])
+    clean_prev = prev_notified & alert_ids
+    new_ids = alert_ids - clean_prev
+    if not alert_ids:
+        action = "dismiss" if prev_notified else "skip"
+        return action, "", {"notifiedIds": []}
+    if new_ids:
+        all_sorted = sorted(alert_devices.items(), key=lambda x: x[1][1])
+        names = [v[0] for _, v in all_sorted]
+        count = len(names)
+        msg = f"{count} device{'s' if count != 1 else ''} {'have' if count != 1 else 'has'} warranty expiring within 90 days: {', '.join(names)}."
+        return "send", msg, {"notifiedIds": sorted(clean_prev | new_ids)}
+    return "skip", "", {"notifiedIds": sorted(clean_prev)}
+
+
+def _notif_check_backup(state):
+    """7-day cooldown after each send. Re-sends after 7 days if warning persists."""
+    try:
+        status = _build_backup_status_payload(write_debug_dump=False)
+    except Exception:
+        return "skip", "", state
+    stale = not status.get("hasRecentBackup", True)
+    missing_addon = not status.get("hasRecentBackupWithRequiredAddon", True)
+    stale_days = status.get("staleAfterDays", 7)
+    active = stale or missing_addon
+    if not active:
+        action = "dismiss" if state.get("lastSentAt") else "skip"
+        return action, "", {"lastSentAt": None}
+    last_sent_str = state.get("lastSentAt")
+    if last_sent_str:
+        try:
+            last_sent = datetime.datetime.fromisoformat(str(last_sent_str).replace("Z", "+00:00"))
+            if last_sent.tzinfo is None:
+                last_sent = last_sent.replace(tzinfo=datetime.timezone.utc)
+            if (datetime.datetime.now(datetime.timezone.utc) - last_sent).days < 7:
+                return "skip", "", state
+        except Exception:
+            pass
+    msg = (
+        f"Last Home Assistant backup is older than {stale_days} days."
+        if stale else
+        f"No backup from the last {stale_days} days includes the Smart Home Planner add-on."
+    )
+    now_str = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return "send", msg, {"lastSentAt": now_str}
+
+
+def _notif_check_tests(storage, state):
+    """Tracks per-test-case IDs. Fires only for newly overdue/due-soon cases."""
+    test_cases = [tc for tc in (storage.get("testCases") or []) if tc and tc.get("enabled") is not False]
+    test_runs = storage.get("testCaseRuns") or []
+    today = datetime.datetime.now(datetime.timezone.utc).date()
+    runs_by_case = {}
+    for run in test_runs:
+        case_id = run.get("testCaseId")
+        if not case_id:
+            continue
+        run_at_str = run.get("runAt") or run.get("createdAt")
+        if not run_at_str:
+            continue
+        try:
+            run_at = datetime.datetime.fromisoformat(str(run_at_str).replace("Z", "+00:00"))
+            if run_at.tzinfo is None:
+                run_at = run_at.replace(tzinfo=datetime.timezone.utc)
+        except Exception:
+            continue
+        existing = runs_by_case.get(case_id)
+        if existing is None or run_at > existing["runAt"]:
+            runs_by_case[case_id] = {"runAt": run_at}
+    alert_cases = {}
+    for tc in test_cases:
+        tc_id = tc.get("id")
+        if not tc_id:
+            continue
+        frequency = int(tc.get("frequencyDays") or 30)
+        latest_run = runs_by_case.get(tc_id)
+        if latest_run is None:
+            alert_cases[str(tc_id)] = tc.get("name") or "Unnamed"
+            continue
+        next_due = (latest_run["runAt"] + datetime.timedelta(days=frequency)).date()
+        days_until = (next_due - today).days
+        if days_until < 0 or days_until <= 7:
+            alert_cases[str(tc_id)] = tc.get("name") or "Unnamed"
+    alert_ids = set(alert_cases)
+    prev_notified = set(state.get("notifiedIds") or [])
+    clean_prev = prev_notified & alert_ids
+    new_ids = alert_ids - clean_prev
+    if not alert_ids:
+        action = "dismiss" if prev_notified else "skip"
+        return action, "", {"notifiedIds": []}
+    if new_ids:
+        count = len(alert_ids)
+        msg = f"{count} test case{'s' if count != 1 else ''} {'are' if count != 1 else 'is'} overdue or due soon."
+        return "send", msg, {"notifiedIds": sorted(clean_prev | new_ids)}
+    return "skip", "", {"notifiedIds": sorted(clean_prev)}
+
+
+NOTIFICATION_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
+
+
+def _run_notification_checks():
+    with _lock:
+        storage = _read_storage()
+    notif_settings = (storage.get("settings") or {}).get("notifications") or {}
+    if not notif_settings.get("enabled", True):
+        return {"skipped": True}
+    types = notif_settings.get("types") or {}
+    prev_state = dict(notif_settings.get("state") or {})
+    devices = storage.get("devices") or []
+    new_state = dict(prev_state)
+    results = {}
+    state_changed = False
+
+    checks = [
+        ("battery",  "shp_battery",  "Smart Home Planner — Batteries", lambda: _notif_check_battery(devices, prev_state.get("battery") or {})),
+        ("warranty", "shp_warranty", "Smart Home Planner — Warranty",  lambda: _notif_check_warranty(devices, prev_state.get("warranty") or {})),
+        ("backup",   "shp_backup",   "Smart Home Planner — Backup",    lambda: _notif_check_backup(prev_state.get("backup") or {})),
+        ("tests",    "shp_tests",    "Smart Home Planner — Tests",     lambda: _notif_check_tests(storage, prev_state.get("tests") or {})),
+    ]
+    checks = [(k, n, t, fn) for k, n, t, fn in checks if types.get(k, True)]
+
+    for key, notif_id, title, checker in checks:
+        action, msg, next_key_state = checker()
+        if action == "send":
+            _send_or_dismiss_notification(notif_id, title, msg, True)
+            results[key] = True
+        elif action == "dismiss":
+            _send_or_dismiss_notification(notif_id, title, "", False)
+            results[key] = False
+        else:
+            results[key] = False
+        if next_key_state != prev_state.get(key):
+            new_state[key] = next_key_state
+            state_changed = True
+
+    if state_changed:
+        with _lock:
+            current = _read_storage()
+            s = current.setdefault("settings", {})
+            n = s.setdefault("notifications", {})
+            n["state"] = new_state
+            _write_storage(current)
+
+    return results
+
+
+def _schedule_notification_check():
+    try:
+        _run_notification_checks()
+    except Exception:
+        pass
+    t = threading.Timer(NOTIFICATION_CHECK_INTERVAL_SECONDS, _schedule_notification_check)
+    t.daemon = True
+    t.start()
+
+
+def _send_ha_test_notification():
+    if not SUPERVISOR_TOKEN:
+        raise RuntimeError("SUPERVISOR_TOKEN is missing")
+    base_url = str(SUPERVISOR_CORE_URL or "http://supervisor/core").rstrip("/")
+    url = f"{base_url}/api/services/persistent_notification/create"
+    body = json.dumps({
+        "title": "Smart Home Planner",
+        "message": "Test notification from Smart Home Planner debug settings.",
+        "notification_id": "shp_test_notification",
+    }).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={
+            "Authorization": f"Bearer {SUPERVISOR_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            response.read()
+    except Exception as error:
+        raise RuntimeError(f"Failed to send test notification: {error}") from error
+
+
 def _unwrap_supervisor_data(payload):
     if isinstance(payload, dict) and isinstance(payload.get("data"), (dict, list)):
         return payload.get("data")
@@ -1074,6 +1376,24 @@ class AppHandler(SimpleHTTPRequestHandler):
             self._send_json(200, {"ok": True, "result": result})
             return
 
+        if parsed.path == "/api/notifications/check":
+            try:
+                results = _run_notification_checks()
+            except Exception as error:
+                self._send_json(500, {"error": str(error)})
+                return
+            self._send_json(200, {"ok": True, "results": results})
+            return
+
+        if parsed.path == "/api/debug/test-notification":
+            try:
+                _send_ha_test_notification()
+            except RuntimeError as error:
+                self._send_json(500, {"error": str(error)})
+                return
+            self._send_json(200, {"ok": True})
+            return
+
         if parsed.path != "/api/device-files/upload":
             self.send_error(404)
             return
@@ -1287,6 +1607,9 @@ def main():
     print(f"[runtime] HOSTNAME={HOSTNAME} | Mode: {mode_label}", flush=True)
     handler = partial(AppHandler, directory=WEB_ROOT)
     server = HTTPServer((HOST, PORT), handler)
+    init_timer = threading.Timer(60, _schedule_notification_check)
+    init_timer.daemon = True
+    init_timer.start()
     server.serve_forever()
 
 

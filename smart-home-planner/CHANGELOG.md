@@ -3,6 +3,7 @@
 ### Added
 - Generate and download reports for your smart home inventory
 - New "Warranty Expiring Soon" Dashboard card
+- Home Assistant persistent notifications for active warnings
 
 ## 1.5.1 - 2026-03-05
 

@@ -161,6 +161,18 @@
                                 </span>
                                 <span class="settings-menu-indicator" aria-hidden="true"></span>
                             </button>
+                            <button class="settings-menu-btn" id="settings-tab-notifications" role="tab" aria-controls="settings-panel-notifications" type="button" data-settings-panel-target="notifications" aria-selected="false">
+                                <span class="settings-menu-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                    </svg>
+                                </span>
+                                <span class="settings-menu-label">
+                                    <span class="settings-menu-title">Notifications</span>
+                                </span>
+                                <span class="settings-menu-indicator" aria-hidden="true"></span>
+                            </button>
                             <button class="settings-menu-btn" id="settings-tab-about" role="tab" aria-controls="settings-panel-about" type="button" data-settings-panel-target="about" aria-selected="false">
                                 <span class="settings-menu-icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24">
@@ -319,6 +331,98 @@
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-notifications" data-settings-panel="notifications" id="settings-panel-notifications" hidden>
+                            <div class="settings-section">
+                                <h3 class="settings-section-title">Notifications</h3>
+                                <p class="settings-description">Sends Home Assistant persistent notifications for active warnings</p>
+
+                                <div class="notif-master-card" id="notif-master-card">
+                                    <div class="notif-master-content">
+                                        <span class="notif-master-title">Enable Notifications</span>
+                                        <span class="notif-master-desc">Send warnings to Home Assistant</span>
+                                    </div>
+                                    <label class="notif-pill" aria-label="Enable notifications">
+                                        <input type="checkbox" id="notif-enabled">
+                                        <span class="notif-pill-track"><span class="notif-pill-thumb"></span></span>
+                                    </label>
+                                </div>
+
+                                <div class="notif-types-grid" id="notif-types-panel">
+                                    <div class="notif-type-card">
+                                        <span class="notif-type-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="6" y="7" width="12" height="11" rx="2"></rect>
+                                                <path d="M9 7V5a3 3 0 0 1 6 0v2"></path>
+                                                <path d="M12 12v2"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="notif-type-info">
+                                            <span class="notif-type-title">Battery Changes Soon</span>
+                                            <span class="notif-type-desc">Devices approaching their battery replacement date</span>
+                                        </div>
+                                        <label class="notif-pill notif-pill-sm" aria-label="Battery notifications">
+                                            <input type="checkbox" id="notif-type-battery">
+                                            <span class="notif-pill-track"><span class="notif-pill-thumb"></span></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="notif-type-card">
+                                        <span class="notif-type-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                <path d="M9 12l2 2 4-4"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="notif-type-info">
+                                            <span class="notif-type-title">Warranty Expiring Soon</span>
+                                            <span class="notif-type-desc">Devices with warranty expiring within 90 days</span>
+                                        </div>
+                                        <label class="notif-pill notif-pill-sm" aria-label="Warranty notifications">
+                                            <input type="checkbox" id="notif-type-warranty">
+                                            <span class="notif-pill-track"><span class="notif-pill-thumb"></span></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="notif-type-card">
+                                        <span class="notif-type-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                <path d="M3.27 6.96L12 12.01l8.73-5.05"></path>
+                                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                            </svg>
+                                        </span>
+                                        <div class="notif-type-info">
+                                            <span class="notif-type-title">Last Backup Warning</span>
+                                            <span class="notif-type-desc">When the most recent backup is outdated or missing the app</span>
+                                        </div>
+                                        <label class="notif-pill notif-pill-sm" aria-label="Backup notifications">
+                                            <input type="checkbox" id="notif-type-backup">
+                                            <span class="notif-pill-track"><span class="notif-pill-thumb"></span></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="notif-type-card">
+                                        <span class="notif-type-icon" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M9 11l3 3L22 4"></path>
+                                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                            </svg>
+                                        </span>
+                                        <div class="notif-type-info">
+                                            <span class="notif-type-title">Tests Overdue or Due Soon</span>
+                                            <span class="notif-type-desc">Test cases that are overdue or due within 7 days</span>
+                                        </div>
+                                        <label class="notif-pill notif-pill-sm" aria-label="Test notifications">
+                                            <input type="checkbox" id="notif-type-tests">
+                                            <span class="notif-pill-track"><span class="notif-pill-thumb"></span></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="notif-save-feedback" id="notif-status" aria-live="polite"></div>
                             </div>
                         </div>
 
