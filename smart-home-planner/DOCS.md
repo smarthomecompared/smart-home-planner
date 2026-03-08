@@ -216,6 +216,21 @@ Settings is where you maintain the app’s overall structure and reference data.
 The app stores its data inside Home Assistant, so your regular Home Assistant backups already include it. Use the backup tools when you need a manual export or a restore from a file:
 1. Export Data saves your full inventory and attachments.
 2. Import Data restores a previous backup.
+3. Export to PDF generates a shareable PDF report of your smart home inventory.
+
+### Export to PDF
+
+The PDF report gives you a professional, printable snapshot of your entire setup. It is organized into sections so you can share it with others or keep it as a reference outside the app.
+
+What the PDF includes:
+
+1. Cover page with your home name and the report date.
+2. Table of Contents with page numbers for each section.
+3. Visual Summary with charts for device status, connectivity, power source, UPS coverage, integrations, and local versus cloud usage.
+4. Summary Report with detailed breakdowns by area, floor, brand, label, battery type, and integrations.
+5. Device Details with a full-page table per device covering every visible field: basic info, location, power, battery, storage, connectivity, ports, network associations, roles, integrations, purchase info, and notes.
+6. Network Diagrams showing your device layout. When a floor plan background image is configured, devices appear positioned over it. Without a background, areas and floors are drawn as labeled boxes matching the app diagram. One overview page shows all devices without connections, followed by one page per active connection type (Ethernet, USB, Power, Wi-Fi, Zigbee, Z-Wave).
+7. Test Cases listing all test cases grouped by category with name, priority, description, steps, and expected result.
 
 ### Networks
 

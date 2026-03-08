@@ -53,6 +53,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-1"
+      ],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/home-assistant-server"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/home-assistant-server"
+        }
       ]
     },
     {
@@ -105,7 +115,16 @@
       "networkId": "",
       "files": [],
       "updatedAt": "2026-03-04T18:02:07.574Z",
-      "links": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/zigbee-coordinator"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/zigbee-coordinator"
+        }
+      ],
       "wifiDownloadSpeed": null,
       "wifiUploadSpeed": null,
       "wifiBand": "",
@@ -164,7 +183,17 @@
       "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/wi-fi-router"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/wi-fi-router"
+        }
+      ]
     },
     {
       "id": "dev-4",
@@ -232,7 +261,17 @@
       "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/poe-switch"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/poe-switch"
+        }
+      ]
     },
     {
       "id": "dev-5",
@@ -278,7 +317,17 @@
       "controlledArea": "office",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/nas-storage"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/nas-storage"
+        }
+      ]
     },
     {
       "id": "dev-6",
@@ -328,7 +377,16 @@
       "warrantyExpiration": "",
       "files": [],
       "updatedAt": "2026-03-04T18:00:05.783Z",
-      "links": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/access-point"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/access-point"
+        }
+      ],
       "wifiDownloadSpeed": null,
       "wifiUploadSpeed": null,
       "wifiBand": "",
@@ -381,7 +439,17 @@
       "controlledArea": "garden",
       "networkId": "network-iot",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/outdoor-camera"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/outdoor-camera"
+        }
+      ]
     },
     {
       "id": "dev-8",
@@ -423,6 +491,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-8"
+      ],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/front-door-lock"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/front-door-lock"
+        }
       ]
     },
     {
@@ -475,7 +553,17 @@
       "networkId": "",
       "files": [],
       "updatedAt": "2026-02-24T22:05:47.287Z",
-      "zigbeeParentId": "dev-2"
+      "zigbeeParentId": "dev-2",
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/motion-sensor"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/motion-sensor"
+        }
+      ]
     },
     {
       "id": "dev-10",
@@ -529,7 +617,17 @@
       "controlledArea": "living_room",
       "networkId": "network-admin",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/ups-backup"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/ups-backup"
+        }
+      ]
     },
     {
       "id": "dev-11",
@@ -572,6 +670,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-11"
+      ],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/kitchen-smart-plug"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/kitchen-smart-plug"
+        }
       ]
     },
     {
@@ -613,7 +721,17 @@
       "controlledArea": "living_room",
       "networkId": "network-iot",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/smart-thermostat"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/smart-thermostat"
+        }
+      ]
     },
     {
       "id": "dev-13",
@@ -655,6 +773,16 @@
       "labels": [],
       "haDeviceIds": [
         "dev-13"
+      ],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/patio-light-strip"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/patio-light-strip"
+        }
       ]
     },
     {
@@ -696,7 +824,17 @@
       "controlledArea": "",
       "networkId": "network-iot",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/robot-vacuum"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/robot-vacuum"
+        }
+      ]
     },
     {
       "id": "dev-15",
@@ -737,7 +875,17 @@
       "controlledArea": "hall",
       "networkId": "network-iot",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/smoke-alarm"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/smoke-alarm"
+        }
+      ]
     },
     {
       "id": "dev-16",
@@ -786,7 +934,16 @@
       "purchasePrice": null,
       "purchaseCurrency": "",
       "warrantyExpiration": "",
-      "links": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/water-leak-sensor"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/water-leak-sensor"
+        }
+      ],
       "networkId": "",
       "wifiDownloadSpeed": null,
       "wifiUploadSpeed": null,
@@ -837,7 +994,17 @@
       "controlledArea": "kitchen",
       "networkId": "network-iot",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/echo-show"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/echo-show"
+        }
+      ]
     },
     {
       "id": "dev-18",
@@ -886,7 +1053,17 @@
       "purchaseCurrency": "",
       "warrantyExpiration": "",
       "files": [],
-      "updatedAt": "2026-02-24T22:05:02.976Z"
+      "updatedAt": "2026-02-24T22:05:02.976Z",
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/apple-tv"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/apple-tv"
+        }
+      ]
     },
     {
       "id": "dev-19",
@@ -936,7 +1113,16 @@
       "purchasePrice": null,
       "purchaseCurrency": "",
       "warrantyExpiration": "",
-      "links": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/garage-door-opener"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/garage-door-opener"
+        }
+      ],
       "wifiDownloadSpeed": null,
       "wifiUploadSpeed": null,
       "wifiBand": "",
@@ -986,7 +1172,17 @@
       "controlledArea": "",
       "networkId": "",
       "labels": [],
-      "haDeviceIds": []
+      "haDeviceIds": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/wishlist-camera"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/wishlist-camera"
+        }
+      ]
     },
     {
       "id": "1772647438991-t0w4tx",
@@ -1017,7 +1213,16 @@
       "storageSize": null,
       "storageUnit": "",
       "notes": "Primary Zigbee controller.",
-      "links": [],
+      "links": [
+        {
+          "name": "Product Page",
+          "url": "https://example.com/devices/z-wave-coordinator"
+        },
+        {
+          "name": "User Manual",
+          "url": "https://example.com/manuals/z-wave-coordinator"
+        }
+      ],
       "connectivity": "z-wave",
       "networkId": "",
       "wifiDownloadSpeed": null,

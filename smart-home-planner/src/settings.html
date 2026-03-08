@@ -146,6 +146,21 @@
                                 </span>
                                 <span class="settings-menu-indicator" aria-hidden="true"></span>
                             </button>
+                            <button class="settings-menu-btn" id="settings-tab-reports" role="tab" aria-controls="settings-panel-reports" type="button" data-settings-panel-target="reports" aria-selected="false">
+                                <span class="settings-menu-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                </span>
+                                <span class="settings-menu-label">
+                                    <span class="settings-menu-title">Reports</span>
+                                </span>
+                                <span class="settings-menu-indicator" aria-hidden="true"></span>
+                            </button>
                             <button class="settings-menu-btn" id="settings-tab-about" role="tab" aria-controls="settings-panel-about" type="button" data-settings-panel-target="about" aria-selected="false">
                                 <span class="settings-menu-icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24">
@@ -186,6 +201,7 @@
                                         </div>
                                         <button class="btn btn-danger" id="import-confirm-btn" style="display: none; margin-top: 0.5rem;">Import Data</button>
                                     </div>
+
                                 </div>
                             </div>
 
@@ -284,6 +300,23 @@
                                         <button class="btn btn-sm btn-secondary" id="excluded-prev-page-btn" disabled>Previous</button>
                                         <span id="excluded-page-numbers"></span>
                                         <button class="btn btn-sm btn-secondary" id="excluded-next-page-btn" disabled>Next</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-reports" data-settings-panel="reports" id="settings-panel-reports" hidden>
+                            <div class="settings-section">
+                                <h3 class="settings-section-title">Reports</h3>
+                                <p class="settings-description">Generate and download reports for your smart home inventory.</p>
+                                <div class="settings-actions">
+                                    <div class="settings-action-group">
+                                        <h4>Export to PDF</h4>
+                                        <p>Download a comprehensive PDF report including device inventory, summary statistics, network connections, and the device diagram.</p>
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                                            <button class="btn btn-primary" id="export-pdf-btn">Export to PDF</button>
+                                            <span id="export-pdf-status" style="display: none; font-size: 0.875rem; color: var(--text-muted, #64748b);">Generating PDF…</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -407,5 +440,9 @@
     <script src="js/metadata.js"></script>
     <script src="js/common.js"></script>
     <script src="js/settings.js"></script>
+    <!-- PDF export — jsPDF + autoTable plugin loaded from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="js/pdf-export.js"></script>
 </body>
 </html>

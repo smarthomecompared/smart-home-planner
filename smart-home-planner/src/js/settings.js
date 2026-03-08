@@ -178,6 +178,9 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+        void generateSmartHomePDF();
+    });
     document.querySelectorAll('input[name="ha-area-sync-target"]').forEach((radio) => {
         radio.addEventListener('change', saveHaIntegrationSettings);
     });

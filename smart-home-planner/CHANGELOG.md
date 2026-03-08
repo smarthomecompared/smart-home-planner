@@ -1,7 +1,7 @@
 ## 1.6.0
 
 ### Added
-- 
+- Generate and download reports for your smart home inventory
 
 ## 1.5.1 - 2026-03-05
 

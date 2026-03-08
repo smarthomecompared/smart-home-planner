@@ -3,6 +3,7 @@ newsletter/
 deals/public
 temp/
 sample.tar
+.claude
 
 # Logs
 logs
