@@ -29,6 +29,7 @@ window.DeviceDiagram = (() => {
         minPadding: 3,
         maxPadding: 10
     };
+    const DEVICE_TEXT_MAX_LINES = 5;
     const DEVICE_ROTATION_OFFSET = 90;
     const DEVICE_ROTATION_MAX = 359;
     const DEVICE_ROTATION_SENSITIVITY = 0.6;
@@ -511,22 +512,46 @@ window.DeviceDiagram = (() => {
         const iconSvgContent = String(node.data('cardIconSvgContent') || '').trim() || null;
         const imageHref = String(node.data('cardImageUrl') || '').trim();
         const rotation = getDeviceNodeRotation(node);
-        const lastRotation = Number(node.data('cardSvgRotation'));
-        if (Number.isFinite(lastRotation) && lastRotation === rotation) {
+        const width = Number(node.data('width')) || DEVICE_BASE_METRICS.width;
+        const height = Number(node.data('height')) || DEVICE_BASE_METRICS.height;
+        const fontSize = Number(node.data('fontSize')) || DEVICE_BASE_METRICS.fontSize;
+        const textMaxWidth = Number(node.data('textMaxWidth')) || DEVICE_BASE_METRICS.textMaxWidth;
+        const padding = Number(node.data('padding')) || DEVICE_BASE_METRICS.padding;
+        const signature = JSON.stringify({
+            label,
+            status,
+            storageLabel,
+            iconSvgContent,
+            imageHref,
+            rotation,
+            width,
+            height,
+            fontSize,
+            textMaxWidth,
+            padding
+        });
+        const lastSignature = String(node.data('cardSvgSignature') || '');
+        if (lastSignature && lastSignature === signature) {
             return;
         }
-        node.data('cardSvgTargetRotation', rotation);
+        node.data('cardSvgTargetSignature', signature);
         const url = buildDeviceCardSvg({
             label,
             status,
             storageLabel,
             rotation,
             iconSvgContent,
-            imageHref
+            imageHref,
+            width,
+            height,
+            fontSize,
+            textMaxWidth,
+            padding
         });
         if (cardSvgCache.has(url)) {
             node.data('cardSvg', url);
             node.data('cardSvgRotation', rotation);
+            node.data('cardSvgSignature', signature);
             return;
         }
 
@@ -536,20 +561,22 @@ window.DeviceDiagram = (() => {
             if (!cy) return;
             const target = cy.getElementById(node.id());
             if (!target || target.empty()) return;
-            const targetRotation = Number(target.data('cardSvgTargetRotation'));
-            if (!Number.isFinite(targetRotation) || targetRotation !== rotation) return;
+            const targetSignature = String(target.data('cardSvgTargetSignature') || '');
+            if (!targetSignature || targetSignature !== signature) return;
             target.data('cardSvg', url);
             target.data('cardSvgRotation', rotation);
+            target.data('cardSvgSignature', signature);
         };
         img.onerror = () => {
             cardSvgCache.add(url);
             if (!cy) return;
             const target = cy.getElementById(node.id());
             if (!target || target.empty()) return;
-            const targetRotation = Number(target.data('cardSvgTargetRotation'));
-            if (!Number.isFinite(targetRotation) || targetRotation !== rotation) return;
+            const targetSignature = String(target.data('cardSvgTargetSignature') || '');
+            if (!targetSignature || targetSignature !== signature) return;
             target.data('cardSvg', url);
             target.data('cardSvgRotation', rotation);
+            target.data('cardSvgSignature', signature);
         };
         img.src = url;
     }
@@ -807,8 +834,7 @@ window.DeviceDiagram = (() => {
         return { x, y };
     }
 
-    function resolveSavedSize(savedPositions, deviceId, useBackground) {
-        if (!useBackground) return null;
+    function resolveSavedSize(savedPositions, deviceId) {
         const saved = savedPositions ? savedPositions[deviceId] : null;
         return parseSavedSize(saved);
     }
@@ -822,7 +848,63 @@ window.DeviceDiagram = (() => {
     }
 
     function canResizeDevices() {
-        return isLayoutEditable && hasDiagramBackground();
+        return isLayoutEditable;
+    }
+
+    function resolveAutoDeviceSize({ label, storageLabel, hasMedia, savedSize }) {
+        const fontSize = DEVICE_BASE_METRICS.fontSize;
+        const lineHeight = fontSize * 1.25;
+        const basePadding = DEVICE_BASE_METRICS.padding;
+        const minWidth = DEVICE_SIZE_LIMITS.minWidth;
+        const maxWidth = DEVICE_SIZE_LIMITS.maxWidth;
+        const mediaSize = hasMedia ? 38 : 0;
+        const mediaOffset = hasMedia ? (basePadding + mediaSize + 8) : (basePadding + 7);
+        const horizontalPadding = basePadding + 6;
+        const maxTextWidth = Math.max(50, maxWidth - mediaOffset - horizontalPadding);
+        let width = Math.max(DEVICE_BASE_METRICS.width, minWidth);
+        let textWidth = Math.max(60, width - mediaOffset - horizontalPadding);
+        let lines = buildSvgTextLines(label, textWidth, fontSize, Number.POSITIVE_INFINITY);
+        while (lines.length > DEVICE_TEXT_MAX_LINES && width < maxWidth) {
+            width = Math.min(maxWidth, width + 26);
+            textWidth = Math.max(60, width - mediaOffset - horizontalPadding);
+            lines = buildSvgTextLines(label, textWidth, fontSize, Number.POSITIVE_INFINITY);
+        }
+        const longestLineLength = lines.reduce((maxLen, line) => Math.max(maxLen, line.length), 0);
+        const approxCharWidth = fontSize * 0.55;
+        const neededTextWidth = Math.min(
+            maxTextWidth,
+            Math.max(70, Math.ceil(longestLineLength * approxCharWidth) + 8)
+        );
+        width = clampNumber(
+            Math.max(width, neededTextWidth + mediaOffset + horizontalPadding),
+            minWidth,
+            maxWidth
+        );
+        textWidth = Math.max(60, width - mediaOffset - horizontalPadding);
+        lines = buildSvgTextLines(label, textWidth, fontSize, Number.POSITIVE_INFINITY);
+
+        const storageReserve = storageLabel ? 24 : 0;
+        const textHeight = Math.max(lineHeight, lines.length * lineHeight);
+        const contentHeight = Math.max(
+            hasMedia ? mediaSize + basePadding * 2 : 0,
+            textHeight + basePadding * 2 + storageReserve
+        );
+        const height = clampNumber(
+            Math.ceil(contentHeight),
+            DEVICE_SIZE_LIMITS.minHeight,
+            DEVICE_SIZE_LIMITS.maxHeight
+        );
+        if (!savedSize) {
+            return { width, height };
+        }
+        return {
+            width: clampNumber(Math.max(savedSize.width, width), minWidth, maxWidth),
+            height: clampNumber(
+                Math.max(savedSize.height, height),
+                DEVICE_SIZE_LIMITS.minHeight,
+                DEVICE_SIZE_LIMITS.maxHeight
+            )
+        };
     }
 
     function getActiveResizeNode() {
@@ -2610,7 +2692,7 @@ async function renderNetwork(options = {}) {
         }
         return defaultPosition;
     };
-    const resolveDeviceSize = (deviceId) => resolveSavedSize(savedPositions, deviceId, hasBackground);
+    const resolveDeviceSize = (deviceId) => resolveSavedSize(savedPositions, deviceId);
     const resolveDeviceRotation = (deviceId) => resolveSavedRotation(savedPositions, deviceId, hasBackground);
     
     // Build elements array
@@ -2719,25 +2801,39 @@ async function renderNetwork(options = {}) {
                 if (storageLabel) {
                     deviceData.hasStorage = 'true';
                 }
-                applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
+                const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
+                const typeIconSvg = _deviceIconCache[typeIconKey] || null;
+                const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
+                const savedSize = resolveDeviceSize(device.id);
+                const deviceSize = resolveAutoDeviceSize({
+                    label: deviceLabel,
+                    storageLabel,
+                    hasMedia: Boolean(uploadedImageUrl || (showIcons && typeIconSvg)),
+                    savedSize
+                });
+                applyDeviceSizeData(deviceData, deviceSize);
                 deviceData.rotation = resolveDeviceRotation(device.id) ?? 0;
                 deviceData.cardLabel = deviceLabel;
                 deviceData.cardStatus = device.status || '';
                 deviceData.cardStorageLabel = storageLabel || '';
-                const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
-                const typeIconSvg = _deviceIconCache[typeIconKey] || null;
-                const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
                 deviceData.cardIconSvgContent = showIcons ? (typeIconSvg || '') : '';
                 deviceData.cardImageUrl = uploadedImageUrl;
                 deviceData.cardSvgRotation = deviceData.rotation;
                 deviceData.cardSvgTargetRotation = deviceData.rotation;
+                deviceData.cardSvgSignature = '';
+                deviceData.cardSvgTargetSignature = '';
                 deviceData.cardSvg = buildDeviceCardSvg({
                     label: deviceLabel,
                     status: device.status,
                     storageLabel,
                     rotation: deviceData.rotation,
                     iconSvgContent: showIcons ? typeIconSvg : null,
-                    imageHref: uploadedImageUrl
+                    imageHref: uploadedImageUrl,
+                    width: deviceData.width,
+                    height: deviceData.height,
+                    fontSize: deviceData.fontSize,
+                    textMaxWidth: deviceData.textMaxWidth,
+                    padding: deviceData.padding
                 });
 
                 elements.push({
@@ -2812,25 +2908,39 @@ async function renderNetwork(options = {}) {
             if (storageLabel) {
                 deviceData.hasStorage = 'true';
             }
-            applyDeviceSizeData(deviceData, resolveDeviceSize(device.id));
+            const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
+            const typeIconSvg = _deviceIconCache[typeIconKey] || null;
+            const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
+            const savedSize = resolveDeviceSize(device.id);
+            const deviceSize = resolveAutoDeviceSize({
+                label: deviceLabel,
+                storageLabel,
+                hasMedia: Boolean(uploadedImageUrl || (showIcons && typeIconSvg)),
+                savedSize
+            });
+            applyDeviceSizeData(deviceData, deviceSize);
             deviceData.rotation = resolveDeviceRotation(device.id) ?? 0;
             deviceData.cardLabel = deviceLabel;
             deviceData.cardStatus = device.status || '';
             deviceData.cardStorageLabel = storageLabel || '';
-            const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
-            const typeIconSvg = _deviceIconCache[typeIconKey] || null;
-            const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
             deviceData.cardIconSvgContent = showIcons ? (typeIconSvg || '') : '';
             deviceData.cardImageUrl = uploadedImageUrl;
             deviceData.cardSvgRotation = deviceData.rotation;
             deviceData.cardSvgTargetRotation = deviceData.rotation;
+            deviceData.cardSvgSignature = '';
+            deviceData.cardSvgTargetSignature = '';
             deviceData.cardSvg = buildDeviceCardSvg({
                 label: deviceLabel,
                 status: device.status,
                 storageLabel,
                 rotation: deviceData.rotation,
                 iconSvgContent: showIcons ? typeIconSvg : null,
-                imageHref: uploadedImageUrl
+                imageHref: uploadedImageUrl,
+                width: deviceData.width,
+                height: deviceData.height,
+                fontSize: deviceData.fontSize,
+                textMaxWidth: deviceData.textMaxWidth,
+                padding: deviceData.padding
             });
 
             elements.push({
@@ -3181,18 +3291,22 @@ function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
         }
         if (current) {
             lines.push(current);
-            current = word;
-        } else {
-            lines.push(word.slice(0, maxChars));
-            current = word.slice(maxChars);
+            current = '';
         }
+        let remainingWord = word;
+        while (remainingWord.length > maxChars) {
+            lines.push(remainingWord.slice(0, maxChars));
+            remainingWord = remainingWord.slice(maxChars);
+        }
+        current = remainingWord;
     });
 
     if (current) {
         lines.push(current);
     }
 
-    if (lines.length <= maxLines) {
+    const hasLimit = Number.isFinite(maxLines) && maxLines > 0;
+    if (!hasLimit || lines.length <= maxLines) {
         return lines;
     }
     const trimmed = lines.slice(0, maxLines);
@@ -3203,33 +3317,49 @@ function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
     return trimmed;
 }
 
-function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref }) {
-    const width = DEVICE_BASE_METRICS.width;
-    const height = DEVICE_BASE_METRICS.height;
+function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref, width, height, fontSize, textMaxWidth, padding }) {
+    const safeWidth = clampNumber(Number(width), DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
+    const safeHeight = clampNumber(Number(height), DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
     const strokeColor = getDeviceStatusColor(status);
     const rx = 12;
-    const fontSize = DEVICE_BASE_METRICS.fontSize;
+    const safeFontSize = clampNumber(
+        Number(fontSize),
+        DEVICE_FONT_LIMITS.minFontSize,
+        DEVICE_FONT_LIMITS.maxFontSize
+    );
+    const safePadding = clampNumber(
+        Number(padding),
+        DEVICE_FONT_LIMITS.minPadding,
+        DEVICE_FONT_LIMITS.maxPadding
+    );
     const hasImage = Boolean(String(imageHref || '').trim());
     const hasIcon = Boolean(iconSvgContent);
     const showMedia = hasImage || hasIcon;
-    const mediaSize = 38;
-    const mediaX = 8;
-    const mediaY = Math.round((height - mediaSize) / 2);
-    const textX = showMedia ? (mediaX + mediaSize + 8) : 12;
-    const textMaxWidth = showMedia ? (width - textX - 10) : (width - 24);
-    const lines = buildSvgTextLines(label, textMaxWidth, fontSize, 2);
-    const lineHeight = fontSize * 1.25;
-    const totalHeight = lineHeight * lines.length;
-    let startY = (height - totalHeight) / 2 + fontSize - (storageLabel ? 4 : 0);
+    const mediaSize = showMedia ? clampNumber(safeHeight - safePadding * 2, 26, 42) : 0;
+    const mediaX = safePadding + 2;
+    const mediaY = Math.round((safeHeight - mediaSize) / 2);
+    const textX = showMedia ? (mediaX + mediaSize + 8) : (safePadding + 4);
+    const safeTextMaxWidth = clampNumber(
+        Number(textMaxWidth) || (showMedia ? (safeWidth - textX - safePadding - 4) : (safeWidth - safePadding * 2 - 6)),
+        50,
+        Math.max(50, safeWidth - textX - safePadding - 4)
+    );
+    const lineHeight = safeFontSize * 1.25;
+    const reservedBottom = storageLabel ? 24 : 0;
+    const availableTextHeight = Math.max(lineHeight, safeHeight - safePadding * 2 - reservedBottom);
+    const maxLines = Math.max(1, Math.floor(availableTextHeight / lineHeight));
+    const lines = buildSvgTextLines(label, safeTextMaxWidth, safeFontSize, maxLines);
+    const totalHeight = Math.min(availableTextHeight, lineHeight * lines.length);
+    let startY = safePadding + safeFontSize + Math.max(0, (availableTextHeight - totalHeight) / 2);
     const angle = normalizeDeviceRotation(rotation || 0);
     const radians = (angle * Math.PI) / 180;
-    const rotatedWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
-    const rotatedHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
+    const rotatedWidth = Math.abs(safeWidth * Math.cos(radians)) + Math.abs(safeHeight * Math.sin(radians));
+    const rotatedHeight = Math.abs(safeWidth * Math.sin(radians)) + Math.abs(safeHeight * Math.cos(radians));
     const scale = angle
-        ? Math.min(width / rotatedWidth, height / rotatedHeight, 1)
+        ? Math.min(safeWidth / rotatedWidth, safeHeight / rotatedHeight, 1)
         : 1;
     const transform = angle
-        ? `transform="translate(${width / 2} ${height / 2}) rotate(${angle}) scale(${scale}) translate(${-width / 2} ${-height / 2})"`
+        ? `transform="translate(${safeWidth / 2} ${safeHeight / 2}) rotate(${angle}) scale(${scale}) translate(${-safeWidth / 2} ${-safeHeight / 2})"`
         : '';
 
     const textMarkup = lines.map((line, index) => {
@@ -3239,15 +3369,15 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
 
     let storageMarkup = '';
     if (storageLabel) {
-        const badgeWidth = 56;
-        const badgeHeight = 24;
-        const badgeX = width - badgeWidth - 6;
-        const badgeY = height - badgeHeight - 6;
+        const badgeWidth = clampNumber(Math.round(safeWidth * 0.38), 56, Math.max(56, safeWidth - 16));
+        const badgeHeight = clampNumber(Math.round(safeHeight * 0.28), 20, 28);
+        const badgeX = safeWidth - badgeWidth - 6;
+        const badgeY = safeHeight - badgeHeight - 6;
         const safeLabel = escapeSvgText(storageLabel);
         storageMarkup = [
             `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="4" ry="4" fill="none" stroke="#94a3b8" stroke-width="1.2"/>`,
             `<rect x="${badgeX + 3}" y="${badgeY + 6}" width="${badgeWidth - 6}" height="2" fill="#94a3b8" opacity="0.6"/>`,
-            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="9" font-family="Arial, sans-serif" fill="#94a3b8">${safeLabel}</text>`
+            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="Arial, sans-serif" fill="#94a3b8">${safeLabel}</text>`
         ].join('');
     }
 
@@ -3277,18 +3407,17 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     }
 
     const svg = [
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">`,
         '<defs>',
-        `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="${width}" y2="${height}" gradientUnits="userSpaceOnUse">`,
+        `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="${safeWidth}" y2="${safeHeight}" gradientUnits="userSpaceOnUse">`,
         '<stop offset="0" stop-color="#0f172a"/>',
         '<stop offset="1" stop-color="#1e293b"/>',
         '</linearGradient>',
         '</defs>',
         `<g ${transform}>`,
-        `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="${strokeColor}" stroke-width="2"/>`,
-        '<rect x="2" y="2" width="136" height="10" rx="10" ry="10" fill="rgba(255,255,255,0.06)"/>',
+        `<rect x="1" y="1" width="${safeWidth - 2}" height="${safeHeight - 2}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="${strokeColor}" stroke-width="2"/>`,
         mediaMarkup,
-        `<text x="${textX}" y="${height / 2}" text-anchor="start" font-size="${fontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
+        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
         '</svg>'
