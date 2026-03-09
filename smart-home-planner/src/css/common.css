@@ -1238,6 +1238,147 @@ nav.site-nav a.active .site-nav-icon {
     margin-bottom: 0;
 }
 
+/* Device photo preview (add/edit forms) */
+.device-photo-wrap {
+    display: grid;
+    grid-template-columns: minmax(148px, 168px) minmax(170px, 220px);
+    align-items: stretch;
+    gap: 0.85rem;
+    max-width: 430px;
+}
+
+.device-photo-preview {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.16), transparent 55%),
+        radial-gradient(circle at 90% 82%, rgba(16, 185, 129, 0.14), transparent 52%),
+        linear-gradient(160deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.92));
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+}
+
+.device-photo-preview:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.45);
+    transform: translateY(-1px);
+}
+
+.device-photo-preview:focus-visible {
+    outline: none;
+    border-color: rgba(96, 165, 250, 0.95);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.28), 0 14px 28px rgba(2, 6, 23, 0.45);
+}
+
+.device-photo-preview::after {
+    content: 'Click to upload';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.63rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.9);
+    text-align: center;
+    background: linear-gradient(180deg, transparent, rgba(2, 6, 23, 0.72));
+    pointer-events: none;
+}
+
+.device-photo-preview--custom::after {
+    content: 'Photo uploaded';
+}
+
+.device-photo-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    padding: 0.9rem;
+    flex-shrink: 0;
+    transition: transform var(--transition-base);
+}
+
+.device-photo-preview:hover .device-photo-img {
+    transform: scale(1.02);
+}
+
+.device-photo-img--custom {
+    object-fit: cover;
+    padding: 0;
+}
+
+.device-photo-img--type {
+    object-fit: contain;
+    padding: 1rem;
+}
+
+.device-photo-preview--type {
+    background:
+        radial-gradient(circle at 20% 18%, rgba(59, 130, 246, 0.22), transparent 56%),
+        radial-gradient(circle at 86% 88%, rgba(125, 211, 252, 0.16), transparent 52%),
+        linear-gradient(160deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.95));
+}
+
+.device-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(148, 163, 184, 0.9);
+}
+
+.device-photo-placeholder svg {
+    width: 42px;
+    height: 42px;
+}
+
+.device-photo-actions {
+    display: grid;
+    gap: 0.55rem;
+    align-content: center;
+}
+
+.device-photo-actions .btn {
+    justify-content: center;
+    min-height: 37px;
+    width: 100%;
+}
+
+@media (max-width: 700px) {
+    .device-photo-wrap {
+        grid-template-columns: 1fr;
+        max-width: 300px;
+    }
+
+    .device-photo-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .device-photo-preview {
+        max-width: 196px;
+    }
+
+    .device-photo-preview::after,
+    .device-photo-preview--custom::after {
+        font-size: 0.6rem;
+    }
+}
+
 .form-label-row-compact {
     justify-content: flex-start;
     gap: 0.6rem;

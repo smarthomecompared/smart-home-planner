@@ -52,6 +52,95 @@ window.DeviceDiagram = (() => {
     let deviceFilters = null;
     let isLayoutEditable = false;
     let hasUnsavedLayoutChanges = false;
+
+    // Icon SVG cache: url -> inner SVG string (or null if failed)
+    const _deviceIconCache = {};
+    // Device photo cache: "<path>|<uploadedAt>|<size>|<updatedAt>" -> data URL
+    const _devicePhotoDataUrlCache = new Map();
+
+    async function _fetchDeviceIconInner(type) {
+        const url = type ? `img/devices/${encodeURIComponent(type)}.svg` : 'img/devices/generic.svg';
+        if (_deviceIconCache[url] !== undefined) return _deviceIconCache[url];
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('not found');
+            const text = await resp.text();
+            const inner = text
+                .replace(/<\?xml[^>]*\?>/g, '')
+                .replace(/<!--[\s\S]*?-->/g, '')
+                .replace(/<svg[^>]*>/g, '')
+                .replace(/<\/svg>/g, '')
+                .trim();
+            _deviceIconCache[url] = inner || null;
+        } catch {
+            if (type) {
+                // fall back to generic
+                const generic = await _fetchDeviceIconInner(null);
+                _deviceIconCache[url] = generic;
+            } else {
+                _deviceIconCache[url] = null;
+            }
+        }
+        return _deviceIconCache[url];
+    }
+
+    async function prefetchDeviceIcons(deviceTypes) {
+        await Promise.all([...new Set(deviceTypes)].map(t => _fetchDeviceIconInner(t)));
+    }
+
+    function buildDiagramDeviceImageUrl(device) {
+        const imagePath = String(device?.deviceImage?.path || '').trim();
+        if (!imagePath) return '';
+        const cacheToken = String(device?.updatedAt || '').trim();
+        const tokenQuery = cacheToken ? `&t=${encodeURIComponent(cacheToken)}` : '';
+        return `${DEVICE_FILES_CONTENT_URL}?path=${encodeURIComponent(imagePath)}${tokenQuery}`;
+    }
+
+    function getDevicePhotoCacheKey(device) {
+        const imageRef = device?.deviceImage || {};
+        const imagePath = String(imageRef.path || '').trim();
+        const uploadedAt = String(imageRef.uploadedAt || '').trim();
+        const size = String(imageRef.size || '').trim();
+        const updatedAt = String(device?.updatedAt || '').trim();
+        return `${imagePath}|${uploadedAt}|${size}|${updatedAt}`;
+    }
+
+    function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(reader.error || new Error('Failed to convert blob to data URL'));
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    async function getEmbeddedDiagramDeviceImageUrl(device) {
+        const imagePath = String(device?.deviceImage?.path || '').trim();
+        if (!imagePath) return '';
+        const cacheKey = getDevicePhotoCacheKey(device);
+        if (_devicePhotoDataUrlCache.has(cacheKey)) {
+            return _devicePhotoDataUrlCache.get(cacheKey) || '';
+        }
+        const imageUrl = buildDiagramDeviceImageUrl(device);
+        if (!imageUrl) return '';
+        try {
+            const response = await fetch(imageUrl, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image (${response.status})`);
+            }
+            const blob = await response.blob();
+            const dataUrl = await blobToDataUrl(blob);
+            if (_devicePhotoDataUrlCache.size >= 300) {
+                _devicePhotoDataUrlCache.clear();
+            }
+            _devicePhotoDataUrlCache.set(cacheKey, dataUrl || imageUrl);
+            return dataUrl || imageUrl;
+        } catch (error) {
+            console.warn('Failed to embed diagram device image, using direct URL fallback.', error);
+            _devicePhotoDataUrlCache.set(cacheKey, imageUrl);
+            return imageUrl;
+        }
+    }
     let isPanningFromNode = false;
     let lastPanPosition = null;
     let cachedPositions = null;
@@ -91,7 +180,8 @@ window.DeviceDiagram = (() => {
             showZigbeeConnections: false,
             showZwaveConnections: false,
             deviceAreaMode: 'installed',
-            powerLabelMode: 'mean'
+            powerLabelMode: 'mean',
+            showDeviceIcons: true
         };
     }
 
@@ -108,7 +198,8 @@ window.DeviceDiagram = (() => {
             showZigbeeConnections: value.showZigbeeConnections !== undefined ? Boolean(value.showZigbeeConnections) : defaults.showZigbeeConnections,
             showZwaveConnections: value.showZwaveConnections !== undefined ? Boolean(value.showZwaveConnections) : defaults.showZwaveConnections,
             deviceAreaMode: value.deviceAreaMode === 'controlled' ? 'controlled' : defaults.deviceAreaMode,
-            powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode
+            powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode,
+            showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons
         };
     }
 
@@ -121,7 +212,8 @@ window.DeviceDiagram = (() => {
             showZigbeeConnections: Boolean(document.getElementById('show-zigbee-connections')?.checked),
             showZwaveConnections: Boolean(document.getElementById('show-zwave-connections')?.checked),
             deviceAreaMode: document.getElementById('device-area-mode')?.value || 'installed',
-            powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean'
+            powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean',
+            showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true)
         };
     }
 
@@ -144,6 +236,8 @@ window.DeviceDiagram = (() => {
         if (zwaveToggle) zwaveToggle.checked = settings.showZwaveConnections;
         if (areaModeSelect) areaModeSelect.value = settings.deviceAreaMode;
         if (powerLabelMode) powerLabelMode.value = settings.powerLabelMode;
+        const showIconsToggle = document.getElementById('diagram-show-icons');
+        if (showIconsToggle) showIconsToggle.checked = settings.showDeviceIcons;
     }
 
     async function persistDiagramDisplaySettings() {
@@ -414,6 +508,8 @@ window.DeviceDiagram = (() => {
         const label = String(node.data('cardLabel') || node.data('label') || '').trim();
         const status = node.data('cardStatus') || node.data('status') || '';
         const storageLabel = node.data('cardStorageLabel') || '';
+        const iconSvgContent = String(node.data('cardIconSvgContent') || '').trim() || null;
+        const imageHref = String(node.data('cardImageUrl') || '').trim();
         const rotation = getDeviceNodeRotation(node);
         const lastRotation = Number(node.data('cardSvgRotation'));
         if (Number.isFinite(lastRotation) && lastRotation === rotation) {
@@ -424,7 +520,9 @@ window.DeviceDiagram = (() => {
             label,
             status,
             storageLabel,
-            rotation
+            rotation,
+            iconSvgContent,
+            imageHref
         });
         if (cardSvgCache.has(url)) {
             node.data('cardSvg', url);
@@ -1474,6 +1572,10 @@ window.DeviceDiagram = (() => {
     if (zwaveToggle) {
         zwaveToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const showIconsToggle = document.getElementById('diagram-show-icons');
+    if (showIconsToggle) {
+        showIconsToggle.addEventListener('change', handleDiagramConnectionToggleChange);
+    }
     const powerLabelMode = document.getElementById('power-label-mode');
     if (powerLabelMode) {
         powerLabelMode.addEventListener('change', handleDiagramDisplaySelectChange);
@@ -2391,6 +2493,7 @@ async function renderNetwork(options = {}) {
         : (deviceFilters ? deviceFilters.getFilteredDevices() : devices);
     const filteredDevicesList = sourceDevices.filter(device => device.status !== 'wishlist');
     const hasBackground = hasDiagramBackground();
+    const showIcons = Boolean(document.getElementById('diagram-show-icons')?.checked ?? true);
 
     const mapCountLabel = document.getElementById('map-devices-count');
     if (mapCountLabel) {
@@ -2401,6 +2504,21 @@ async function renderNetwork(options = {}) {
 
     if (hasBackground) {
         await ensureBackgroundImageReady();
+    }
+
+    if (showIcons) {
+        await prefetchDeviceIcons(filteredDevicesList.map(d => d.type || null));
+    }
+    const embeddedDeviceImages = new Map();
+    const devicesWithCustomImage = filteredDevicesList.filter((device) => String(device?.deviceImage?.path || '').trim());
+    if (devicesWithCustomImage.length) {
+        await Promise.all(devicesWithCustomImage.map(async (device) => {
+            const deviceId = String(device?.id || '').trim();
+            if (!deviceId) return;
+            const imageUrl = await getEmbeddedDiagramDeviceImageUrl(device);
+            if (!imageUrl) return;
+            embeddedDeviceImages.set(deviceId, imageUrl);
+        }));
     }
     
     // Check if there are devices to show
@@ -2606,13 +2724,20 @@ async function renderNetwork(options = {}) {
                 deviceData.cardLabel = deviceLabel;
                 deviceData.cardStatus = device.status || '';
                 deviceData.cardStorageLabel = storageLabel || '';
+                const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
+                const typeIconSvg = _deviceIconCache[typeIconKey] || null;
+                const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
+                deviceData.cardIconSvgContent = showIcons ? (typeIconSvg || '') : '';
+                deviceData.cardImageUrl = uploadedImageUrl;
                 deviceData.cardSvgRotation = deviceData.rotation;
                 deviceData.cardSvgTargetRotation = deviceData.rotation;
                 deviceData.cardSvg = buildDeviceCardSvg({
                     label: deviceLabel,
                     status: device.status,
                     storageLabel,
-                    rotation: deviceData.rotation
+                    rotation: deviceData.rotation,
+                    iconSvgContent: showIcons ? typeIconSvg : null,
+                    imageHref: uploadedImageUrl
                 });
 
                 elements.push({
@@ -2692,13 +2817,20 @@ async function renderNetwork(options = {}) {
             deviceData.cardLabel = deviceLabel;
             deviceData.cardStatus = device.status || '';
             deviceData.cardStorageLabel = storageLabel || '';
+            const typeIconKey = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
+            const typeIconSvg = _deviceIconCache[typeIconKey] || null;
+            const uploadedImageUrl = embeddedDeviceImages.get(String(device.id || '').trim()) || '';
+            deviceData.cardIconSvgContent = showIcons ? (typeIconSvg || '') : '';
+            deviceData.cardImageUrl = uploadedImageUrl;
             deviceData.cardSvgRotation = deviceData.rotation;
             deviceData.cardSvgTargetRotation = deviceData.rotation;
             deviceData.cardSvg = buildDeviceCardSvg({
                 label: deviceLabel,
                 status: device.status,
                 storageLabel,
-                rotation: deviceData.rotation
+                rotation: deviceData.rotation,
+                iconSvgContent: showIcons ? typeIconSvg : null,
+                imageHref: uploadedImageUrl
             });
 
             elements.push({
@@ -3071,18 +3203,24 @@ function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
     return trimmed;
 }
 
-function buildDeviceCardSvg({ label, status, storageLabel, rotation }) {
+function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref }) {
     const width = DEVICE_BASE_METRICS.width;
     const height = DEVICE_BASE_METRICS.height;
     const strokeColor = getDeviceStatusColor(status);
-    const fillColor = '#1e293b';
     const rx = 12;
     const fontSize = DEVICE_BASE_METRICS.fontSize;
-    const textMaxWidth = width - 24;
+    const hasImage = Boolean(String(imageHref || '').trim());
+    const hasIcon = Boolean(iconSvgContent);
+    const showMedia = hasImage || hasIcon;
+    const mediaSize = 38;
+    const mediaX = 8;
+    const mediaY = Math.round((height - mediaSize) / 2);
+    const textX = showMedia ? (mediaX + mediaSize + 8) : 12;
+    const textMaxWidth = showMedia ? (width - textX - 10) : (width - 24);
     const lines = buildSvgTextLines(label, textMaxWidth, fontSize, 2);
     const lineHeight = fontSize * 1.25;
     const totalHeight = lineHeight * lines.length;
-    let startY = (height - totalHeight) / 2 + fontSize;
+    let startY = (height - totalHeight) / 2 + fontSize - (storageLabel ? 4 : 0);
     const angle = normalizeDeviceRotation(rotation || 0);
     const radians = (angle * Math.PI) / 180;
     const rotatedWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
@@ -3094,13 +3232,9 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation }) {
         ? `transform="translate(${width / 2} ${height / 2}) rotate(${angle}) scale(${scale}) translate(${-width / 2} ${-height / 2})"`
         : '';
 
-    if (storageLabel) {
-        startY -= 6;
-    }
-
     const textMarkup = lines.map((line, index) => {
         const y = startY + index * lineHeight;
-        return `<tspan x="${width / 2}" y="${y}">${escapeSvgText(line)}</tspan>`;
+        return `<tspan x="${textX}" y="${y}">${escapeSvgText(line)}</tspan>`;
     }).join('');
 
     let storageMarkup = '';
@@ -3117,11 +3251,44 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation }) {
         ].join('');
     }
 
+    let mediaMarkup = '';
+    if (showMedia) {
+        const mediaClipId = 'mediaClip';
+        const mediaFrame = [
+            `<rect x="${mediaX}" y="${mediaY}" width="${mediaSize}" height="${mediaSize}" rx="9" ry="9" fill="#111827" stroke="rgba(148,163,184,0.45)" stroke-width="1"/>`,
+            `<clipPath id="${mediaClipId}"><rect x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" rx="8" ry="8"/></clipPath>`
+        ].join('');
+
+        if (hasImage) {
+            mediaMarkup = [
+                mediaFrame,
+                `<image href="${escapeSvgAttr(imageHref)}" x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${mediaClipId})"/>`
+            ].join('');
+        } else if (hasIcon) {
+            const iconSize = 20;
+            const ix = mediaX + Math.round((mediaSize - iconSize) / 2);
+            const iy = mediaY + Math.round((mediaSize - iconSize) / 2);
+            const iconScale = (iconSize / 24).toFixed(4);
+            mediaMarkup = [
+                mediaFrame,
+                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
+            ].join('');
+        }
+    }
+
     const svg = [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+        '<defs>',
+        `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="${width}" y2="${height}" gradientUnits="userSpaceOnUse">`,
+        '<stop offset="0" stop-color="#0f172a"/>',
+        '<stop offset="1" stop-color="#1e293b"/>',
+        '</linearGradient>',
+        '</defs>',
         `<g ${transform}>`,
-        `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${rx}" ry="${rx}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/>`,
-        `<text x="${width / 2}" y="${height / 2}" text-anchor="middle" font-size="${fontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
+        `<rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="${strokeColor}" stroke-width="2"/>`,
+        '<rect x="2" y="2" width="136" height="10" rx="10" ry="10" fill="rgba(255,255,255,0.06)"/>',
+        mediaMarkup,
+        `<text x="${textX}" y="${height / 2}" text-anchor="start" font-size="${fontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
         '</svg>'
@@ -3132,6 +3299,14 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation }) {
 function escapeSvgText(text) {
     return String(text)
         .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeSvgAttr(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 }

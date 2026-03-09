@@ -1,5 +1,20 @@
 // Devices Page JavaScript
 
+const _DEVICE_FILES_CONTENT_URL =
+    typeof window.buildAppUrl === 'function'
+        ? window.buildAppUrl('api/device-files/content')
+        : '/api/device-files/content';
+
+function getDeviceImageSrc(device) {
+    if (device.deviceImage && device.deviceImage.path) {
+        return `${_DEVICE_FILES_CONTENT_URL}?path=${encodeURIComponent(device.deviceImage.path)}`;
+    }
+    if (device.type) {
+        return `img/devices/${encodeURIComponent(device.type)}.svg`;
+    }
+    return 'img/devices/generic.svg';
+}
+
 let allDevices = [];
 let devices = [];
 let areas = [];
@@ -878,8 +893,18 @@ function renderDevices() {
                         </label>
                     </td>
                     <td class="device-name-cell">
-                        <strong>${escapeHtml(device.name || 'Unnamed')}</strong>
-                        ${labelChips ? `<div class="device-labels-inline device-labels-inline-table">${labelChips}</div>` : ''}
+                        <div class="device-name-inner">
+                            <img class="device-thumb"
+                                src="${escapeHtml(getDeviceImageSrc(device))}"
+                                alt=""
+                                loading="lazy"
+                                onerror="if(!this.dataset.fe){this.dataset.fe='1';this.src='img/devices/${escapeHtml(device.type || 'generic')}.svg';}else{this.src='img/devices/generic.svg';this.onerror=null;}"
+                            >
+                            <div class="device-name-inner-text">
+                                <strong>${escapeHtml(device.name || 'Unnamed')}</strong>
+                                ${labelChips ? `<div class="device-labels-inline device-labels-inline-table">${labelChips}</div>` : ''}
+                            </div>
+                        </div>
                     </td>
                     <td class="table-col-ha col-optional-md">
                         ${isHaEnabled
@@ -955,8 +980,19 @@ function renderDevicesGrid(devicesToRender) {
         const isHaEnabled = isHomeAssistantLinked(device.homeAssistant);
         const normalizedStatus = normalizeStatusValue(device.status);
         const statusLabel = formatStatusLabel(normalizedStatus);
+        const cardImgSrc = escapeHtml(getDeviceImageSrc(device));
+        const cardImgTypeSrc = escapeHtml(device.type ? `img/devices/${device.type}.svg` : 'img/devices/generic.svg');
+        const hasPhoto = !!(device.deviceImage && device.deviceImage.path);
         return `
             <div class="device-card${isHaEnabled ? ' has-ha' : ''}">
+                <div class="device-card-image${hasPhoto ? ' device-card-image--has-photo' : ''}">
+                    <img class="device-card-img"
+                        src="${cardImgSrc}"
+                        alt=""
+                        loading="lazy"
+                        onerror="if(!this.dataset.fe){this.dataset.fe='1';this.src='${cardImgTypeSrc}';}else{this.src='img/devices/generic.svg';this.onerror=null;}"
+                    >
+                </div>
                 <div class="device-card-header">
                     <div class="device-card-title">${escapeHtml(device.name || 'Unnamed')}</div>
                 </div>

@@ -1299,6 +1299,10 @@ async function handleOptionEditorClick(event) {
     const deleteBtn = event.target.closest('[data-option-delete]');
     if (deleteBtn) {
         const context = getOptionEditorItemContext(deleteBtn);
+        if (!context) return;
+        const label = String(context.currentValue || '').trim() || context.group.singularLabel;
+        const confirmed = await showConfirm(`Delete "${label}"?`, { confirmLabel: 'Delete', isDanger: true });
+        if (!confirmed) return;
         await deleteDeviceOption(context);
     }
 }

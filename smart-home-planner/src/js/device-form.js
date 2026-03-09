@@ -16,6 +16,8 @@ let lastConnectivityValue = '';
 let autoSyncAreasEnabled = false;
 let activeDeviceId = '';
 let deviceFiles = [];
+let currentDeviceImage = null;
+let pendingDeviceImageFile = null;
 let deviceFilePreviewModal = null;
 let deviceFileRenameModal = null;
 let haDefaultCurrency = '';
@@ -269,6 +271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Event Listeners
 function initializeEventListeners() {
     document.getElementById('device-form').addEventListener('submit', handleDeviceSubmit);
+    initDevicePhotoUpload();
     document.getElementById('device-power').addEventListener('change', handlePowerTypeChange);
     document.getElementById('device-connectivity').addEventListener('change', handleConnectivitySelectChange);
     document.getElementById('device-battery-type').addEventListener('change', handleBatteryTypeChange);
@@ -911,6 +914,195 @@ async function uploadDeviceFile(file) {
     const payload = await response.json();
     return normalizeDeviceFiles([payload])[0] || null;
 }
+
+// --- Device Photo Upload ---
+
+function initDevicePhotoUpload() {
+    const selectBtn = document.getElementById('device-photo-select-btn');
+    const removeBtn = document.getElementById('device-photo-remove-btn');
+    const preview = document.getElementById('device-photo-preview');
+    const input = document.getElementById('device-photo-input');
+    if (!selectBtn || !input) return;
+
+    const trigger = () => input.click();
+    selectBtn.addEventListener('click', trigger);
+    if (preview) {
+        preview.addEventListener('click', trigger);
+        preview.setAttribute('role', 'button');
+        preview.setAttribute('tabindex', '0');
+        preview.setAttribute('aria-label', 'Upload device photo');
+        preview.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                trigger();
+            }
+        });
+    }
+
+    input.addEventListener('change', () => {
+        if (input.files.length) {
+            handleDevicePhotoSelected(input.files[0]);
+            input.value = '';
+        }
+    });
+    if (removeBtn) {
+        removeBtn.addEventListener('click', removeDevicePhoto);
+    }
+
+    syncDevicePhotoTypeFallback();
+}
+
+function handleDevicePhotoSelected(file) {
+    if (!file.type.startsWith('image/')) {
+        showFormMessage('Please select an image file.', 'error');
+        return;
+    }
+    if (file.size > MAX_DEVICE_FILE_BYTES) {
+        showFormMessage('Image is too large (max 20 MB).', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => setDevicePhotoPreview(e.target.result, false);
+    reader.readAsDataURL(file);
+
+    if (editingDeviceId) {
+        uploadDeviceImageFile(file);
+    } else {
+        pendingDeviceImageFile = file;
+    }
+}
+
+async function uploadDeviceImageFile(file) {
+    const deviceId = String(activeDeviceId || '').trim();
+    if (!deviceId) return null;
+    try {
+        const uploadUrl = `${DEVICE_FILES_UPLOAD_API_URL}?deviceId=${escapeFileParam(deviceId)}`;
+        const response = await fetch(uploadUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': file.type || 'application/octet-stream',
+                'X-File-Name': encodeURIComponent(file.name || 'photo'),
+            },
+            body: file,
+        });
+        if (!response.ok) {
+            throw new Error(`Upload failed (${response.status})`);
+        }
+        const fileRef = await response.json();
+        currentDeviceImage = fileRef;
+        return fileRef;
+    } catch (error) {
+        showFormMessage(error.message || 'Failed to upload photo.', 'error');
+        return null;
+    }
+}
+
+function resolveDeviceTypeIconPath(typeValue) {
+    const normalized = normalizeOptionValue(typeValue);
+    if (!normalized) return '';
+    return `img/devices/${encodeURIComponent(normalized)}.svg`;
+}
+
+function getSelectedDeviceTypeLabel() {
+    const typeSelect = document.getElementById('device-type');
+    if (!typeSelect) return '';
+    const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+    if (!selectedOption) return '';
+    const label = String(selectedOption.textContent || '').trim();
+    if (!label || label.startsWith('Select') || label.startsWith('+')) {
+        return '';
+    }
+    return label;
+}
+
+function syncDevicePhotoTypeFallback(force = false) {
+    const typeSelect = document.getElementById('device-type');
+    const img = document.getElementById('device-photo-img');
+    if (!typeSelect || !img) return;
+
+    const hasCustomPhoto = Boolean(
+        (currentDeviceImage && currentDeviceImage.path) ||
+        pendingDeviceImageFile ||
+        (!img.hidden && img.dataset.photoSource === 'custom')
+    );
+    if (hasCustomPhoto && !force) return;
+
+    const typeIconSrc = resolveDeviceTypeIconPath(typeSelect.value);
+    if (typeIconSrc) {
+        setDevicePhotoPreview(typeIconSrc, false, {
+            sourceKind: 'type',
+            typeLabel: getSelectedDeviceTypeLabel()
+        });
+        return;
+    }
+
+    setDevicePhotoPreview(null, false);
+}
+
+function setDevicePhotoPreview(src, isApiPath, options = {}) {
+    const img = document.getElementById('device-photo-img');
+    const placeholder = document.getElementById('device-photo-placeholder');
+    const removeBtn = document.getElementById('device-photo-remove-btn');
+    const preview = document.getElementById('device-photo-preview');
+    if (!img) return;
+
+    const sourceKind = options.sourceKind === 'type' ? 'type' : 'custom';
+    if (src) {
+        img.src = isApiPath
+            ? `${DEVICE_FILES_CONTENT_API_URL}?path=${encodeURIComponent(src)}`
+            : src;
+        img.alt = sourceKind === 'type'
+            ? `${options.typeLabel || 'Device type'} icon`
+            : 'Device photo';
+        img.hidden = false;
+        img.dataset.photoSource = sourceKind;
+        img.classList.toggle('device-photo-img--type', sourceKind === 'type');
+        img.classList.toggle('device-photo-img--custom', sourceKind !== 'type');
+        if (sourceKind === 'type') {
+            img.dataset.typeFallbackApplied = '0';
+            img.onerror = () => {
+                if (img.dataset.typeFallbackApplied === '1') {
+                    img.onerror = null;
+                    return;
+                }
+                img.dataset.typeFallbackApplied = '1';
+                img.src = 'img/devices/generic.svg';
+            };
+        } else {
+            delete img.dataset.typeFallbackApplied;
+            img.onerror = null;
+        }
+        if (placeholder) placeholder.hidden = true;
+        if (removeBtn) removeBtn.hidden = sourceKind === 'type';
+        if (preview) {
+            preview.classList.add('device-photo-preview--has-image');
+            preview.classList.toggle('device-photo-preview--type', sourceKind === 'type');
+            preview.classList.toggle('device-photo-preview--custom', sourceKind !== 'type');
+        }
+    } else {
+        img.hidden = true;
+        img.src = '';
+        img.alt = '';
+        img.dataset.photoSource = '';
+        delete img.dataset.typeFallbackApplied;
+        img.classList.remove('device-photo-img--type', 'device-photo-img--custom');
+        img.onerror = null;
+        if (placeholder) placeholder.hidden = false;
+        if (removeBtn) removeBtn.hidden = true;
+        if (preview) {
+            preview.classList.remove('device-photo-preview--has-image', 'device-photo-preview--type', 'device-photo-preview--custom');
+        }
+    }
+}
+
+function removeDevicePhoto() {
+    setDevicePhotoPreview(null, false);
+    currentDeviceImage = null;
+    pendingDeviceImageFile = null;
+    syncDevicePhotoTypeFallback(true);
+}
+
+// --- End Device Photo Upload ---
 
 async function removeDeviceFile(filePath) {
     const normalizedPath = String(filePath || '').trim();
@@ -1947,6 +2139,13 @@ function loadDeviceData(device) {
     if (device && device.id) {
         activeDeviceId = String(device.id);
     }
+    // Load device photo
+    currentDeviceImage = device && device.deviceImage ? device.deviceImage : null;
+    if (currentDeviceImage && currentDeviceImage.path) {
+        setDevicePhotoPreview(currentDeviceImage.path, true);
+    } else {
+        setDevicePhotoPreview(null, false);
+    }
     updateViewOnHaButton(device);
     setAreas();
     const deviceIdReadonly = document.getElementById('device-id-readonly');
@@ -1961,6 +2160,7 @@ function loadDeviceData(device) {
     document.getElementById('device-brand').value = device.brand ? normalizeOptionValue(device.brand) : '';
     document.getElementById('device-model').value = device.model || '';
     document.getElementById('device-type').value = device.type ? normalizeOptionValue(device.type) : '';
+    syncDevicePhotoTypeFallback();
     renderDeviceLinks(getDeviceLinksForLoad(device));
     if (editingDeviceId) {
         setWifiClientsFromAccessPointDevice(device.id);
@@ -2064,6 +2264,7 @@ function loadDeviceData(device) {
     lastTypeValue = document.getElementById('device-type').value;
     lastBatteryTypeValue = document.getElementById('device-battery-type').value;
     lastConnectivityValue = document.getElementById('device-connectivity').value;
+    syncDevicePhotoTypeFallback();
     
     // Load ports
     if (device.ports) {
@@ -2462,6 +2663,7 @@ function handleTypeChange() {
     } else {
         lastTypeValue = typeSelect.value;
         updateWifiClientsManagerVisibility();
+        syncDevicePhotoTypeFallback();
     }
 }
 
@@ -2534,6 +2736,7 @@ function closeTypeModal() {
     modal.setAttribute('aria-hidden', 'true');
     document.getElementById('device-type').value = lastTypeValue;
     updateWifiClientsManagerVisibility();
+    syncDevicePhotoTypeFallback();
 }
 
 async function saveTypeModal() {
@@ -2558,6 +2761,7 @@ async function saveTypeModal() {
     document.getElementById('device-type').value = normalized;
     lastTypeValue = normalized;
     updateWifiClientsManagerVisibility();
+    syncDevicePhotoTypeFallback();
     closeTypeModal();
 }
 
@@ -4475,22 +4679,33 @@ async function createDevice(deviceData) {
         localOnly: deviceData.localOnly || false,
         ports: deviceData.ports || [],
         files: normalizeDeviceFiles(deviceData.files),
+        deviceImage: null,
         createdAt: new Date().toISOString()
     };
-    
+
     allDevices.push(device);
     devices = allDevices;
     await saveData({
         ...(await loadData()),
         devices: allDevices
     });
-    
+
+    // Upload pending device photo (add mode: ID wasn't available until now)
+    if (pendingDeviceImageFile) {
+        const imageRef = await uploadDeviceImageFile(pendingDeviceImageFile);
+        if (imageRef) {
+            device.deviceImage = imageRef;
+            await saveData({ ...(await loadData()), devices: allDevices });
+        }
+        pendingDeviceImageFile = null;
+    }
+
     // Sync ports bidirectionally
     await syncDevicePorts(device.id, device.ports);
     await syncWifiClientsForAccessPoint(device.id, deviceData.wifiLinkedDeviceIds || []);
     await syncZigbeeChildrenForParent(device.id, deviceData.zigbeeLinkedDeviceIds || []);
     await syncZwaveChildrenForController(device.id, deviceData.zwaveLinkedDeviceIds || []);
-    
+
     window.location.href = 'devices.html';
 }
 
@@ -4563,6 +4778,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.localOnly = deviceData.localOnly || false;
         device.ports = deviceData.ports || [];
         device.files = normalizeDeviceFiles(deviceData.files);
+        device.deviceImage = currentDeviceImage || null;
         delete device.website;
         device.updatedAt = new Date().toISOString();
         

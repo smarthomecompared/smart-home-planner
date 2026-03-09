@@ -42,6 +42,7 @@ Key concepts:
 6. Integrations capture which ecosystems the device belongs to.
 7. Purchase information tracks serial numbers, dates, prices, and warranty expiration.
 8. Files and notes keep manuals, receipts, and maintenance history close to the device.
+9. Device images let you upload a custom photo per device. When no custom image is available, the app uses the device type icon as a fallback.
 
 ## Dashboard
 
@@ -150,6 +151,7 @@ Best use cases:
 2. Opening device cards for deeper editing.
 3. Reviewing status and ownership by ecosystem.
 4. Quickly spotting device labels without opening the full record.
+5. Browsing devices visually using larger images (uploaded photo when present, otherwise type icon).
 
 ### Diagram View
 
@@ -195,7 +197,8 @@ Typical tasks:
 5. Link or unlink Wi-Fi, Zigbee, and Z-Wave child devices directly from the relevant parent records.
 6. Update purchase info like serial numbers or warranty expiration.
 7. Adjust labels to keep Home Assistant and the app aligned.
-8. Delete the device if it is permanently removed.
+8. Upload, replace, or remove the device photo.
+9. Delete the device if it is permanently removed.
 
 The Apply action lets you save changes without leaving the page, which is useful during longer editing sessions.
 

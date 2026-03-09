@@ -346,6 +346,34 @@
     display: grid;
     gap: 0.85rem;
     position: relative;
+    overflow: hidden;
+}
+
+.device-card-image {
+    height: 148px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(160deg, #e7eaef, #d6dbe4);
+    border-bottom: 1px solid var(--border-color-light, #e5e7eb);
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+    flex-shrink: 0;
+    margin: -1rem -1.1rem 0;
+}
+
+.device-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.device-card-image--has-photo .device-card-img {
+    object-fit: cover;
+    padding: 20px;
 }
 
 .device-card-header {
@@ -390,6 +418,31 @@
 
 .device-name-cell .device-labels-inline {
     margin-top: 0.35rem;
+}
+
+.device-name-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.device-name-inner-text {
+    min-width: 0;
+}
+
+.device-thumb {
+    display: block;
+    width: 52px;
+    height: 52px;
+    border-radius: 6px;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: linear-gradient(160deg, #e7eaef, #d6dbe4);
+    border: 1px solid var(--border-color-light, #e5e7eb);
+    padding: 4px;
+    box-sizing: border-box;
+    align-self: center;
 }
 
 .device-card-ha-icon {

@@ -1905,7 +1905,6 @@
                 ? Boolean(backupStatus.hasRecentBackup)
                 : Boolean(backupStatus?.hasRecentFullBackup);
             const requiredAddonSlug = String(backupStatus?.requiredAddonSlug || 'smart-home-planner').trim() || 'smart-home-planner';
-            const requiredAppName = 'Smart Home Planner';
             const includesSmartHomePlannerAddon = backupIncludesAddon(latest, requiredAddonSlug);
             const hasRecentBackupWithRequiredAddon = typeof backupStatus?.hasRecentBackupWithRequiredAddon === 'boolean'
                 ? Boolean(backupStatus.hasRecentBackupWithRequiredAddon)
@@ -1915,8 +1914,8 @@
                 if (!hasRecent) {
                     warningMessages.push(`Latest backup is older than ${maxAgeDays} days.`);
                 }
-                if (!hasRecentBackupWithRequiredAddon) {
-                    warningMessages.push(`No backup from the last ${maxAgeDays} days includes app "${requiredAppName}".`);
+                if (hasRecent && !hasRecentBackupWithRequiredAddon) {
+                    warningMessages.push(`No backup from the last ${maxAgeDays} days includes app "Smart Home Planner".`);
                 }
             }
             const missingBackup = hasError || !latest;
