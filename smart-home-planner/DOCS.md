@@ -234,7 +234,7 @@ What the PDF includes:
 1. Cover page with your home name and the report date.
 2. Table of Contents with page numbers for each section.
 3. Visual Summary with charts for device status, connectivity, power source, UPS coverage, integrations, and local versus cloud usage.
-4. Summary Report with detailed breakdowns by area, floor, brand, label, battery type, and integrations.
+4. Summary Report with detailed breakdowns by Installed Area, Controlled Area, brand, label, battery type, and integrations.
 5. Device Details with a full-page table per device covering every visible field: basic info, location, power, battery, storage, connectivity, ports, network associations, roles, integrations, purchase info, and notes.
 6. Network Diagrams showing your device layout. When a floor plan background image is configured, devices appear positioned over it. Without a background, areas and floors are drawn as labeled boxes matching the app diagram. One overview page shows all devices without connections, followed by one page per active connection type (Ethernet, USB, Power, Wi-Fi, Zigbee, Z-Wave).
 7. Test Cases listing all test cases grouped by category with name, priority, description, steps, and expected result.

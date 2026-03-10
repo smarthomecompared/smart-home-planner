@@ -370,7 +370,6 @@ function _pdfSummaryPage(doc, data, { settings }) {
 
     const { devices, areas, floors, labels } = data;
     const areaMap  = new Map((areas  || []).map(a => [a.id,  a]));
-    const floorMap = new Map((floors || []).map(f => [f.id,  f]));
     const labelMap = new Map((labels || []).map(l => [l.id,  l]));
 
     // ── Shared autoTable base options ─────────────────────────────────────────
@@ -514,53 +513,37 @@ function _pdfSummaryPage(doc, data, { settings }) {
         y = doc.lastAutoTable.finalY + 5;
     }
 
-    // ══ Section 6: Area & Floor ═══════════════════════════════════════════════
-    const byArea  = _groupBy(devices, d => d.controlledArea || d.area || '');
-    const areaRows = Object.entries(byArea)
-        .sort((a, b) => b[1].length - a[1].length)
-        .map(([areaId, devs]) => {
-            const area      = areaMap.get(areaId);
-            const areaName  = area ? area.name : (areaId || 'No Area');
-            const floorObj  = area && area.floor ? floorMap.get(area.floor) : null;
-            const floorName = floorObj ? floorObj.name : '-';
-            return [areaName, floorName, devs.length];
+    // ══ Section 6: Installed / Controlled Areas ═══════════════════════════════
+    const _resolveAreaName = (areaId, fallbackLabel) => {
+        const normalized = String(areaId || '').trim();
+        if (!normalized) return fallbackLabel;
+        const area = areaMap.get(normalized) || areaMap.get(areaId);
+        return area ? area.name : normalized;
+    };
+    const _areaRows = (selector, emptyLabel) => {
+        const counts = {};
+        devices.forEach((device) => {
+            const areaId = String(selector(device) || '').trim();
+            const key = areaId || '__none__';
+            counts[key] = (counts[key] || 0) + 1;
         });
+        return Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([areaId, count]) => {
+                if (areaId === '__none__') return [emptyLabel, count];
+                return [_resolveAreaName(areaId, emptyLabel), count];
+            });
+    };
 
-    if (areaRows.length) {
-        const areaTotal = devices.length;
-        const pctRows   = areaRows.map(([area, floor, cnt]) => [
-            area, floor, cnt, areaTotal > 0 ? Math.round((cnt / areaTotal) * 100) + '%' : '-',
-        ]);
-        doc.autoTable({
-            ...base,
-            startY: y,
-            head: [
-                [{ content: 'Devices by Area & Floor', colSpan: 4, styles: {
-                    fillColor: _C.accent, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9,
-                } }],
-                ['Area', 'Floor', 'Devices', '%'],
-            ],
-            body: pctRows,
-            columnStyles: {
-                0: { cellWidth: 'auto' },
-                1: { cellWidth: 44 },
-                2: { cellWidth: 25, halign: 'right', fontStyle: 'bold' },
-                3: { cellWidth: 18, halign: 'right' },
-            },
-        });
+    const controlledAreaRows = _areaRows((device) => device.controlledArea, 'No Controlled Area');
+    if (controlledAreaRows.length) {
+        sectionTable('Devices by Controlled Area', ['Controlled Area', 'Devices', '%'], controlledAreaRows, totalAll, y);
         y = doc.lastAutoTable.finalY + 5;
     }
 
-    const floorCount = {};
-    devices.forEach(d => {
-        const area     = areaMap.get(d.controlledArea || d.area || '');
-        const floorObj = area && area.floor ? floorMap.get(area.floor) : null;
-        const fName    = floorObj ? floorObj.name : 'No Floor';
-        floorCount[fName] = (floorCount[fName] || 0) + 1;
-    });
-    const floorRows = Object.entries(floorCount).sort((a, b) => b[1] - a[1]).map(([n, c]) => [n, c]);
-    if (floorRows.length) {
-        sectionTable('Devices by Floor', ['Floor', 'Devices', '%'], floorRows, totalAll, y);
+    const installedAreaRows = _areaRows((device) => device.area, 'No Installed Area');
+    if (installedAreaRows.length) {
+        sectionTable('Devices by Installed Area', ['Installed Area', 'Devices', '%'], installedAreaRows, totalAll, y);
         y = doc.lastAutoTable.finalY + 5;
     }
 
@@ -614,30 +597,44 @@ function _pdfSummaryPage(doc, data, { settings }) {
     }
 
     // ══ Section 10: Device alert lists ════════════════════════════════════════
-    const _deviceList = (title, filtered, titleColor) => {
+    const _deviceList = (title, filtered, titleColor, includeAreaBreakdown = false) => {
         if (!filtered.length) return;
-        const listRows = filtered.map(d => {
+        const listRows = filtered.map((d) => {
+            if (includeAreaBreakdown) {
+                return [
+                    d.name || 'Unnamed',
+                    d.brand || '-',
+                    _resolveAreaName(d.controlledArea, '-'),
+                    _resolveAreaName(d.area, '-')
+                ];
+            }
             const area = areaMap.get(d.controlledArea || d.area || '');
             return [d.name || 'Unnamed', d.brand || '-', area ? area.name : '-'];
         });
+        const headers = includeAreaBreakdown
+            ? ['Device Name', 'Brand', 'Controlled Area', 'Installed Area']
+            : ['Device Name', 'Brand', 'Area'];
+        const colStyles = includeAreaBreakdown
+            ? { 0: { cellWidth: 'auto' }, 1: { cellWidth: 30 }, 2: { cellWidth: 36 }, 3: { cellWidth: 36 } }
+            : { 0: { cellWidth: 'auto' }, 1: { cellWidth: 38 }, 2: { cellWidth: 40 } };
         doc.autoTable({
             ...base,
             startY: doc.lastAutoTable.finalY + 5,
             head: [
-                [{ content: `${title} (${filtered.length})`, colSpan: 3, styles: {
+                [{ content: `${title} (${filtered.length})`, colSpan: headers.length, styles: {
                     fillColor: titleColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9,
                 } }],
-                ['Device Name', 'Brand', 'Area'],
+                headers,
             ],
             body: listRows,
-            columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 38 }, 2: { cellWidth: 40 } },
+            columnStyles: colStyles,
         });
     };
 
     const pending    = devices.filter(d => d.status === 'pending');
     const notWorking = devices.filter(d => d.status === 'not-working');
 
-    _deviceList('Pending Devices',     pending,     _C.pending);
+    _deviceList('Pending Devices',     pending,     _C.pending, true);
     _deviceList('Not Working Devices', notWorking,  _C.notWorking);
 }
 

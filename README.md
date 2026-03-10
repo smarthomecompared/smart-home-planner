@@ -8,6 +8,7 @@ Plan, document, and visualize your smart home with a Home Assistant app that kee
 - Simple forms to keep device details, notes, and dates in one place.
 - Organize everything by floors and areas.
 - Visual map to see how devices are connected.
+- Export printable PDF reports of your full device inventory.
 - Sync devices, labels, areas and floors with Home Assistant
 - Automatic Backup of the data using Home Assisteant Backup system.
 
@@ -74,6 +75,10 @@ Sync devices, labels, areas and floors with Home Assistant while keeping the app
 ### Networks
 ![Networks](website/img/screenshots/networks.webp)
 Document which VLAN each device uses so network assignments stay clear across the inventory.
+
+### PDF Reports
+![PDF Reports](website/img/screenshots/reports.webp)
+Export your full device inventory as a printable PDF report. Useful for insurance documentation, maintenance handoff, or keeping an offline record of your setup.
 
 ## Follow Us
 
