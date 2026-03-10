@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App de Inventário de Dispositivos para Home Assistant | Smart Home Planner</title>
+  <meta name="description" content="Smart Home Planner é um app para Home Assistant que te ajuda a planear, documentar e visualizar a tua casa inteligente com painéis, filtros avançados e um mapa visual de dispositivos.">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#05070d">
+  <meta name="author" content="Smart Home Compared">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="../img/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="../img/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../img/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="../img/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="../img/android-chrome-512x512.png">
+  <link rel="icon" href="../favicon.ico">
+  <link rel="manifest" href="../site.webmanifest">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="App de Inventário de Dispositivos para Home Assistant | Smart Home Planner">
+  <meta property="og:description" content="Planeia, documenta e visualiza a tua casa inteligente diretamente no Home Assistant.">
+  <meta property="og:image" content="https://planner.smarthomecompared.com/img/screenshots/home-stats.webp">
+  <meta property="og:url" content="https://planner.smarthomecompared.com/pt/">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="App de Inventário de Dispositivos para Home Assistant | Smart Home Planner">
+  <meta name="twitter:description" content="Planeia, documenta e visualiza a tua casa inteligente diretamente no Home Assistant.">
+  <meta name="twitter:image" content="https://planner.smarthomecompared.com/img/screenshots/home-stats.webp">
+
+  <link rel="canonical" href="https://planner.smarthomecompared.com/pt/">
+
+  <link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/" />
+  <link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/" />
+  <link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/" />
+  <link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/" />
+  <link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/" />
+  <link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/" />
+  <link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/" />
+  <link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/" />
+  <link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Smart Home Planner",
+    "applicationCategory": "HomeAutomationApplication",
+    "operatingSystem": "Home Assistant",
+    "description": "App para Home Assistant que permite planear, documentar e visualizar o teu ecossistema de casa inteligente.",
+    "url": "https://planner.smarthomecompared.com/pt/",
+    "image": "https://planner.smarthomecompared.com/img/screenshots/home-stats.webp",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="lang-bar">
+    <a href="https://planner.smarthomecompared.com/" hreflang="en">English</a>
+    <a href="https://planner.smarthomecompared.com/es/" hreflang="es">Español</a>
+    <a href="https://planner.smarthomecompared.com/pt/" hreflang="pt" aria-current="true">Português</a>
+    <a href="https://planner.smarthomecompared.com/fr/" hreflang="fr">Français</a>
+    <a href="https://planner.smarthomecompared.com/de/" hreflang="de">Deutsch</a>
+    <a href="https://planner.smarthomecompared.com/it/" hreflang="it">Italiano</a>
+    <a href="https://planner.smarthomecompared.com/ko/" hreflang="ko">한국어</a>
+    <a href="https://planner.smarthomecompared.com/ja/" hreflang="ja">日本語</a>
+  </div>
+  <style>
+  .lang-bar{display:flex;flex-wrap:wrap;gap:.5rem 1rem;padding:.5rem 1.5rem;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.07);font-size:.8rem}
+  .lang-bar a{color:#94a3b8;text-decoration:none;transition:color .2s}
+  .lang-bar a:hover,.lang-bar a[aria-current]{color:#f1f5f9}
+  </style>
+
+  <div class="bg-orb orb-a" aria-hidden="true"></div>
+  <div class="bg-orb orb-b" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Início do Smart Home Planner">
+      <img class="brand-mark" src="../img/android-chrome-192x192.png" alt="Ícone da app Smart Home Planner" width="32" height="32" loading="lazy">
+      <span>Smart Home Planner</span>
+    </a>
+    <a class="btn btn-small header-cta" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">Instalar App para Home Assistant</a>
+  </header>
+
+  <main id="top">
+    <section class="hero section reveal">
+      <div class="hero-layout">
+        <div class="hero-media">
+          <img src="../img/screenshots/diagram-map.webp" alt="Captura de ecrã do plano de planta do Smart Home Planner" loading="lazy" width="1200" height="675">
+        </div>
+        <div class="hero-content">
+          <p class="eyebrow">App para Home Assistant</p>
+          <h1>Planeia, documenta e visualiza toda a tua casa inteligente.</h1>
+          <p class="hero-copy">
+            Smart Home Planner ajuda-te a documentar a tua configuração de Home Assistant com uma lista clara de dispositivos,
+            notas pesquisáveis, datas importantes e um mapa visual de como tudo está ligado.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">Instalar a partir do GitHub</a>
+            <a class="btn btn-ghost" href="#screenshots">Ver capturas de ecrã</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal">
+      <h2>Porquê Smart Home Planner</h2>
+      <div class="feature-grid">
+        <article class="card">
+          <h3>Painel operacional</h3>
+          <p>Acompanha o estado dos dispositivos, tarefas pendentes e sinais-chave da tua casa inteligente de forma rápida.</p>
+        </article>
+        <article class="card">
+          <h3>Filtros avançados</h3>
+          <p>Filtra dispositivos por área, estado, tipo, consumo, integrações e muito mais.</p>
+        </article>
+        <article class="card">
+          <h3>Mapa visual de ligações</h3>
+          <p>Compreende as relações entre dispositivos e infraestrutura numa única vista.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="screenshots">
+      <div class="section-head">
+        <h2>Capturas de ecrã</h2>
+      </div>
+      <div class="gallery">
+        <button class="shot" type="button" data-full="../img/screenshots/home-stats.webp" data-title="Vista geral do painel">
+          <img src="../img/screenshots/home-stats.webp" alt="Captura de ecrã do painel geral do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Vista geral do painel</span>
+            <span class="shot-desc">Acompanha dispositivos, etiquetas, áreas e pisos de relance. Obtém informações sobre baterias, integrações, consumo energético e muito mais.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/diagram.webp" data-title="Diagrama de ligações">
+          <img src="../img/screenshots/diagram.webp" alt="Captura de ecrã do diagrama de ligações do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Diagrama de ligações</span>
+            <span class="shot-desc">Visualiza a localização e as relações entre dispositivos em toda a casa. Usa-o para planear expansões ou partilhar o esquema com instaladores.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/diagram-map.webp" data-title="Diagrama com planta">
+          <img src="../img/screenshots/diagram-map.webp" alt="Captura de ecrã do diagrama com planta do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Diagrama com planta</span>
+            <span class="shot-desc">Carrega a imagem da planta da tua casa e coloca cada dispositivo na sua localização física.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/devices-table.webp" data-title="Tabela de dispositivos">
+          <img src="../img/screenshots/devices-table.webp" alt="Captura de ecrã da tabela de dispositivos do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Tabela de dispositivos</span>
+            <span class="shot-desc">Um inventário denso e ordenável para utilizadores avançados. Consulta detalhes essenciais, seleciona vários dispositivos e edita-os rapidamente quando precisas.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/devices-cards.webp" data-title="Cartões de dispositivos">
+          <img src="../img/screenshots/devices-cards.webp" alt="Captura de ecrã dos cartões de dispositivos do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Cartões de dispositivos</span>
+            <span class="shot-desc">Um layout em cartões fácil de ler, ideal para telemóveis e ecrãs tácteis. Perfeito para navegação rápida, verificações de manutenção e percursos.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/filters.webp" data-title="Filtros e segmentos">
+          <img src="../img/screenshots/filters.webp" alt="Captura de ecrã dos filtros do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Filtros</span>
+            <span class="shot-desc">Filtra o inventário por estado, conectividade, etiquetas e integrações. Os filtros estão otimizados para auditorias rápidas e para encontrar exatamente os dispositivos que precisam de atenção.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/bulk-edit.webp" data-title="Edição em massa">
+          <img src="../img/screenshots/bulk-edit.webp" alt="Captura de ecrã da edição em massa do Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Edição em massa</span>
+            <span class="shot-desc">Aplica uma alteração a vários dispositivos em segundos. Ideal para os mover para uma nova área ou adicionar uma etiqueta partilhada após a instalação.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/device-basic-information.webp" data-title="Informação básica do dispositivo">
+          <img src="../img/screenshots/device-basic-information.webp" alt="Captura de ecrã da informação básica do dispositivo no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Informação básica do dispositivo</span>
+            <span class="shot-desc">Regista a identidade, marca, tipo e etiquetas de cada dispositivo físico. Este registo torna-se a referência canónica mesmo quando as integrações ou plataformas mudam.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/device-power.webp" data-title="Energia do dispositivo">
+          <img src="../img/screenshots/device-power.webp" alt="Captura de ecrã da energia do dispositivo no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Energia do dispositivo</span>
+            <span class="shot-desc">Documenta a fonte de alimentação, tipos de bateria e frequência de substituição. Mantém o planeamento energético e os calendários de manutenção num único lugar.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/device-ports.webp" data-title="Portas do dispositivo">
+          <img src="../img/screenshots/device-ports.webp" alt="Captura de ecrã das portas do dispositivo no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Portas do dispositivo</span>
+            <span class="shot-desc">Mapeia as ligações físicas entre dispositivos. Constrói uma topologia viva para ter claro como hubs, switches e fontes de alimentação estão ligados.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/device-files.webp" data-title="Ficheiros do dispositivo">
+          <img src="../img/screenshots/device-files.webp" alt="Captura de ecrã dos ficheiros do dispositivo no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Ficheiros do dispositivo</span>
+            <span class="shot-desc">Anexa manuais, faturas, fotos e notas de configuração a cada dispositivo. Tudo o que precisas para manutenção e garantia fica vinculado ao registo.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/ha-settings.webp" data-title="Integração com Home Assistant">
+          <img src="../img/screenshots/ha-settings.webp" alt="Captura de ecrã das definições do Home Assistant no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Integração com Home Assistant</span>
+            <span class="shot-desc">Sincroniza dispositivos, etiquetas, áreas e pisos com o Home Assistant, mantendo a app focada no inventário e documentação de dispositivos físicos.</span>
+          </span>
+        </button>
+        <button class="shot" type="button" data-full="../img/screenshots/networks.webp" data-title="Redes">
+          <img src="../img/screenshots/networks.webp" alt="Captura de ecrã das redes no Smart Home Planner" loading="lazy" width="1200" height="675">
+          <span class="shot-body">
+            <span class="shot-title">Redes</span>
+            <span class="shot-desc">Documenta qual VLAN cada dispositivo utiliza para que as atribuições de rede fiquem claras em todo o inventário.</span>
+          </span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section cta-section reveal">
+      <h2>Pronto para usar o Smart Home Planner?</h2>
+      <p>Acede ao repositório GitHub e instala-o como app para Home Assistant.</p>
+      <a class="btn btn-primary" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">Ir para o repositório GitHub</a>
+    </section>
+  </main>
+
+  <footer class="site-footer section reveal">
+    <ul class="social-links" aria-label="Ligações para redes sociais">
+      <li>
+        <a href="https://x.com/shcompared" target="_blank" rel="noopener noreferrer" aria-label="Segue-nos no X">
+          <svg class="social-icon" aria-hidden="true" viewBox="0 0 24 24">
+            <title>Follow us on X (Twitter)</title>
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path>
+          </svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://youtube.com/@SmartHomeCompared" target="_blank" rel="noopener noreferrer" aria-label="Segue-nos no YouTube">
+          <svg class="social-icon" aria-hidden="true" viewBox="0 0 32 32">
+            <title>Follow us on YouTube</title>
+            <path d="M31.7,9.6c0,0-0.3-2.2-1.3-3.2c-1.2-1.3-2.6-1.3-3.2-1.4C22.7,4.7,16,4.7,16,4.7h0c0,0-6.7,0-11.2,0.3 c-0.6,0.1-2,0.1-3.2,1.4c-1,1-1.3,3.2-1.3,3.2S0,12.2,0,14.8v2.4c0,2.6,0.3,5.2,0.3,5.2s0.3,2.2,1.3,3.2c1.2,1.3,2.8,1.2,3.5,1.4 C7.7,27.2,16,27.3,16,27.3s6.7,0,11.2-0.3c0.6-0.1,2-0.1,3.2-1.4c1-1,1.3-3.2,1.3-3.2s0.3-2.6,0.3-5.2v-2.4 C32,12.2,31.7,9.6,31.7,9.6z M12.7,20.2l0-9l8.6,4.5L12.7,20.2z"></path>
+          </svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://instagram.com/smarthomecompared" target="_blank" rel="noopener noreferrer" aria-label="Segue-nos no Instagram">
+          <svg class="social-icon" aria-hidden="true" viewBox="0 0 32 32">
+            <title>Follow us on Instagram</title>
+            <path d="M16,3.7c4,0,4.479.015,6.061.087a6.426,6.426,0,0,1,4.51,1.639,6.426,6.426,0,0,1,1.639,4.51C28.282,11.521,28.3,12,28.3,16s-.015,4.479-.087,6.061a6.426,6.426,0,0,1-1.639,4.51,6.425,6.425,0,0,1-4.51,1.639c-1.582.072-2.056.087-6.061.087s-4.479-.015-6.061-.087a6.426,6.426,0,0,1-4.51-1.639,6.425,6.425,0,0,1-1.639-4.51C3.718,20.479,3.7,20.005,3.7,16s.015-4.479.087-6.061a6.426,6.426,0,0,1,1.639-4.51A6.426,6.426,0,0,1,9.939,3.79C11.521,3.718,12,3.7,16,3.7M16,1c-4.073,0-4.584.017-6.185.09a8.974,8.974,0,0,0-6.3,2.427,8.971,8.971,0,0,0-2.427,6.3C1.017,11.416,1,11.927,1,16s.017,4.584.09,6.185a8.974,8.974,0,0,0,2.427,6.3,8.971,8.971,0,0,0,6.3,2.427c1.6.073,2.112.09,6.185.09s4.584-.017,6.185-.09a8.974,8.974,0,0,0,6.3-2.427,8.971,8.971,0,0,0,2.427-6.3c.073-1.6.09-2.112.09-6.185s-.017-4.584-.09-6.185a8.974,8.974,0,0,0-2.427-6.3,8.971,8.971,0,0,0-6.3-2.427C20.584,1.017,20.073,1,16,1Z"></path>
+            <path d="M16,8.3A7.7,7.7,0,1,0,23.7,16,7.7,7.7,0,0,0,16,8.3ZM16,21a5,5,0,1,1,5-5A5,5,0,0,1,16,21Z"></path>
+            <circle cx="24.007" cy="7.993" r="1.8"></circle>
+          </svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://www.reddit.com/user/smarthomecompared" target="_blank" rel="noopener noreferrer" aria-label="Segue-nos no Reddit">
+          <svg class="social-icon" aria-hidden="true" viewBox="0 0 90 90">
+            <title>Follow us on Reddit</title>
+            <path d="M89.998 45.604c-.201-5.442-4.77-9.691-10.229-9.506-2.419.084-4.719 1.075-6.466 2.737-7.693-5.24-16.729-8.113-26.017-8.314L51.67 9.442l14.461 3.041c.402 3.712 3.728 6.4 7.44 5.996 3.712-.402 6.4-3.728 5.996-7.44-.404-3.712-3.728-6.4-7.44-5.996-2.134.218-4.048 1.461-5.105 3.309L50.461 5.043c-1.125-.252-2.251.453-2.503 1.596 0 0 0 .017 0 .033L42.97 30.119c-9.406.152-18.559 3.041-26.352 8.314-3.964-3.728-10.212-3.544-13.94.437-3.728 3.964-3.544 10.212.437 13.94.773.722 1.662 1.344 2.653 1.781-.068.991-.068 1.982 0 2.973 0 15.133 17.636 27.444 39.386 27.444 21.75 0 39.386-12.295 39.386-27.444.068-.991.068-1.982 0-2.973 3.392-1.697 5.526-5.191 5.458-8.987zM22.429 52.373c0-3.728 3.041-6.769 6.769-6.769s6.769 3.041 6.769 6.769c0 3.728-3.041 6.769-6.769 6.769-3.745-.034-6.769-3.04-6.769-6.769zm39.252 18.845v-.269c-4.804 3.611-10.682 5.458-16.696 5.207-6.014.252-11.891-1.596-16.696-5.207-.638-.773-.521-1.931.252-2.569.671-.554 1.629-.554 2.318 0 4.065 2.973 9.02 4.485 14.058 4.249 5.039.269 10.011-1.176 14.125-4.114.739-.722 1.948-.706 2.671.033.723.739.706 1.948-.032 2.67zm-.924-11.589c-.117 0-.218 0-.336 0l.051-.252c-3.728 0-6.769-3.041-6.769-6.769 0-3.728 3.041-6.769 6.769-6.769 3.728 0 6.769 3.041 6.769 6.769.15 3.729-2.755 6.869-6.484 7.021z"></path>
+          </svg>
+        </a>
+      </li>
+      <li>
+        <a href="https://stacker.news/shcompared" target="_blank" rel="noopener noreferrer" aria-label="Segue-nos no Stacker News">
+          <svg class="social-icon" aria-hidden="true" viewBox="0 0 200 307">
+            <title>Follow us on Stacker News</title>
+            <path d="M56 0L107.606 131H90.2129H89L1.52588e-05 131L177 307L106.979 165H121H160H200L56 0Z"></path>
+          </svg>
+        </a>
+      </li>
+    </ul>
+    <p class="copyright">&copy; <span id="year"></span> Smart Home Compared</p>
+  </footer>
+
+  <dialog class="lightbox" id="lightbox" aria-label="Visualizador de capturas de ecrã">
+    <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Fechar imagem">Fechar</button>
+    <img id="lightbox-image" src="" alt="">
+    <p id="lightbox-caption"></p>
+  </dialog>
+
+  <script src="../js/main.js" defer></script>
+</body>
+</html>

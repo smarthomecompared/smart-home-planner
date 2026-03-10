@@ -1,8 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
   <url>
     <loc>https://planner.smarthomecompared.com/</loc>
-    <changefreq>weekly</changefreq>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/pt/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/fr/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/de/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/it/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/ko/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <url>
+    <loc>https://planner.smarthomecompared.com/ja/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://planner.smarthomecompared.com/"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://planner.smarthomecompared.com/es/"/>
+    <xhtml:link rel="alternate" hreflang="pt" href="https://planner.smarthomecompared.com/pt/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://planner.smarthomecompared.com/fr/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://planner.smarthomecompared.com/de/"/>
+    <xhtml:link rel="alternate" hreflang="it" href="https://planner.smarthomecompared.com/it/"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://planner.smarthomecompared.com/ko/"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://planner.smarthomecompared.com/ja/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://planner.smarthomecompared.com/"/>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
 </urlset>
