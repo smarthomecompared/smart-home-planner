@@ -790,9 +790,16 @@ const _CONN_TYPE_LABELS = {
     zwave:    'Z-Wave',
 };
 
+function _resolveDiagramAreaMode(settings) {
+    if (!settings || typeof settings !== 'object') return 'installed';
+    return settings.deviceAreaMode === 'controlled' ? 'controlled' : 'installed';
+}
+
 async function _pdfDiagramPage(doc, data) {
     const bgFile = await getUiPreference('diagramBackground').catch(() => null);
     const hasBg  = bgFile && bgFile.path;
+    const diagramDisplaySettings = await getUiPreference('diagramDisplaySettings').catch(() => null);
+    const diagramAreaMode = _resolveDiagramAreaMode(diagramDisplaySettings);
 
     let rawPositions = {};
     try {
@@ -801,8 +808,23 @@ async function _pdfDiagramPage(doc, data) {
             : (await window.loadMapPositions()      || {});
     } catch (_) {}
 
+    if (!hasBg && rawPositions && typeof rawPositions === 'object') {
+        const absolutePositions = {};
+        Object.entries(rawPositions).forEach(([id, value]) => {
+            if (!value || typeof value !== 'object') return;
+            if (String(value.coordinateSpace || '') === 'background-normalized') return;
+            const x = Number(value.x);
+            const y = Number(value.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+            absolutePositions[id] = value;
+        });
+        if (Object.keys(absolutePositions).length) {
+            rawPositions = absolutePositions;
+        }
+    }
+
     const deviceMap     = new Map((data.devices || []).map(d => [String(d.id), d]));
-    const positionedIds = Object.keys(rawPositions).filter(id => deviceMap.has(id));
+    let positionedIds = Object.keys(rawPositions).filter(id => deviceMap.has(id));
 
     if (!hasBg && !positionedIds.length) return;
 
@@ -828,21 +850,51 @@ async function _pdfDiagramPage(doc, data) {
     }
 
     // ── Compute draw area (aspect-ratio preserving) ───────────────────────────
-    const CX = _PDF_MARGIN;
-    const CY = _PDF_HEADER_H + 5;
-    const CW = _PDF_CW;
-    const legendY = _PDF_FOOTER_Y - 14;
-    const CH = Math.max(140, legendY - CY - 5);
+    const BASE_LAYOUT = {
+        x: _PDF_MARGIN,
+        y: _PDF_HEADER_H + 5,
+        w: _PDF_CW,
+        legendY: _PDF_FOOTER_Y - 14
+    };
+    BASE_LAYOUT.h = Math.max(140, BASE_LAYOUT.legendY - BASE_LAYOUT.y - 5);
 
-    let drawX = CX, drawY = CY, drawW = CW, drawH = CH;
+    const CONN_LAYOUT = {
+        x: 6,
+        y: _PDF_HEADER_H + 2,
+        w: _PDF_W - 12,
+        legendY: _PDF_FOOTER_Y - 11
+    };
+    CONN_LAYOUT.h = Math.max(140, CONN_LAYOUT.legendY - CONN_LAYOUT.y - 4);
+    let bgNaturalSize = null;
+
+    const computeDrawRect = (layout) => {
+        let drawX = layout.x;
+        let drawY = layout.y;
+        let drawW = layout.w;
+        let drawH = layout.h;
+        if (bgDataUrl) {
+            try {
+                const dims  = bgNaturalSize;
+                if (dims) {
+                    const ratio = dims.width / dims.height;
+                    drawH = layout.w / ratio;
+                    if (drawH > layout.h) {
+                        drawH = layout.h;
+                        drawW = layout.h * ratio;
+                    }
+                    drawX = layout.x + (layout.w - drawW) / 2;
+                }
+            } catch (_) {}
+        }
+        return { drawX, drawY, drawW, drawH };
+    };
+
     if (bgDataUrl) {
         try {
-            const dims  = await _imgNaturalSize(bgDataUrl);
-            const ratio = dims.width / dims.height;
-            drawH = CW / ratio;
-            if (drawH > CH) { drawH = CH; drawW = CH * ratio; }
-            drawX = CX + (CW - drawW) / 2;
-        } catch (_) {}
+            bgNaturalSize = await _imgNaturalSize(bgDataUrl);
+        } catch (_) {
+            bgNaturalSize = null;
+        }
     }
 
     // ── Detect active connection types among positioned (non-wishlist) devices ─
@@ -880,20 +932,42 @@ async function _pdfDiagramPage(doc, data) {
         doc.setFillColor(..._C.cardBg);
         doc.setDrawColor(..._C.cardBorder);
         doc.setLineWidth(0.25);
-        doc.roundedRect(CX - 1.5, CY - 1.5, CW + 3, CH + 3, 3, 3, 'FD');
+        const isOverview = connType === null;
+        const layout = isOverview ? BASE_LAYOUT : CONN_LAYOUT;
+        const drawRect = computeDrawRect(layout);
+
+        doc.roundedRect(layout.x - 1.5, layout.y - 1.5, layout.w + 3, layout.h + 3, 3, 3, 'FD');
 
         if (bgDataUrl) {
-            doc.addImage(bgDataUrl, bgImgType, drawX, drawY, drawW, drawH);
+            doc.addImage(bgDataUrl, bgImgType, drawRect.drawX, drawRect.drawY, drawRect.drawW, drawRect.drawH);
         }
 
         if (positionedIds.length) {
-            const isOverview = connType === null;
-            _renderDiagramOverlay(doc, data, rawPositions, positionedIds, drawX, drawY, drawW, drawH, connType, isOverview, !!bgDataUrl);
+            const connectionStyle = _renderDiagramOverlay(
+                doc,
+                data,
+                rawPositions,
+                positionedIds,
+                drawRect.drawX,
+                drawRect.drawY,
+                drawRect.drawW,
+                drawRect.drawH,
+                connType,
+                isOverview,
+                !!bgDataUrl,
+                diagramAreaMode
+            );
             if (isOverview) {
                 // Status legend only — no connection lines
-                _drawDiagramLegend(doc, legendY, new Set());
+                _drawDiagramLegend(doc, layout.legendY, new Set(), connectionStyle, {
+                    x: layout.x,
+                    w: layout.w
+                });
             } else {
-                _drawDiagramLegend(doc, legendY, new Set([connType]));
+                _drawDiagramLegend(doc, layout.legendY, new Set([connType]), connectionStyle, {
+                    x: layout.x,
+                    w: layout.w
+                });
             }
         }
     };
@@ -929,337 +1003,648 @@ function _drawArrowHead(doc, fx, fy, tx, ty, color, size) {
     );
 }
 
+function _resolveNoBackgroundFitPadding(areaW, areaH) {
+    const fallbackPadRatioX = 0.08;
+    const fallbackPadRatioY = 0.08;
+    let ratioX = fallbackPadRatioX;
+    let ratioY = fallbackPadRatioY;
+
+    // Match Cytoscape's `fit(..., padding: 80)` behavior used by the app
+    // when no background image exists.
+    if (typeof document !== 'undefined' && document) {
+        const mapEl = document.getElementById('network-map');
+        if (mapEl) {
+            const mapW = Number(mapEl.clientWidth);
+            const mapH = Number(mapEl.clientHeight);
+            if (Number.isFinite(mapW) && mapW > 0) {
+                ratioX = Math.min(0.25, Math.max(0.02, 80 / mapW));
+            }
+            if (Number.isFinite(mapH) && mapH > 0) {
+                ratioY = Math.min(0.25, Math.max(0.02, 80 / mapH));
+            }
+        }
+    }
+
+    return {
+        x: areaW * ratioX,
+        y: areaH * ratioY
+    };
+}
+
 /**
  * @param {string|null} filterType  If set, only connections of this type are drawn.
  *                                   Pass null to draw all connections (or none if no connections exist).
  */
-function _renderDiagramOverlay(doc, data, rawPositions, positionedIds, areaX, areaY, areaW, areaH, filterType, noConnections = false, hasBackground = true) {
+function _renderDiagramOverlay(
+    doc,
+    data,
+    rawPositions,
+    positionedIds,
+    areaX,
+    areaY,
+    areaW,
+    areaH,
+    filterType,
+    noConnections = false,
+    hasBackground = true,
+    areaMode = 'installed'
+) {
     if (!positionedIds.length || !areaW || !areaH) return;
 
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     const deviceMap = new Map((data.devices || []).map(d => [String(d.id), d]));
+    const areaMap = new Map((data.areas || []).map(a => [String(a.id), a]));
+    const floorMap = new Map((data.floors || []).map(f => [String(f.id), f]));
+    const areaKey = areaMode === 'controlled' ? 'controlledArea' : 'area';
 
-    // Wishlist devices are not shown on the diagram (same as the app)
-    const validIds = positionedIds.filter(id => {
-        const d = deviceMap.get(id);
-        return d && d.status !== 'wishlist';
+    const validIds = positionedIds.filter((id) => {
+        const device = deviceMap.get(id);
+        return device && device.status !== 'wishlist';
     });
     if (!validIds.length) return;
-
-    // ── Normalise positions to 0–1 ────────────────────────────────────────────
-    const isNormalized = validIds.some(
-        id => rawPositions[id] && rawPositions[id].coordinateSpace === 'background-normalized'
-    );
-
-    let normPos;
-    if (isNormalized) {
-        // Background-normalized coords already are 0–1 fractions of the image.
-        // Map them directly to the image area without extra padding.
-        normPos = validIds.reduce((acc, id) => {
-            acc[id] = { x: rawPositions[id].x, y: rawPositions[id].y };
-            return acc;
-        }, {});
-    } else {
-        const xs = validIds.map(id => rawPositions[id].x);
-        const ys = validIds.map(id => rawPositions[id].y);
-        const x0 = Math.min(...xs), x1 = Math.max(...xs);
-        const y0 = Math.min(...ys), y1 = Math.max(...ys);
-        const rX = (x1 - x0) || 1, rY = (y1 - y0) || 1;
-        const PAD = 0.05; // 5% inset when using raw pixel bounding box
-        normPos = validIds.reduce((acc, id) => {
-            acc[id] = {
-                x: PAD + ((rawPositions[id].x - x0) / rX) * (1 - PAD * 2),
-                y: PAD + ((rawPositions[id].y - y0) / rY) * (1 - PAD * 2),
-            };
-            return acc;
-        }, {});
-    }
-
-    const toPdfX = nx => areaX + nx * areaW;
-    const toPdfY = ny => areaY + ny * areaH;
-
-    const nodeW  = Math.max(14, Math.min(26, areaW * 0.07));
-    const nodeH  = Math.max(7,  Math.min(11, nodeW * 0.42));
-    const nodeRx = nodeW * 0.08;
-
     const posSet = new Set(validIds);
 
-    // ── Build deduplicated connection list ────────────────────────────────────
-    const drawnConns = new Set();
+    const AREA_PAD_MODEL = 35;
+    const FLOOR_PAD_MODEL = 40;
+    const AREA_LABEL_MODEL = 30;
+    const FLOOR_LABEL_MODEL = 34;
+
+    // Build connection list first so connection pages can fit only participating devices.
     const connections = [];
+    const seenConnections = new Set();
+    if (!noConnections) {
+        (data.devices || []).forEach((device) => {
+            const sid = String(device?.id || '');
+            if (!sid || !posSet.has(sid)) return;
 
-    if (noConnections) { /* skip — overview page shows devices only */ }
-    else (data.devices || []).forEach(device => {
-        if (!posSet.has(String(device.id))) return;
-        const sid = String(device.id || '');
+            if (Array.isArray(device.ports)) {
+                device.ports.forEach((port) => {
+                    if (!port?.connectedTo) return;
+                    const tid = String(port.connectedTo);
+                    if (!posSet.has(tid)) return;
 
-        // Port connections: ethernet / usb / power  → solid + arrowhead
-        if (Array.isArray(device.ports)) {
-            device.ports.forEach(port => {
-                if (!port.connectedTo) return;
-                const tid = String(port.connectedTo);
-                if (!posSet.has(tid)) return;
-                const kind = (port.type || '').split('-')[0];
-                if (filterType && kind !== filterType) return;
-                // Direction: output ports = from this device; input ports = to this device
-                const isOutput = (port.type || '').includes('-output');
-                const [fromId, toId] = isOutput ? [sid, tid] : [tid, sid];
-                const key = [fromId, toId].sort().join('|') + '|' + kind;
-                if (drawnConns.has(key)) return;
-                drawnConns.add(key);
+                    const kind = String(port.type || '').split('-')[0];
+                    if (!kind) return;
+                    if (filterType && kind !== filterType) return;
 
-                let label = '';
-                if (kind === 'ethernet') {
-                    // Match app: "Cat6 (1 Gbps)" or "Cat6" or "Ethernet (1 Gbps)" or "Ethernet"
-                    const cable = port.cableType ? String(port.cableType).replace(/^cat/i, 'Cat') : '';
-                    const speed = port.speed ? String(port.speed) : '';
-                    if (cable && speed) label = `${cable} (${speed})`;
-                    else if (cable)     label = cable;
-                    else if (speed)     label = `Ethernet (${speed})`;
-                    else                label = 'Ethernet';
-                } else if (kind === 'usb') {
-                    label = 'USB';
-                } else if (kind === 'power') {
-                    // Match app: show consumer device's meanConsumption, fallback "Power"
-                    const consumerId = (port.type || '').includes('power-input') ? sid : tid;
-                    const consumer   = deviceMap.get(consumerId);
-                    const watts      = consumer && consumer.meanConsumption != null
-                        ? String(consumer.meanConsumption).trim().replace(/\s*w$/i, '') + ' W'
-                        : null;
-                    label = watts || 'Power';
+                    const isOutput = String(port.type || '').includes('-output');
+                    const fromId = isOutput ? sid : tid;
+                    const toId = isOutput ? tid : sid;
+                    const dedupe = [fromId, toId].sort().join('|') + '|' + kind;
+                    if (seenConnections.has(dedupe)) return;
+                    seenConnections.add(dedupe);
+
+                    let label = '';
+                    if (kind === 'ethernet') {
+                        const cable = port.cableType ? String(port.cableType).replace(/^cat/i, 'Cat') : '';
+                        const speed = port.speed ? String(port.speed) : '';
+                        if (cable && speed) label = `${cable} (${speed})`;
+                        else if (cable) label = cable;
+                        else if (speed) label = `Ethernet (${speed})`;
+                        else label = 'Ethernet';
+                    } else if (kind === 'usb') {
+                        label = 'USB';
+                    } else if (kind === 'power') {
+                        const consumerId = String(port.type || '').includes('power-input') ? sid : tid;
+                        const consumer = deviceMap.get(consumerId);
+                        const watts = consumer && consumer.meanConsumption != null
+                            ? String(consumer.meanConsumption).trim().replace(/\s*w$/i, '') + ' W'
+                            : null;
+                        label = watts || 'Power';
+                    }
+
+                    connections.push({ fromId, toId, type: kind, label, arrow: true, dashed: false });
+                });
+            }
+
+            const wirelessDefs = [
+                { kind: 'wifi', value: device.wifiAccessPointId },
+                { kind: 'zigbee', value: device.zigbeeParentId },
+                { kind: 'zwave', value: device.zwaveControllerId }
+            ];
+            wirelessDefs.forEach((entry) => {
+                if (filterType && filterType !== entry.kind) return;
+                const tid = String(entry.value || '').trim();
+                if (!tid || tid === sid || !posSet.has(tid)) return;
+                const dedupe = [sid, tid].sort().join('|') + '|' + entry.kind;
+                if (seenConnections.has(dedupe)) return;
+                seenConnections.add(dedupe);
+                connections.push({ fromId: sid, toId: tid, type: entry.kind, label: '', arrow: false, dashed: true });
+            });
+        });
+    }
+
+    // Overview: all devices.
+    // Connection pages: only devices connected by the selected type.
+    const participatingIds = filterType
+        ? new Set(connections.flatMap((c) => [c.fromId, c.toId]))
+        : new Set(validIds);
+    const fitIds = filterType
+        ? validIds.filter((id) => participatingIds.has(id))
+        : validIds;
+    const fitIdsSafe = fitIds.length ? fitIds : validIds;
+
+    // ── Build base layout once (shared by overview and connection pages) ─────
+    const isNormalized = hasBackground && validIds.some((id) =>
+        rawPositions[id] && rawPositions[id].coordinateSpace === 'background-normalized'
+    );
+
+    const nodeSizeById = {};
+    let getPdfPoint = () => null;
+    let modelById = null;
+    let mapModelToPdfPoint = null;
+    let modelToPdfScale = null;
+
+    if (isNormalized) {
+        const normPos = {};
+        validIds.forEach((id) => {
+            const source = rawPositions[id] || {};
+            const nx = Number(source.x);
+            const ny = Number(source.y);
+            normPos[id] = {
+                x: Number.isFinite(nx) ? nx : 0.5,
+                y: Number.isFinite(ny) ? ny : 0.5
+            };
+        });
+
+        getPdfPoint = (id) => {
+            const point = normPos[id];
+            if (!point) return null;
+            return {
+                x: areaX + point.x * areaW,
+                y: areaY + point.y * areaH
+            };
+        };
+
+        const defaultNodeW = Math.max(10, Math.min(24, areaW * 0.065));
+        const defaultNodeH = Math.max(5, Math.min(10.5, defaultNodeW * 0.42));
+        validIds.forEach((id) => {
+            nodeSizeById[id] = { w: defaultNodeW, h: defaultNodeH };
+        });
+    } else {
+        const model = {};
+
+        validIds.forEach((id) => {
+            const source = rawPositions[id] || {};
+            const x = Number(source.x);
+            const y = Number(source.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+            const rawWidth = Number(source?.size?.width);
+            const rawHeight = Number(source?.size?.height);
+            const width = clamp(Number.isFinite(rawWidth) ? rawWidth : 140, 90, 420);
+            const height = clamp(Number.isFinite(rawHeight) ? rawHeight : 60, 45, 260);
+            model[id] = { x, y, width, height };
+        });
+
+        const _buildFrameModelBboxes = (ids) => {
+            const areaModelBboxes = {};
+            ids.forEach((id) => {
+                const point = model[id];
+                if (!point) return;
+                const device = deviceMap.get(id);
+                const areaRef = device ? String(device[areaKey] || '').trim() : '';
+                const areaId = areaRef || '__no_area__';
+                const x1 = point.x - point.width / 2;
+                const y1 = point.y - point.height / 2;
+                const x2 = point.x + point.width / 2;
+                const y2 = point.y + point.height / 2;
+                if (!areaModelBboxes[areaId]) {
+                    areaModelBboxes[areaId] = { x1, y1, x2, y2 };
+                    return;
                 }
-                connections.push({ fromId, toId, type: kind, label, arrow: true, dashed: false });
+                const b = areaModelBboxes[areaId];
+                b.x1 = Math.min(b.x1, x1);
+                b.y1 = Math.min(b.y1, y1);
+                b.x2 = Math.max(b.x2, x2);
+                b.y2 = Math.max(b.y2, y2);
+            });
+
+            const areaBboxes = {};
+            Object.entries(areaModelBboxes).forEach(([areaId, b]) => {
+                areaBboxes[areaId] = {
+                    x1: b.x1 - AREA_PAD_MODEL,
+                    y1: b.y1 - AREA_PAD_MODEL - AREA_LABEL_MODEL,
+                    x2: b.x2 + AREA_PAD_MODEL,
+                    y2: b.y2 + AREA_PAD_MODEL
+                };
+            });
+            Object.keys(areaBboxes).forEach((areaId) => {
+                const b = areaBboxes[areaId];
+                const bw = b.x2 - b.x1;
+                const bh = b.y2 - b.y1;
+                if (!Number.isFinite(bw) || !Number.isFinite(bh) || bw <= 0 || bh <= 0) {
+                    delete areaBboxes[areaId];
+                }
+            });
+
+            const floorBboxes = {};
+            Object.entries(areaBboxes).forEach(([areaId, b]) => {
+                const area = areaMap.get(areaId);
+                const floorId = area && area.floor && floorMap.has(String(area.floor))
+                    ? String(area.floor)
+                    : '__no_floor__';
+                if (!floorBboxes[floorId]) {
+                    floorBboxes[floorId] = { x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 };
+                    return;
+                }
+                const f = floorBboxes[floorId];
+                f.x1 = Math.min(f.x1, b.x1);
+                f.y1 = Math.min(f.y1, b.y1);
+                f.x2 = Math.max(f.x2, b.x2);
+                f.y2 = Math.max(f.y2, b.y2);
+            });
+            Object.values(floorBboxes).forEach((b) => {
+                b.x1 -= FLOOR_PAD_MODEL;
+                b.y1 -= FLOOR_PAD_MODEL + FLOOR_LABEL_MODEL;
+                b.x2 += FLOOR_PAD_MODEL;
+                b.y2 += FLOOR_PAD_MODEL;
+            });
+            Object.keys(floorBboxes).forEach((floorId) => {
+                const b = floorBboxes[floorId];
+                const bw = b.x2 - b.x1;
+                const bh = b.y2 - b.y1;
+                if (!Number.isFinite(bw) || !Number.isFinite(bh) || bw <= 0 || bh <= 0) {
+                    delete floorBboxes[floorId];
+                }
+            });
+
+            return { areaBboxes, floorBboxes };
+        };
+
+        const extents = {
+            minX: Number.POSITIVE_INFINITY,
+            maxX: Number.NEGATIVE_INFINITY,
+            minY: Number.POSITIVE_INFINITY,
+            maxY: Number.NEGATIVE_INFINITY
+        };
+        fitIdsSafe.forEach((id) => {
+            const point = model[id];
+            if (!point) return;
+            extents.minX = Math.min(extents.minX, point.x - point.width / 2);
+            extents.maxX = Math.max(extents.maxX, point.x + point.width / 2);
+            extents.minY = Math.min(extents.minY, point.y - point.height / 2);
+            extents.maxY = Math.max(extents.maxY, point.y + point.height / 2);
+        });
+
+        if (!Number.isFinite(extents.minX) || !Number.isFinite(extents.maxX) ||
+            !Number.isFinite(extents.minY) || !Number.isFinite(extents.maxY)) {
+            const centerX = areaX + areaW / 2;
+            const centerY = areaY + areaH / 2;
+            getPdfPoint = () => ({ x: centerX, y: centerY });
+            validIds.forEach((id) => {
+                nodeSizeById[id] = { w: 14, h: 6.5 };
+            });
+        } else {
+            let fitMinX = extents.minX;
+            let fitMaxX = extents.maxX;
+            let fitMinY = extents.minY;
+            let fitMaxY = extents.maxY;
+            let fitPadding = _resolveNoBackgroundFitPadding(areaW, areaH);
+
+            // Connection pages: take exact outer edges from device/area/floor borders.
+            // Then fit that bbox to the printable region with a minimal safety margin.
+            if (!hasBackground && filterType) {
+                const frameBoxes = _buildFrameModelBboxes(fitIdsSafe);
+                const outerBoxes = [
+                    ...Object.values(frameBoxes.areaBboxes || {}),
+                    ...Object.values(frameBoxes.floorBboxes || {})
+                ];
+                outerBoxes.forEach((b) => {
+                    fitMinX = Math.min(fitMinX, b.x1);
+                    fitMaxX = Math.max(fitMaxX, b.x2);
+                    fitMinY = Math.min(fitMinY, b.y1);
+                    fitMaxY = Math.max(fitMaxY, b.y2);
+                });
+                fitPadding = { x: 0.7, y: 0.7 };
+            }
+
+            const boundsW = Math.max(1, fitMaxX - fitMinX);
+            const boundsH = Math.max(1, fitMaxY - fitMinY);
+            const targetW = Math.max(8, areaW - fitPadding.x * 2);
+            const targetH = Math.max(8, areaH - fitPadding.y * 2);
+            const scale = Math.min(targetW / boundsW, targetH / boundsH);
+            const usedW = boundsW * scale;
+            const usedH = boundsH * scale;
+            const offsetX = areaX + fitPadding.x + (targetW - usedW) / 2;
+            const offsetY = areaY + fitPadding.y + (targetH - usedH) / 2;
+
+            modelById = model;
+            modelToPdfScale = scale;
+            mapModelToPdfPoint = (x, y) => ({
+                x: offsetX + (x - fitMinX) * scale,
+                y: offsetY + (y - fitMinY) * scale
+            });
+
+            getPdfPoint = (id) => {
+                const point = model[id];
+                if (!point) return null;
+                return mapModelToPdfPoint(point.x, point.y);
+            };
+
+            validIds.forEach((id) => {
+                const point = model[id];
+                if (!point) {
+                    nodeSizeById[id] = { w: 14, h: 6.5 };
+                    return;
+                }
+                nodeSizeById[id] = {
+                    w: point.width * scale,
+                    h: point.height * scale
+                };
             });
         }
+    }
 
-        // Wi-Fi → access point (no arrowhead, dashed)
-        const wapId = String(device.wifiAccessPointId || '').trim();
-        if (!filterType || filterType === 'wifi')
-        if (wapId && wapId !== sid && posSet.has(wapId)) {
-            const key = [sid, wapId].sort().join('|') + '|wifi';
-            if (!drawnConns.has(key)) {
-                drawnConns.add(key);
-                connections.push({ fromId: sid, toId: wapId, type: 'wifi', label: '', arrow: false, dashed: true });
-            }
+    const sampleNodeId = validIds.find((id) => nodeSizeById[id]);
+    const sampleNode = sampleNodeId ? nodeSizeById[sampleNodeId] : { w: 14, h: 6.5 };
+    const nodeW = sampleNode.w;
+    const nodeH = sampleNode.h;
+
+    const APP_EDGE_WIDTH_PX = 2;
+    const APP_EDGE_LABEL_FONT_PX = 10;
+    const APP_EDGE_LABEL_PADDING_PX = 2;
+    const MM_TO_PT = 72 / 25.4;
+    let modelToMm = Number.isFinite(modelToPdfScale) && modelToPdfScale > 0
+        ? modelToPdfScale
+        : null;
+    if (!modelToMm && sampleNodeId) {
+        const sampleSourceW = Number(rawPositions[sampleNodeId]?.size?.width);
+        if (Number.isFinite(sampleSourceW) && sampleSourceW > 0) {
+            modelToMm = sampleNode.w / sampleSourceW;
         }
+    }
+    if (!modelToMm) {
+        modelToMm = sampleNode.w / 140;
+    }
+    const connectionStyle = {
+        lineW: Math.max(0.06, APP_EDGE_WIDTH_PX * modelToMm),
+        arrowSz: Math.max(0.35, 5 * modelToMm),
+        fontPt: Math.max(1.15, APP_EDGE_LABEL_FONT_PX * modelToMm * MM_TO_PT),
+        badgePadX: Math.max(0.28, APP_EDGE_LABEL_PADDING_PX * modelToMm * 1.45),
+        badgePadY: Math.max(0.2, APP_EDGE_LABEL_PADDING_PX * modelToMm * 0.85),
+        dashWifi: [Math.max(0.45, 8 * modelToMm), Math.max(0.34, 6 * modelToMm)],
+        dashMesh: [Math.max(0.42, 7 * modelToMm), Math.max(0.3, 5 * modelToMm)]
+    };
 
-        // Zigbee → parent (no arrowhead, dashed)
-        const zbId = String(device.zigbeeParentId || '').trim();
-        if (!filterType || filterType === 'zigbee')
-        if (zbId && zbId !== sid && posSet.has(zbId)) {
-            const key = [sid, zbId].sort().join('|') + '|zigbee';
-            if (!drawnConns.has(key)) {
-                drawnConns.add(key);
-                connections.push({ fromId: sid, toId: zbId, type: 'zigbee', label: '', arrow: false, dashed: true });
-            }
-        }
-
-        // Z-Wave → controller (no arrowhead, dashed)
-        const zwId = String(device.zwaveControllerId || '').trim();
-        if (!filterType || filterType === 'zwave')
-        if (zwId && zwId !== sid && posSet.has(zwId)) {
-            const key = [sid, zwId].sort().join('|') + '|zwave';
-            if (!drawnConns.has(key)) {
-                drawnConns.add(key);
-                connections.push({ fromId: sid, toId: zwId, type: 'zwave', label: '', arrow: false, dashed: true });
-            }
-        }
-    });
-
-    // ── Compute participating nodes ───────────────────────────────────────────
-    const participatingIds = filterType
-        ? new Set(connections.flatMap(c => [c.fromId, c.toId]))
-        : new Set(validIds);
-
-    // ── Area / floor outlines when no background image ────────────────────────
-    // Drawn FIRST so they sit behind connection lines and device nodes.
-    // Uses participatingIds so per-connection diagrams only show boxes for
-    // areas/floors that actually have visible devices on this page.
-    if (!hasBackground && (data.areas || []).length) {
-        const areaMap  = new Map((data.areas  || []).map(a => [String(a.id), a]));
-        const floorMap = new Map((data.floors || []).map(f => [String(f.id), f]));
-
-        const halfW = nodeW / 2, halfH = nodeH / 2;
-        const LBL_H = 5;   // mm reserved for label above box
-        const PAD_A = 3.5; // mm padding: area around device half-extents
-        const PAD_F = 4;   // mm padding: floor around area boxes
-
-        // Per-area bounding box, computed only from participating devices
-        const areaBboxes = {};
-        validIds.filter(id => participatingIds.has(id)).forEach(id => {
+    // ── Area/floor frame (kept from full base layout, same as overview) ──────
+    if (!hasBackground && modelById && mapModelToPdfPoint) {
+        const areaModelBboxes = {};
+        validIds.filter((id) => participatingIds.has(id)).forEach((id) => {
+            const point = modelById[id];
+            if (!point) return;
             const device = deviceMap.get(id);
-            const areaId = device && device.area ? String(device.area) : '__no_area__';
-            const px = toPdfX(normPos[id].x), py = toPdfY(normPos[id].y);
-            if (!areaBboxes[areaId]) {
-                areaBboxes[areaId] = { x1: px, y1: py, x2: px, y2: py };
-            } else {
-                const b = areaBboxes[areaId];
-                b.x1 = Math.min(b.x1, px); b.y1 = Math.min(b.y1, py);
-                b.x2 = Math.max(b.x2, px); b.y2 = Math.max(b.y2, py);
+            const areaRef = device ? String(device[areaKey] || '').trim() : '';
+            const areaId = areaRef || '__no_area__';
+            const x1 = point.x - point.width / 2;
+            const y1 = point.y - point.height / 2;
+            const x2 = point.x + point.width / 2;
+            const y2 = point.y + point.height / 2;
+            if (!areaModelBboxes[areaId]) {
+                areaModelBboxes[areaId] = { x1, y1, x2, y2 };
+                return;
             }
-        });
-        // Expand by half-node + area padding; also leave room above for the label
-        Object.values(areaBboxes).forEach(b => {
-            b.x1 -= halfW + PAD_A;
-            b.y1 -= halfH + PAD_A + LBL_H; // extra space at top for label
-            b.x2 += halfW + PAD_A;
-            b.y2 += halfH + PAD_A;
+            const b = areaModelBboxes[areaId];
+            b.x1 = Math.min(b.x1, x1);
+            b.y1 = Math.min(b.y1, y1);
+            b.x2 = Math.max(b.x2, x2);
+            b.y2 = Math.max(b.y2, y2);
         });
 
-        // Per-floor bounding box from area boxes
+        const areaBboxes = {};
+        Object.entries(areaModelBboxes).forEach(([areaId, b]) => {
+            areaBboxes[areaId] = {
+                x1: b.x1 - AREA_PAD_MODEL,
+                y1: b.y1 - AREA_PAD_MODEL - AREA_LABEL_MODEL,
+                x2: b.x2 + AREA_PAD_MODEL,
+                y2: b.y2 + AREA_PAD_MODEL
+            };
+        });
+        Object.keys(areaBboxes).forEach((areaId) => {
+            const b = areaBboxes[areaId];
+            const bw = b.x2 - b.x1;
+            const bh = b.y2 - b.y1;
+            if (!Number.isFinite(bw) || !Number.isFinite(bh) || bw <= 0 || bh <= 0) {
+                delete areaBboxes[areaId];
+            }
+        });
+
         const floorBboxes = {};
         Object.entries(areaBboxes).forEach(([areaId, b]) => {
-            const area   = areaMap.get(areaId);
+            const area = areaMap.get(areaId);
             const floorId = area && area.floor && floorMap.has(String(area.floor))
                 ? String(area.floor)
                 : '__no_floor__';
             if (!floorBboxes[floorId]) {
                 floorBboxes[floorId] = { x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 };
-            } else {
-                const f = floorBboxes[floorId];
-                f.x1 = Math.min(f.x1, b.x1); f.y1 = Math.min(f.y1, b.y1);
-                f.x2 = Math.max(f.x2, b.x2); f.y2 = Math.max(f.y2, b.y2);
+                return;
             }
+            const f = floorBboxes[floorId];
+            f.x1 = Math.min(f.x1, b.x1);
+            f.y1 = Math.min(f.y1, b.y1);
+            f.x2 = Math.max(f.x2, b.x2);
+            f.y2 = Math.max(f.y2, b.y2);
         });
-        Object.values(floorBboxes).forEach(b => {
-            b.x1 -= PAD_F; b.y1 -= PAD_F + LBL_H; // extra space at top for label
-            b.x2 += PAD_F; b.y2 += PAD_F;
+        Object.values(floorBboxes).forEach((b) => {
+            b.x1 -= FLOOR_PAD_MODEL;
+            b.y1 -= FLOOR_PAD_MODEL + FLOOR_LABEL_MODEL;
+            b.x2 += FLOOR_PAD_MODEL;
+            b.y2 += FLOOR_PAD_MODEL;
         });
 
-        // Draw floors (solid blue border + light fill; label above the top edge)
+        const toPdfBox = (box) => {
+            const p1 = mapModelToPdfPoint(box.x1, box.y1);
+            const p2 = mapModelToPdfPoint(box.x2, box.y2);
+            return {
+                x1: Math.min(p1.x, p2.x),
+                y1: Math.min(p1.y, p2.y),
+                x2: Math.max(p1.x, p2.x),
+                y2: Math.max(p1.y, p2.y)
+            };
+        };
+
+        const areaLabelH = Math.max(2.4, Math.min(5.1, (modelToPdfScale || 0.06) * AREA_LABEL_MODEL * 0.92));
+        const floorLabelH = Math.max(2.8, Math.min(6.2, (modelToPdfScale || 0.06) * FLOOR_LABEL_MODEL * 0.92));
+        const areaBorderW = Math.max(0.16, Math.min(0.42, (modelToPdfScale || 0.06) * 2));
+        const floorBorderW = Math.max(0.2, Math.min(0.55, (modelToPdfScale || 0.06) * 3));
+
         Object.entries(floorBboxes).forEach(([floorId, b]) => {
-            const floor  = floorMap.get(floorId);
-            const label  = floor ? floor.name : 'No Floor';
-            const bx = b.x1, by = b.y1 + LBL_H, bw = b.x2 - b.x1, bh = b.y2 - b.y1 - LBL_H;
-            doc.setFillColor(226, 232, 240);  // slate-200
-            doc.setDrawColor(59, 130, 246);   // blue-500
-            doc.setLineWidth(floorId === '__no_floor__' ? 0.3 : 0.5);
-            doc.setLineDashPattern(floorId === '__no_floor__' ? [2, 1.2] : [], 0);
+            const floor = floorMap.get(floorId);
+            const label = floor ? floor.name : 'No Floor';
+            const box = toPdfBox(b);
+            const bx = box.x1;
+            const by = box.y1 + floorLabelH;
+            const bw = box.x2 - box.x1;
+            const bh = box.y2 - box.y1 - floorLabelH;
+            if (!Number.isFinite(bw) || !Number.isFinite(bh) || bw <= 0 || bh <= 0) return;
+            doc.setFillColor(226, 232, 240);
+            doc.setDrawColor(59, 130, 246);
+            doc.setLineWidth(floorId === '__no_floor__' ? areaBorderW : floorBorderW);
+            doc.setLineDashPattern(floorId === '__no_floor__' ? [1.6, 1.1] : [], 0);
             doc.roundedRect(bx, by, bw, bh, 1.5, 1.5, 'FD');
             doc.setLineDashPattern([], 0);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(5.5);
+            doc.setFontSize(Math.max(4.2, Math.min(5.8, floorLabelH + 0.8)));
             doc.setTextColor(59, 130, 246);
-            doc.text(label, bx + bw / 2, by - 1.5, { align: 'center', baseline: 'bottom' });
+            doc.text(label, bx + bw / 2, by - 1.2, { align: 'center', baseline: 'bottom' });
         });
 
-        // Draw areas (dashed gray border; label above the top edge)
         Object.entries(areaBboxes).forEach(([areaId, b]) => {
-            const area  = areaMap.get(areaId);
+            const area = areaMap.get(areaId);
             const label = area ? area.name : 'No Area';
-            const bx = b.x1, by = b.y1 + LBL_H, bw = b.x2 - b.x1, bh = b.y2 - b.y1 - LBL_H;
-            doc.setDrawColor(100, 116, 139);  // slate-500
-            doc.setLineWidth(0.3);
-            doc.setLineDashPattern([1.5, 1], 0);
+            const box = toPdfBox(b);
+            const bx = box.x1;
+            const by = box.y1 + areaLabelH;
+            const bw = box.x2 - box.x1;
+            const bh = box.y2 - box.y1 - areaLabelH;
+            if (!Number.isFinite(bw) || !Number.isFinite(bh) || bw <= 0 || bh <= 0) return;
+            doc.setDrawColor(100, 116, 139);
+            doc.setLineWidth(areaBorderW);
+            doc.setLineDashPattern([1.2, 0.9], 0);
             doc.roundedRect(bx, by, bw, bh, 1.2, 1.2, 'S');
             doc.setLineDashPattern([], 0);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(4.5);
+            doc.setFontSize(Math.max(3.8, Math.min(4.9, areaLabelH + 0.7)));
             doc.setTextColor(100, 116, 139);
             doc.text(label, bx + bw / 2, by - 1, { align: 'center', baseline: 'bottom' });
         });
     }
 
-    // ── Draw connection lines + arrows ────────────────────────────────────────
-    const _connColor = {
+    // ── Draw connections ───────────────────────────────────────────────────────
+    const connColor = {
         ethernet: _C.connEthernet,
         usb:      _C.connUsb,
         power:    _C.connPower,
         wifi:     _C.connWifi,
         zigbee:   _C.connZigbee,
-        zwave:    _C.connZwave,
+        zwave:    _C.connZwave
     };
-
+    const connDashByType = {
+        wifi: connectionStyle.dashWifi,
+        zigbee: connectionStyle.dashMesh,
+        zwave: connectionStyle.dashMesh
+    };
     const placedLabels = [];
 
-    connections.forEach(conn => {
-        const np = normPos[conn.fromId];
-        const nt = normPos[conn.toId];
-        if (!np || !nt) return;
+    connections.forEach((conn) => {
+        const fromPoint = getPdfPoint(conn.fromId);
+        const toPoint = getPdfPoint(conn.toId);
+        if (!fromPoint || !toPoint) return;
 
-        const fx = toPdfX(np.x), fy = toPdfY(np.y);
-        const tx = toPdfX(nt.x), ty = toPdfY(nt.y);
-        const color   = _connColor[conn.type] || _C.connDefault;
-        const arrowSz = 2.2;
-        const lineW   = 0.45;
-
-        const angle    = Math.atan2(ty - fy, tx - fx);
+        const fx = fromPoint.x;
+        const fy = fromPoint.y;
+        const tx = toPoint.x;
+        const ty = toPoint.y;
+        const color = connColor[conn.type] || _C.connDefault;
+        const arrowSz = connectionStyle.arrowSz;
+        const lineW = connectionStyle.lineW;
+        const angle = Math.atan2(ty - fy, tx - fx);
         const lineEndX = conn.arrow ? tx - arrowSz * Math.cos(angle) : tx;
         const lineEndY = conn.arrow ? ty - arrowSz * Math.sin(angle) : ty;
 
         doc.setDrawColor(...color);
         doc.setLineWidth(lineW);
-        if (conn.dashed) doc.setLineDashPattern([2.5, 1.5], 0);
+        if (conn.dashed) doc.setLineDashPattern(connDashByType[conn.type] || connectionStyle.dashMesh, 0);
         doc.line(fx, fy, lineEndX, lineEndY);
         if (conn.dashed) doc.setLineDashPattern([], 0);
-
         if (conn.arrow) _drawArrowHead(doc, fx, fy, tx, ty, color, arrowSz);
 
         if (conn.label) {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(3.0);
-            const textW  = doc.getTextWidth(conn.label);
-            const badgeW = textW + 2.2;
-            const badgeH = 2.8;
+            doc.setFontSize(connectionStyle.fontPt);
+            const textW = doc.getTextWidth(conn.label);
+            const badgeW = textW + connectionStyle.badgePadX;
+            const badgeH = connectionStyle.fontPt * 0.5 + connectionStyle.badgePadY;
 
             const mx = fx + (tx - fx) * 0.5;
             const my = fy + (ty - fy) * 0.5;
-            const dx = tx - fx, dy = ty - fy;
+            const dx = tx - fx;
+            const dy = ty - fy;
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
-            const pnx = -dy / len, pny = dx / len;
-            const perpOffsets = [0, 3, -3, 6, -6];
-            let lx = mx, ly = my;
+            const pnx = -dy / len;
+            const pny = dx / len;
+            const offA = Math.max(0.8, connectionStyle.lineW * 3.2);
+            const offB = Math.max(1.6, connectionStyle.lineW * 6.2);
+            const perpOffsets = [0, offA, -offA, offB, -offB];
+            let lx = mx;
+            let ly = my;
             for (const off of perpOffsets) {
                 const cx = mx + pnx * off;
                 const cy = my + pny * off;
-                const overlaps = placedLabels.some(lb =>
+                const overlaps = placedLabels.some((lb) =>
                     Math.abs(cx - lb.cx) < (badgeW + lb.w) / 2 + 1.5 &&
                     Math.abs(cy - lb.cy) < (badgeH + lb.h) / 2 + 1.0
                 );
-                if (!overlaps) { lx = cx; ly = cy; break; }
+                if (!overlaps) {
+                    lx = cx;
+                    ly = cy;
+                    break;
+                }
             }
             placedLabels.push({ cx: lx, cy: ly, w: badgeW, h: badgeH });
 
             doc.setFillColor(..._C.coverBg);
             doc.setDrawColor(...color);
-            doc.setLineWidth(0.25);
-            doc.roundedRect(lx - badgeW / 2, ly - badgeH / 2, badgeW, badgeH, 0.8, 0.8, 'FD');
+            doc.setLineWidth(Math.max(0.06, connectionStyle.lineW * 0.45));
+            const badgeR = Math.max(0.45, Math.min(0.8, connectionStyle.badgePadX * 0.3));
+            doc.roundedRect(lx - badgeW / 2, ly - badgeH / 2, badgeW, badgeH, badgeR, badgeR, 'FD');
             doc.setTextColor(...color);
             doc.text(conn.label, lx, ly, { align: 'center', baseline: 'middle' });
         }
     });
 
-    // ── Device nodes ──────────────────────────────────────────────────────────
-    validIds.filter(id => participatingIds.has(id)).forEach(id => {
+    // ── Draw device cards ──────────────────────────────────────────────────────
+    validIds.filter((id) => participatingIds.has(id)).forEach((id) => {
         const device = deviceMap.get(id);
         if (!device) return;
 
-        const px     = toPdfX(normPos[id].x);
-        const py     = toPdfY(normPos[id].y);
+        const point = getPdfPoint(id);
+        if (!point) return;
+        const size = nodeSizeById[id] || { w: nodeW, h: nodeH };
+        const px = point.x;
+        const py = point.y;
+        const nodeRx = size.w * 0.08;
         const border = _DIAGRAM_STATUS_COLOR[device.status] || _C.accent;
 
-        // Card background — dark fill + status-coloured border (same as app SVG card)
         doc.setFillColor(..._C.headerBg);
         doc.setDrawColor(...border);
-        doc.setLineWidth(0.6);
-        doc.roundedRect(px - nodeW / 2, py - nodeH / 2, nodeW, nodeH, nodeRx, nodeRx, 'FD');
+        doc.setLineWidth(Math.max(0.18, Math.min(0.42, size.w * 0.014)));
+        doc.roundedRect(px - size.w / 2, py - size.h / 2, size.w, size.h, nodeRx, nodeRx, 'FD');
 
-        // Device name — 2 lines max, white text
-        const fsize   = Math.max(3.2, Math.min(4.2, nodeW * 0.18));
-        const textW   = nodeW - 3;
+        const minFontSize = 1.85;
+        const maxFontByWidth = Math.max(4.6, Math.min(10.5, size.w * 0.26));
+        const maxFontByHeight = Math.max(4.6, Math.min(9.8, size.h * 0.62));
+        const maxFontSize = Math.min(maxFontByWidth, maxFontByHeight);
+        let fsize = Math.max(minFontSize, maxFontSize);
+        const textW = Math.max(4, size.w - 2.8);
+        const label = device.name || 'Unnamed';
+        let lines = [];
+        let lineH = fsize * 0.92;
+        const availableH = Math.max(1, size.h - 1.2);
         doc.setFont('helvetica', 'bold');
+        doc.setTextColor(241, 245, 249);
+
+        for (let i = 0; i < 40; i += 1) {
+            doc.setFontSize(fsize);
+            lines = doc.splitTextToSize(label, textW);
+            lineH = fsize * 0.92;
+            const neededH = lines.length * lineH;
+            if (neededH <= availableH || fsize <= minFontSize) break;
+            fsize = Math.max(minFontSize, fsize - 0.15);
+        }
         doc.setFontSize(fsize);
-        doc.setTextColor(241, 245, 249);  // #f1f5f9 — matches app SVG text
-        const allLines = doc.splitTextToSize(device.name || 'Unnamed', textW);
-        const display  = allLines.slice(0, 2);
-        const lineH    = fsize * 0.42;
-        const topY     = py - (display.length - 1) * lineH / 2;
-        display.forEach((ln, li) => {
-            doc.text(ln, px, topY + li * lineH, { align: 'center', baseline: 'middle' });
+        const fitFactor = Math.min(1, availableH / Math.max(1, lines.length * lineH));
+        lineH *= fitFactor;
+        const topY = py - (lines.length - 1) * lineH / 2;
+        lines.forEach((line, idx) => {
+            doc.text(line, px, topY + idx * lineH, { align: 'center', baseline: 'middle' });
         });
     });
+
+    return connectionStyle;
 }
 
-function _drawDiagramLegend(doc, y, activeTypes) {
+function _drawDiagramLegend(doc, y, activeTypes, connectionStyle = null, layout = null) {
     // Status nodes (wishlist excluded — not shown in diagram)
     const nodeItems = [
         { color: _DIAGRAM_STATUS_COLOR['working'],     label: 'Working'     },
@@ -1279,56 +1664,79 @@ function _drawDiagramLegend(doc, y, activeTypes) {
     const lineItems = activeTypes
         ? allLineItems.filter(it => activeTypes.has(it.type))
         : allLineItems;
+    const lineW = connectionStyle && Number.isFinite(connectionStyle.lineW)
+        ? connectionStyle.lineW
+        : 0.32;
+    const legendFont = connectionStyle && Number.isFinite(connectionStyle.fontPt)
+        ? Math.max(2.2, Math.min(4.2, connectionStyle.fontPt + 0.7))
+        : 3.4;
+    const dashWifi = connectionStyle && Array.isArray(connectionStyle.dashWifi)
+        ? connectionStyle.dashWifi
+        : [1.2, 0.9];
+    const dashMesh = connectionStyle && Array.isArray(connectionStyle.dashMesh)
+        ? connectionStyle.dashMesh
+        : [1.05, 0.78];
+    const arrowSample = connectionStyle && Number.isFinite(connectionStyle.arrowSz)
+        ? Math.max(0.35, Math.min(0.95, connectionStyle.arrowSz * 0.7))
+        : 0.6;
 
-    const boxX = _PDF_MARGIN - 1;
+    const legendX = layout && Number.isFinite(layout.x) ? layout.x : _PDF_MARGIN;
+    const legendW = layout && Number.isFinite(layout.w) ? layout.w : _PDF_CW;
+    const legendRight = legendX + legendW;
+
+    const boxX = legendX - 1;
     const boxY = y - 2;
-    const boxW = _PDF_CW + 2;
-    const boxH = 13;
+    const boxW = legendW + 2;
+    const boxH = 9.7;
     doc.setFillColor(..._C.cardBg);
     doc.setDrawColor(..._C.cardBorder);
     doc.setLineWidth(0.2);
     doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, 'FD');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    const swatchW = 5;
-    const itemGap = 2.2;
-    let x = _PDF_MARGIN + 1;
-    let rowY = y + 1.4;
+    doc.setFontSize(legendFont);
+    const swatchW = Math.max(2.1, Math.min(3.4, (connectionStyle?.arrowSz || 0.6) * 2.3));
+    const itemGap = 1.25;
+    let x = legendX + 1;
+    let rowY = y + 0.95;
+    const rowStep = 2.8;
+    const chipH = 1.9;
+    const chipYOffset = 1.1;
+    const textYOffset = 0.42;
 
     nodeItems.forEach(item => {
         const lblW = doc.getTextWidth(item.label);
         const itemW = swatchW + 1 + lblW + itemGap + 2;
-        if (x + itemW > _PDF_W - _PDF_MARGIN) {
-            rowY += 4;
-            x = _PDF_MARGIN + 1;
+        if (x + itemW > legendRight) {
+            rowY += rowStep;
+            x = legendX + 1;
         }
         doc.setFillColor(...item.color);
-        doc.roundedRect(x, rowY - 1.8, swatchW, 3, 0.8, 0.8, 'F');
+        doc.roundedRect(x, rowY - chipYOffset, swatchW, chipH, 0.8, 0.8, 'F');
         doc.setTextColor(..._C.textOnLight);
-        doc.text(item.label, x + swatchW + 1, rowY + 0.7);
+        doc.text(item.label, x + swatchW + 1, rowY + textYOffset);
         x += itemW;
     });
 
-    x += 3;
+    x += 1.4;
 
     lineItems.forEach(item => {
         const lblW = doc.getTextWidth(item.label);
         const itemW = swatchW + 1 + lblW + itemGap + 2;
-        if (x + itemW > _PDF_W - _PDF_MARGIN) {
-            rowY += 4;
-            x = _PDF_MARGIN + 1;
+        if (x + itemW > legendRight) {
+            rowY += rowStep;
+            x = legendX + 1;
         }
         doc.setDrawColor(...item.color);
-        doc.setLineWidth(0.65);
-        if (item.dashed) doc.setLineDashPattern([1.5, 1.2], 0);
+        doc.setLineWidth(lineW);
+        if (item.dashed) doc.setLineDashPattern(item.type === 'wifi' ? dashWifi : dashMesh, 0);
         doc.line(x, rowY - 0.3, x + swatchW, rowY - 0.3);
         if (item.dashed) doc.setLineDashPattern([], 0);
         if (!item.dashed) {
-            _drawArrowHead(doc, x, rowY - 0.3, x + swatchW, rowY - 0.3, item.color, 1.2);
+            _drawArrowHead(doc, x, rowY - 0.3, x + swatchW, rowY - 0.3, item.color, arrowSample);
         }
         doc.setTextColor(..._C.textOnLight);
-        doc.text(item.label, x + swatchW + 1, rowY + 0.7);
+        doc.text(item.label, x + swatchW + 1, rowY + textYOffset);
         x += itemW;
     });
 }
