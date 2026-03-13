@@ -388,6 +388,8 @@ function getBulkEditValue() {
         value = selectValue('bulk-brand');
     } else if (field === 'status') {
         value = selectValue('bulk-status');
+    } else if (field === 'installation-date') {
+        value = document.getElementById('bulk-installation-date')?.value || '';
     } else if (field === 'purchase-date') {
         value = document.getElementById('bulk-purchase-date')?.value || '';
     } else if (field === 'warranty-expiration') {
@@ -734,6 +736,8 @@ async function handleBulkApply() {
             next.brand = value === '__clear__' ? '' : normalizeOptionValue(value);
         } else if (field === 'status') {
             next.status = value;
+        } else if (field === 'installation-date') {
+            next.installationDate = value;
         } else if (field === 'purchase-date') {
             next.purchaseDate = value;
         } else if (field === 'warranty-expiration') {

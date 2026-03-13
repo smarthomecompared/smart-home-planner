@@ -130,7 +130,7 @@ Use Clear Filters when you want to return to a full inventory view.
 
 ### Bulk Edit
 
-Bulk Edit lets you apply a single change to multiple devices. Select devices from the table or cards, choose a field, and apply one update at a time. Supported fields include Installed Area, Controlled Area, Add/Remove Labels, Type, Brand, Status, Purchase Date, and Warranty Expiration. When the field you edit is synced with Home Assistant, the app updates Home Assistant too.
+Bulk Edit lets you apply a single change to multiple devices. Select devices from the table or cards, choose a field, and apply one update at a time. Supported fields include Installed Area, Controlled Area, Add/Remove Labels, Type, Brand, Status, Installation Date, Purchase Date, and Warranty Expiration. When the field you edit is synced with Home Assistant, the app updates Home Assistant too.
 
 ### Table View
 

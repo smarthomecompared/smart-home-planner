@@ -2418,7 +2418,6 @@ async function handleDeviceSubmit(e) {
     }
 
     const statusValue = document.getElementById('device-status').value;
-    const isPendingStatus = statusValue === 'pending';
     const idleConsumptionResult = parseOptionalNonNegativeNumberWithError(
         document.getElementById('device-idle-consumption').value,
         'Idle Consumption'
@@ -2487,8 +2486,8 @@ async function handleDeviceSubmit(e) {
         zigbeeLinkedDeviceIds: zigbeeLinkedDeviceIds,
         zwaveControllerId: zwaveCoordinatorValue,
         zwaveLinkedDeviceIds: zwaveLinkedDeviceIds,
-        area: isPendingStatus ? '' : document.getElementById('device-area').value,
-        controlledArea: isPendingStatus ? '' : (document.getElementById('device-controlled-area')?.value || ''),
+        area: document.getElementById('device-area').value,
+        controlledArea: document.getElementById('device-controlled-area')?.value || '',
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
         matterHub: document.getElementById('device-matter-hub').checked,
         zigbeeController: zigbeeControllerChecked,
@@ -2613,7 +2612,6 @@ function handlePowerTypeChange() {
 function handleStatusChange() {
     const status = document.getElementById('device-status').value;
     const isWishlist = status === 'wishlist';
-    const isPending = status === 'pending';
     const areaGroup = document.getElementById('device-area-group');
     const controlledAreaGroup = document.getElementById('device-controlled-area-group');
     const areaSelect = document.getElementById('device-area');
@@ -2622,27 +2620,21 @@ function handleStatusChange() {
     const installationInput = document.getElementById('device-installation-date');
     const batteryChangeGroup = document.getElementById('battery-change-group');
     const batteryChangeInput = document.getElementById('device-last-battery-change');
-    const hideInstallationDate = isWishlist || isPending;
+    const hideInstallationDate = isWishlist;
 
     if (areaGroup) {
         areaGroup.classList.remove('is-collapsed');
-        areaGroup.classList.toggle('is-hidden', isWishlist || isPending);
+        areaGroup.classList.toggle('is-hidden', isWishlist);
     }
     if (controlledAreaGroup) {
         controlledAreaGroup.classList.remove('is-collapsed');
-        controlledAreaGroup.classList.toggle('is-hidden', isWishlist || isPending);
+        controlledAreaGroup.classList.toggle('is-hidden', isWishlist);
     }
     if (areaSelect) {
         areaSelect.required = false;
     }
-    if (isPending) {
-        if (areaSelect) {
-            areaSelect.value = '';
-        }
-        if (controlledAreaSelect) {
-            controlledAreaSelect.value = '';
-        }
-        updateAreaAutoSyncState();
+    if (controlledAreaSelect) {
+        controlledAreaSelect.required = false;
     }
     if (installationGroup) {
         installationGroup.classList.remove('is-collapsed');
