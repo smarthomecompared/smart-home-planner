@@ -81,6 +81,21 @@ function parseOptionalNonNegativeNumber(value) {
     return parsed;
 }
 
+function parseOptionalNonNegativeNumberWithError(value, fieldLabel) {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+        return { value: null, error: '' };
+    }
+    const parsed = parseFloat(raw);
+    if (!Number.isFinite(parsed)) {
+        return { value: null, error: `${fieldLabel} must be a valid number.` };
+    }
+    if (parsed < 0) {
+        return { value: null, error: `${fieldLabel} cannot be negative.` };
+    }
+    return { value: parsed, error: '' };
+}
+
 function normalizeExternalUrl(value) {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -2404,6 +2419,30 @@ async function handleDeviceSubmit(e) {
 
     const statusValue = document.getElementById('device-status').value;
     const isPendingStatus = statusValue === 'pending';
+    const idleConsumptionResult = parseOptionalNonNegativeNumberWithError(
+        document.getElementById('device-idle-consumption').value,
+        'Idle Consumption'
+    );
+    if (idleConsumptionResult.error) {
+        showAlert(idleConsumptionResult.error);
+        return;
+    }
+    const meanConsumptionResult = parseOptionalNonNegativeNumberWithError(
+        document.getElementById('device-mean-consumption').value,
+        'Mean Consumption'
+    );
+    if (meanConsumptionResult.error) {
+        showAlert(meanConsumptionResult.error);
+        return;
+    }
+    const maxConsumptionResult = parseOptionalNonNegativeNumberWithError(
+        document.getElementById('device-max-consumption').value,
+        'Max Consumption'
+    );
+    if (maxConsumptionResult.error) {
+        showAlert(maxConsumptionResult.error);
+        return;
+    }
     const purchasePriceRaw = document.getElementById('device-purchase-price')?.value || '';
     const purchaseCurrencyValue = document.getElementById('device-purchase-currency')?.value || 'USD';
     const hasPurchasePrice = purchasePriceRaw.trim() !== '';
@@ -2424,9 +2463,9 @@ async function handleDeviceSubmit(e) {
         lastBatteryChange: document.getElementById('device-last-battery-change').value,
         batteryDuration: document.getElementById('device-battery-duration').value,
         upsProtected: document.getElementById('device-ups-protected').checked,
-        idleConsumption: document.getElementById('device-idle-consumption').value,
-        meanConsumption: document.getElementById('device-mean-consumption').value,
-        maxConsumption: document.getElementById('device-max-consumption').value,
+        idleConsumption: idleConsumptionResult.value,
+        meanConsumption: meanConsumptionResult.value,
+        maxConsumption: maxConsumptionResult.value,
         installationDate: document.getElementById('device-installation-date').value,
         purchaseDate: document.getElementById('device-purchase-date')?.value || '',
         purchaseStore: document.getElementById('device-purchase-store')?.value || '',
@@ -4642,9 +4681,9 @@ async function createDevice(deviceData) {
         lastBatteryChange: deviceData.lastBatteryChange || '',
         batteryDuration: deviceData.batteryDuration ? parseFloat(deviceData.batteryDuration) : null,
         upsProtected: deviceData.upsProtected || false,
-        idleConsumption: deviceData.idleConsumption ? parseFloat(deviceData.idleConsumption) : null,
-        meanConsumption: deviceData.meanConsumption ? parseFloat(deviceData.meanConsumption) : null,
-        maxConsumption: deviceData.maxConsumption ? parseFloat(deviceData.maxConsumption) : null,
+        idleConsumption: Number.isFinite(deviceData.idleConsumption) ? deviceData.idleConsumption : null,
+        meanConsumption: Number.isFinite(deviceData.meanConsumption) ? deviceData.meanConsumption : null,
+        maxConsumption: Number.isFinite(deviceData.maxConsumption) ? deviceData.maxConsumption : null,
         installationDate: deviceData.installationDate || '',
         serialNumber: deviceData.serialNumber ? deviceData.serialNumber.trim() : '',
         purchaseDate: deviceData.purchaseDate || '',
@@ -4717,7 +4756,7 @@ async function updateDevice(id, deviceData, options = {}) {
         return;
     }
     
-    if (devices.some(d => d.name && d.name.toLowerCase() === name.toLowerCase() && d.id !== id)) {
+    if (allDevices.some(d => d.name && d.name.toLowerCase() === name.toLowerCase() && d.id !== id)) {
         showAlert('A device with this name already exists. Please choose a different name.');
         return;
     }
@@ -4742,9 +4781,9 @@ async function updateDevice(id, deviceData, options = {}) {
         device.lastBatteryChange = deviceData.lastBatteryChange || '';
         device.batteryDuration = deviceData.batteryDuration ? parseFloat(deviceData.batteryDuration) : null;
         device.upsProtected = deviceData.upsProtected || false;
-        device.idleConsumption = deviceData.idleConsumption ? parseFloat(deviceData.idleConsumption) : null;
-        device.meanConsumption = deviceData.meanConsumption ? parseFloat(deviceData.meanConsumption) : null;
-        device.maxConsumption = deviceData.maxConsumption ? parseFloat(deviceData.maxConsumption) : null;
+        device.idleConsumption = Number.isFinite(deviceData.idleConsumption) ? deviceData.idleConsumption : null;
+        device.meanConsumption = Number.isFinite(deviceData.meanConsumption) ? deviceData.meanConsumption : null;
+        device.maxConsumption = Number.isFinite(deviceData.maxConsumption) ? deviceData.maxConsumption : null;
         device.installationDate = deviceData.installationDate || '';
         device.serialNumber = deviceData.serialNumber ? deviceData.serialNumber.trim() : '';
         device.purchaseDate = deviceData.purchaseDate || '';

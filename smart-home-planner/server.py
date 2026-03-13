@@ -2,6 +2,7 @@
 import datetime
 import io
 import json
+import math
 import mimetypes
 import os
 import re
@@ -71,6 +72,49 @@ def _write_storage(payload):
     with open(tmp_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
     os.replace(tmp_path, DATA_FILE)
+
+
+def _parse_optional_float(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
+
+
+def _validate_storage_payload(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("Invalid storage payload")
+    devices = payload.get("devices")
+    if not isinstance(devices, list):
+        return
+
+    fields = (
+        ("idleConsumption", "Idle consumption"),
+        ("meanConsumption", "Mean consumption"),
+        ("maxConsumption", "Max consumption"),
+    )
+
+    for device in devices:
+        if not isinstance(device, dict):
+            continue
+        device_name = str(device.get("name") or "").strip()
+        if not device_name:
+            device_name = str(device.get("id") or "").strip() or "Unnamed"
+        for key, label in fields:
+            parsed = _parse_optional_float(device.get(key))
+            if parsed is None:
+                continue
+            if parsed < 0:
+                raise ValueError(f"{label} cannot be negative (device: {device_name})")
 
 
 def _write_backups_debug(payload):
@@ -1560,6 +1604,11 @@ class AppHandler(SimpleHTTPRequestHandler):
             payload = json.loads(body.decode("utf-8") or "{}")
         except json.JSONDecodeError:
             self.send_error(400, "Invalid JSON")
+            return
+        try:
+            _validate_storage_payload(payload)
+        except ValueError as error:
+            self._send_json(400, {"error": str(error)})
             return
         with _lock:
             _write_storage(payload)
