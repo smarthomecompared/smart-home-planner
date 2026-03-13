@@ -292,12 +292,98 @@ function resolveLabelColor(value) {
 }
 
 let storageCache = null;
+let storageEtag = null;
 let storageLoadPromise = null;
 let storageSavePromise = Promise.resolve();
+let storageConflictAlertPromise = null;
+const STORAGE_CONFLICT_ERROR_CODE = 'storage_conflict';
+const STORAGE_CONFLICT_DEFAULT_MESSAGE = 'Your data changed in another browser tab or session. Reload and apply your change again.';
 
 function enqueueStorageWrite(task) {
     storageSavePromise = storageSavePromise.then(task, task);
     return storageSavePromise;
+}
+
+function parseStorageEtag(response) {
+    const etag = response?.headers?.get('ETag');
+    return etag ? String(etag).trim() : '';
+}
+
+function buildStorageConflictError(message, conflictPayload) {
+    const error = new Error(message || STORAGE_CONFLICT_DEFAULT_MESSAGE);
+    error.name = 'StorageConflictError';
+    error.code = STORAGE_CONFLICT_ERROR_CODE;
+    error.isStorageConflict = true;
+    if (conflictPayload && typeof conflictPayload === 'object') {
+        error.storage = conflictPayload.storage;
+    }
+    return error;
+}
+
+function isStorageConflictError(error) {
+    if (!error || typeof error !== 'object') return false;
+    return error.isStorageConflict === true || error.code === STORAGE_CONFLICT_ERROR_CODE;
+}
+
+async function parseJsonSafely(response) {
+    try {
+        return await response.json();
+    } catch (_error) {
+        return null;
+    }
+}
+
+async function showStorageConflictAlert(message) {
+    const detail = String(message || '').trim() || STORAGE_CONFLICT_DEFAULT_MESSAGE;
+    if (storageConflictAlertPromise) {
+        await storageConflictAlertPromise;
+        return;
+    }
+    storageConflictAlertPromise = (async () => {
+        try {
+            if (typeof showAlert === 'function') {
+                await showAlert(detail, { title: 'Save Conflict' });
+            }
+        } catch (_error) {
+            // Ignore UI errors while notifying conflict.
+        } finally {
+            storageConflictAlertPromise = null;
+        }
+    })();
+    await storageConflictAlertPromise;
+}
+
+function applyConflictStorageSnapshot(conflictPayload) {
+    const storage = conflictPayload && typeof conflictPayload.storage === 'object' ? conflictPayload.storage : null;
+    storageCache = storage ? mergeStorage(storage) : null;
+}
+
+async function putStoragePayload(payload) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (storageEtag) {
+        headers['If-Match'] = storageEtag;
+    }
+    const response = await fetch(STORAGE_API_URL, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(payload)
+    });
+    if (response.status === 409) {
+        const conflictPayload = await parseJsonSafely(response);
+        const nextEtag = parseStorageEtag(response);
+        storageEtag = nextEtag || null;
+        applyConflictStorageSnapshot(conflictPayload);
+        const message = String(conflictPayload?.error || '').trim() || STORAGE_CONFLICT_DEFAULT_MESSAGE;
+        await showStorageConflictAlert(message);
+        throw buildStorageConflictError(message, conflictPayload);
+    }
+    if (!response.ok) {
+        throw new Error(`Storage write failed: ${response.status}`);
+    }
+    const nextEtag = parseStorageEtag(response);
+    if (nextEtag) {
+        storageEtag = nextEtag;
+    }
 }
 
 async function loadStorage() {
@@ -309,10 +395,13 @@ async function loadStorage() {
                     throw new Error(`Storage request failed: ${response.status}`);
                 }
                 const payload = await response.json();
+                const etag = parseStorageEtag(response);
+                storageEtag = etag || null;
                 return mergeStorage(payload);
             })
             .catch((error) => {
                 console.error('Failed to load storage:', error);
+                storageEtag = null;
                 return mergeStorage({});
             })
             .then((storage) => {
@@ -327,15 +416,8 @@ async function loadStorage() {
 async function saveStorage(nextStorage) {
     return enqueueStorageWrite(async () => {
         const payload = mergeStorage(nextStorage);
+        await putStoragePayload(payload);
         storageCache = payload;
-        const response = await fetch(STORAGE_API_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error(`Storage write failed: ${response.status}`);
-        }
         return payload;
     });
 }
@@ -344,15 +426,8 @@ async function patchStorage(patch) {
     return enqueueStorageWrite(async () => {
         const storage = await loadStorage();
         const payload = mergeStorage({ ...storage, ...(patch || {}) });
+        await putStoragePayload(payload);
         storageCache = payload;
-        const response = await fetch(STORAGE_API_URL, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error(`Storage write failed: ${response.status}`);
-        }
         return payload;
     });
 }
@@ -1414,6 +1489,13 @@ async function clearMapImagePositions() {
     await patchStorage({ mapImagePositions: null });
 }
 
+window.addEventListener('unhandledrejection', (event) => {
+    if (!isStorageConflictError(event.reason)) {
+        return;
+    }
+    event.preventDefault();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
     ensureAppFooter();
     await initDebugSettingsNav();
@@ -1430,6 +1512,7 @@ window.saveMapImagePositions = saveMapImagePositions;
 window.clearMapImagePositions = clearMapImagePositions;
 window.getUiPreference = getUiPreference;
 window.setUiPreference = setUiPreference;
+window.isStorageConflictError = isStorageConflictError;
 window.APP_BASE_PATH = APP_BASE_PATH;
 window.buildAppUrl = buildAppUrl;
 window.isIngressRuntime = isIngressRuntime;

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import hashlib
 import io
 import json
 import math
@@ -72,6 +73,39 @@ def _write_storage(payload):
     with open(tmp_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
     os.replace(tmp_path, DATA_FILE)
+
+
+def _build_storage_etag(payload):
+    try:
+        canonical = json.dumps(
+            payload if isinstance(payload, dict) else {},
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+    except Exception:
+        canonical = "{}"
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"\"{digest}\""
+
+
+def _if_match_allows_current(if_match_header, current_etag):
+    raw_header = str(if_match_header or "").strip()
+    if not raw_header:
+        return True
+
+    for raw_token in raw_header.split(","):
+        token = raw_token.strip()
+        if not token:
+            continue
+        if token == "*":
+            return True
+        if token.startswith("W/"):
+            token = token[2:].strip()
+        if token == current_etag:
+            return True
+
+    return False
 
 
 def _parse_optional_float(value):
@@ -1198,12 +1232,17 @@ class AppHandler(SimpleHTTPRequestHandler):
                 self.send_header("Expires", "0")
         super().end_headers()
 
-    def _send_json(self, status, payload):
+    def _send_json(self, status, payload, headers=None):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
+        if isinstance(headers, dict):
+            for key, value in headers.items():
+                if value is None:
+                    continue
+                self.send_header(str(key), str(value))
         self.end_headers()
         self.wfile.write(body)
 
@@ -1215,7 +1254,8 @@ class AppHandler(SimpleHTTPRequestHandler):
         if path == "/api/storage":
             with _lock:
                 payload = _read_storage()
-            self._send_json(200, payload)
+                etag = _build_storage_etag(payload)
+            self._send_json(200, payload, headers={"ETag": etag})
             return
 
         if path == "/api/runtime":
@@ -1610,9 +1650,34 @@ class AppHandler(SimpleHTTPRequestHandler):
         except ValueError as error:
             self._send_json(400, {"error": str(error)})
             return
+
+        if_match_header = self.headers.get("If-Match")
+        conflict_payload = None
+        conflict_etag = None
+        next_etag = None
         with _lock:
-            _write_storage(payload)
+            current = _read_storage()
+            current_etag = _build_storage_etag(current)
+            if not _if_match_allows_current(if_match_header, current_etag):
+                conflict_payload = current
+                conflict_etag = current_etag
+            else:
+                _write_storage(payload)
+                next_etag = _build_storage_etag(payload)
+        if conflict_payload is not None:
+            self._send_json(
+                409,
+                {
+                    "error": "Storage was modified by another session. Reload and try again.",
+                    "code": "storage_conflict",
+                    "storage": conflict_payload,
+                },
+                headers={"ETag": conflict_etag},
+            )
+            return
         self.send_response(204)
+        if next_etag:
+            self.send_header("ETag", next_etag)
         self.end_headers()
 
     def do_DELETE(self):
