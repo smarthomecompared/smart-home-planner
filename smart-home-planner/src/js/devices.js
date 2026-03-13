@@ -40,6 +40,7 @@ const HA_DEVICE_AREA_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-area') : '/api/ha/device-area';
 const HA_DEVICE_LABELS_SYNC_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/ha/device-labels') : '/api/ha/device-labels';
+const DUPLICATE_DEVICE_DRAFT_SESSION_KEY = 'smartHomeDuplicateDeviceDraft';
 
 const VIEW_STORAGE_KEYS = {
     desktop: 'smartHomeDevicesViewDesktop',
@@ -72,6 +73,17 @@ async function deleteDeviceFilesFromServer(files) {
     }
 }
 
+function saveDuplicateDeviceDraftToSession(payload) {
+    try {
+        if (!window.sessionStorage) return false;
+        window.sessionStorage.setItem(DUPLICATE_DEVICE_DRAFT_SESSION_KEY, JSON.stringify(payload || {}));
+        return true;
+    } catch (error) {
+        console.error('Failed to store duplicate device draft in session storage:', error);
+        return false;
+    }
+}
+
 // Device Filters instance
 let deviceFilters = null;
 
@@ -83,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     areas = data.areas;
     floors = data.floors;
     networks = data.networks || [];
-    labels = data.labels || [];
+    labels = normalizeLabelCatalog(data.labels);
     devices = allDevices;
     applyAreaColumnVisibility();
     
@@ -92,7 +104,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     deviceFilters.init(devices, areas, floors, networks, settings, labels);
     deviceFilters.onFilterChange = (filtered) => {
         filteredDevices = filtered;
-        syncSelectionToFiltered();
+        selectedDeviceIds.clear();
+        currentPageDeviceIds = [];
         currentPage = 1;
         renderDevices();
         if (diagramReady && window.DeviceDiagram) {
@@ -440,7 +453,7 @@ function populateBulkEditOptions() {
     }
 
     if (labelSelect) {
-        const labelOptions = (labels || [])
+        const labelOptions = normalizeLabelCatalog(labels)
             .map(label => ({
                 id: normalizeLabelId(label.id || label.label_id),
                 name: String(label.name || '').trim()
@@ -704,7 +717,7 @@ async function handleBulkApply() {
 
     const selectedSet = new Set(ids);
     const validLabelIds = new Set(
-        (labels || [])
+        normalizeLabelCatalog(labels)
             .map(label => normalizeLabelId(label.id || label.label_id))
             .filter(Boolean)
     );
@@ -747,14 +760,33 @@ async function handleBulkApply() {
         return next;
     });
 
-    allDevices = updatedDevices;
+    let persistedPayload = null;
+    try {
+        const nextData = await getAllData();
+        nextData.devices = updatedDevices;
+        persistedPayload = await saveData(nextData);
+    } catch (error) {
+        console.error('Failed to save bulk edits before Home Assistant sync:', error);
+        await showAlert('Failed to save bulk edit changes. No Home Assistant sync was performed.', {
+            title: 'Bulk Edit Failed'
+        });
+        return;
+    }
+
+    const persistedDevices = Array.isArray(persistedPayload?.devices) ? persistedPayload.devices : updatedDevices;
+    allDevices = persistedDevices;
     devices = allDevices;
-    await saveData(await getAllData());
 
     const haFailures = [];
+    const persistedById = new Map(
+        persistedDevices
+            .filter(device => device && typeof device === 'object' && device.id !== undefined && device.id !== null)
+            .map(device => [String(device.id), device])
+    );
     if (shouldSyncArea || shouldSyncLabels) {
-        for (const device of updatedDevices) {
-            if (!selectedSet.has(device.id)) continue;
+        for (const id of ids) {
+            const device = persistedById.get(String(id));
+            if (!device) continue;
             if (!isHomeAssistantLinked(device.homeAssistant)) continue;
             try {
                 if (shouldSyncArea) {
@@ -1233,8 +1265,11 @@ window.duplicateDevice = async function(id) {
             ...device,
             name: `${device.name || 'Unnamed'} (Copy)`
         };
-        // Store duplicate data temporarily and redirect
-        await setUiPreference('duplicateDevice', duplicateData);
+        // Keep duplicate data only for the current tab session.
+        if (!saveDuplicateDeviceDraftToSession(duplicateData)) {
+            showAlert('Unable to duplicate this device in the current browser session.');
+            return;
+        }
         window.location.href = 'device-add.html?duplicate=true';
     }
 };
@@ -1267,10 +1302,14 @@ function normalizeLabelList(values) {
     return result;
 }
 
+function normalizeLabelCatalog(values) {
+    return (Array.isArray(values) ? values : [])
+        .filter((label) => label && typeof label === 'object');
+}
+
 function buildLabelNameMap(labelItems) {
     const map = new Map();
-    (labelItems || []).forEach((label) => {
-        if (!label || typeof label !== 'object') return;
+    normalizeLabelCatalog(labelItems).forEach((label) => {
         const id = normalizeLabelId(label.id || label.label_id);
         if (!id || map.has(id)) return;
         const name = String(label.name || '').trim() || id;
@@ -1292,8 +1331,7 @@ function formatDeviceLabels(device, labelNameMap) {
 
 function buildLabelMetaMap(labelItems) {
     const map = new Map();
-    (labelItems || []).forEach((label) => {
-        if (!label || typeof label !== 'object') return;
+    normalizeLabelCatalog(labelItems).forEach((label) => {
         const id = normalizeLabelId(label.id || label.label_id);
         if (!id || map.has(id)) return;
         const name = String(label.name || '').trim() || id;

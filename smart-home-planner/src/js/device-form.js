@@ -48,11 +48,31 @@ const DEVICE_FILES_DELETE_API_URL =
 const DEVICE_FILES_RENAME_API_URL =
     typeof window.buildAppUrl === 'function' ? window.buildAppUrl('api/device-files/rename') : '/api/device-files/rename';
 const MAX_DEVICE_FILE_BYTES = 20 * 1024 * 1024;
+const DUPLICATE_DEVICE_DRAFT_SESSION_KEY = 'smartHomeDuplicateDeviceDraft';
 
 function isHomeAssistantLinked(value) {
     if (value === true) return true;
     const normalized = String(value || '').trim().toLowerCase();
     return normalized === 'true' || normalized === '1' || normalized === 'yes';
+}
+
+function consumeDuplicateDeviceDraftFromSession() {
+    try {
+        if (!window.sessionStorage) return null;
+        const raw = window.sessionStorage.getItem(DUPLICATE_DEVICE_DRAFT_SESSION_KEY);
+        if (!raw) return null;
+        window.sessionStorage.removeItem(DUPLICATE_DEVICE_DRAFT_SESSION_KEY);
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        try {
+            window.sessionStorage?.removeItem(DUPLICATE_DEVICE_DRAFT_SESSION_KEY);
+        } catch (_removeError) {
+            // Ignore follow-up storage errors.
+        }
+        console.error('Failed to read duplicate device draft from session storage:', error);
+        return null;
+    }
 }
 
 function showFormMessage(message, type = 'success') {
@@ -2132,22 +2152,14 @@ async function loadDuplicateDeviceFromStorage() {
     if (urlParams.get('duplicate') !== 'true') {
         return;
     }
-    const stored = await getUiPreference('duplicateDevice');
-    if (!stored) {
-        return;
-    }
-    let duplicateData;
-    try {
-        duplicateData = typeof stored === 'string' ? JSON.parse(stored) : stored;
-    } catch (error) {
-        await setUiPreference('duplicateDevice', null);
+    const duplicateData = consumeDuplicateDeviceDraftFromSession();
+    if (!duplicateData) {
         return;
     }
     duplicateData.installationDate = '';
     duplicateData.lastBatteryChange = '';
     duplicateData.files = [];
     loadDeviceData(duplicateData);
-    await setUiPreference('duplicateDevice', null);
 }
 
 function loadDeviceData(device) {

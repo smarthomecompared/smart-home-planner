@@ -423,7 +423,7 @@ async function saveData(data) {
         ...data,
         settings: data.settings ? data.settings : storage.settings
     });
-    await saveStorage(payload);
+    return await saveStorage(payload);
 }
 
 // Settings Management Functions
