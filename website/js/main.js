@@ -4,6 +4,13 @@
     yearEl.textContent = String(new Date().getFullYear());
   }
 
+  const langDropdown = document.getElementById("lang-dropdown");
+  if (langDropdown) {
+    langDropdown.addEventListener("change", (event) => {
+      window.location.href = event.target.value;
+    });
+  }
+
   const revealItems = document.querySelectorAll(".reveal");
   if ("IntersectionObserver" in window) {
     const observer = new IntersectionObserver(

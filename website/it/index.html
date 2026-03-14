@@ -64,16 +64,6 @@
   </script>
 </head>
 <body>
-  <div class="lang-bar">
-    <a href="https://planner.smarthomecompared.com/" hreflang="en">English</a>
-    <a href="https://planner.smarthomecompared.com/es/" hreflang="es">Español</a>
-    <a href="https://planner.smarthomecompared.com/pt/" hreflang="pt">Português</a>
-    <a href="https://planner.smarthomecompared.com/fr/" hreflang="fr">Français</a>
-    <a href="https://planner.smarthomecompared.com/de/" hreflang="de">Deutsch</a>
-    <a href="https://planner.smarthomecompared.com/it/" hreflang="it" aria-current="true">Italiano</a>
-    <a href="https://planner.smarthomecompared.com/ko/" hreflang="ko">한국어</a>
-    <a href="https://planner.smarthomecompared.com/ja/" hreflang="ja">日本語</a>
-  </div>
 
 
   <div class="bg-orb orb-a" aria-hidden="true"></div>
@@ -84,7 +74,19 @@
       <img class="brand-mark" src="../img/android-chrome-192x192.png" alt="Icona dell'app Smart Home Planner" width="32" height="32" loading="lazy">
       <span>Smart Home Planner</span>
     </a>
-    <a class="btn btn-small header-cta" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">Installa l'app per Home Assistant</a>
+    <div class="header-actions">
+      <select class="lang-dropdown" aria-label="Language selection" id="lang-dropdown">
+        <option value="https://planner.smarthomecompared.com/">English</option>
+        <option value="https://planner.smarthomecompared.com/es/">Español</option>
+        <option value="https://planner.smarthomecompared.com/pt/">Português</option>
+        <option value="https://planner.smarthomecompared.com/fr/">Français</option>
+        <option value="https://planner.smarthomecompared.com/de/">Deutsch</option>
+        <option value="https://planner.smarthomecompared.com/it/" selected>Italiano</option>
+        <option value="https://planner.smarthomecompared.com/ko/">한국어</option>
+        <option value="https://planner.smarthomecompared.com/ja/">日本語</option>
+      </select>
+      <a class="btn btn-small header-cta" href="https://github.com/smarthomecompared/smart-home-planner" target="_blank" rel="noopener noreferrer">Installa l'app per Home Assistant</a>
+    </div>
   </header>
 
   <main id="top">

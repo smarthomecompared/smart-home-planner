@@ -101,25 +101,28 @@ p {
   border-bottom: 1px solid rgba(31, 42, 61, 0.65);
 }
 
-.lang-bar {
+.header-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  padding: 0.5rem 1.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  font-size: 0.8rem;
+  align-items: center;
+  gap: 1rem;
 }
 
-.lang-bar a {
-  color: #94a3b8;
-  text-decoration: none;
-  transition: color 0.2s;
+.lang-dropdown {
+  background: rgba(17, 24, 39, 0.8);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
-.lang-bar a:hover,
-.lang-bar a[aria-current="true"] {
-  color: #f1f5f9;
+.lang-dropdown:hover,
+.lang-dropdown:focus {
+  border-color: var(--accent);
 }
 
 .brand {
