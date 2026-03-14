@@ -27,8 +27,13 @@
   const closeBtn = document.getElementById("lightbox-close");
 
   function closeLightbox() {
-    if (lightbox && lightbox.open) {
-      lightbox.close();
+    if (lightbox && lightbox.hasAttribute("open")) {
+      if (typeof lightbox.close === "function") {
+        lightbox.close();
+      } else {
+        lightbox.removeAttribute("open");
+        lightbox.classList.remove("is-open");
+      }
     }
   }
 
@@ -45,6 +50,9 @@
 
         if (typeof lightbox.showModal === "function") {
           lightbox.showModal();
+        } else {
+          lightbox.setAttribute("open", "");
+          lightbox.classList.add("is-open");
         }
       });
     });

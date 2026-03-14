@@ -29,7 +29,6 @@ body {
 }
 
 main,
-.site-header,
 .site-footer {
   width: min(1100px, 92vw);
   margin: 0 auto;
@@ -92,13 +91,35 @@ p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.2rem 0;
+  padding: 1.2rem max(4vw, calc((100% - 1100px) / 2));
+  width: 100%;
   position: sticky;
   top: 0;
   backdrop-filter: blur(12px);
   background: rgba(5, 7, 13, 0.7);
   z-index: 30;
   border-bottom: 1px solid rgba(31, 42, 61, 0.65);
+}
+
+.lang-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.8rem;
+}
+
+.lang-bar a {
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.lang-bar a:hover,
+.lang-bar a[aria-current="true"] {
+  color: #f1f5f9;
 }
 
 .brand {
@@ -381,6 +402,21 @@ p {
   color: var(--text);
 }
 
+.lightbox:not([open]) {
+  display: none;
+}
+
+.lightbox.is-open {
+  display: block;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  box-shadow: 0 0 0 100vw rgba(3, 6, 10, 0.86);
+  margin: 0;
+}
+
 .lightbox::backdrop {
   background: rgba(3, 6, 10, 0.86);
 }
@@ -428,7 +464,8 @@ p {
   }
 
   .site-header {
-    width: 94vw;
+    padding-left: 3vw;
+    padding-right: 3vw;
   }
 
   .hero {
