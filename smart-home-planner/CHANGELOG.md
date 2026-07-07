@@ -1,3 +1,8 @@
+## 1.6.1 - 2026-07-07
+
+### Fixed
+- Fix add-on installation failing to build the image ("base name (${BUILD_FROM}) should not be blank") after the Home Assistant Supervisor builder migration, which no longer provides the `BUILD_FROM` build argument
+
 ## 1.6.0
 
 ### Added
