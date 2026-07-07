@@ -98,4 +98,4 @@ Your donation helps maintain the app, ship new features, and keep everything fre
 ## Other Products
 
 - Smart Home Compared: Comparing the best Smart Home devices: thermostats, cameras, doorbells, lights, sensors, sirens, air quality monitors, smoke & CO alarms and more. https://smarthomecompared.com/
-- Smart Home Deals: Discover the best smart home discounts across cameras, sensors, thermostats, doorbells, and more. Automatically filtered so you only see real price drops. https://smarthomedealsnow.com/
+- Smart Home News: Your weekly briefing on the smart home world. We break down the news that matters across cameras, sensors, thermostats, doorbells, locks and hubs, so you can choose better gear without the hype. https://smarthomecompared.com/podcast
