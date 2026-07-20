@@ -57,7 +57,10 @@ const AUTO_EXCLUDED_DEVICE_MANUFACTURERS = new Set([
   "musicassistant",
   "Zigbee2mqtt"
 ].map((value) => normalizeManufacturerKey(value)).filter(Boolean));
-const AUTO_EXCLUDED_DEVICE_NAMES = new Set(["sun"].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
+const AUTO_EXCLUDED_DEVICE_NAMES = new Set([
+  "sun",
+  "Google Translate es com"
+].map((value) => normalizeString(value).toLowerCase()).filter(Boolean));
 const AUTO_EXCLUDED_DEVICE_MODELS = new Set([
   "plugin",
   "integration",

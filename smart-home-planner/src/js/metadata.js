@@ -27,7 +27,7 @@ const DEFAULT_TYPES = [
     'Dehumidifiers', 'Dimmer Switches', 'Displays', 'Dongles', 'Door Locks',
     'Door/Window Sensors', 'Doorbells', 'Energy Monitors', 'Fans', 'Garage Door Openers', 'Gate Controllers',
     'Heaters', 'Hubs', 'Humidifiers', 'IR Remote Controls', 'Keypads', 'LED Bulbs', 'Light Sensors', 'Light Strips',
-    'Mini PCs', 'Motion Sensors', 'NAS', 'Network Switches', 'Plugs', 'Presence Sensors',
+    'Mini PCs', 'Motion Sensors', 'NAS', 'Network Switches', 'Plugs', 'Power Strips', 'Presence Sensors',
     'Radiator Valves', 'Rain Sensors', 'Relays', 'Robot Vacuums', 'Routers', 'Sirens',
     'Smart Buttons', 'Smart TVs', 'Smoke & CO detectors', 'Soil Moisture Sensors', 'Speakers', 'Streaming Devices',
     'Temperature/Humidity Sensors', 'Thermostats', 'UV Sensors', 'Vibration Sensors', 'Voice Assistants',
