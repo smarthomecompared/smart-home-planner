@@ -322,12 +322,67 @@
                                 <h3 class="settings-section-title">Reports</h3>
                                 <p class="settings-description">Generate and download reports for your smart home inventory.</p>
                                 <div class="settings-actions">
-                                    <div class="settings-action-group">
-                                        <h4>Export to PDF</h4>
-                                        <p>Download a comprehensive PDF report including device inventory, summary statistics, network connections, and the device diagram.</p>
-                                        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                                            <button class="btn btn-primary" id="export-pdf-btn">Export to PDF</button>
-                                            <span id="export-pdf-status" style="display: none; font-size: 0.875rem; color: var(--text-muted, #64748b);">Generating PDF…</span>
+                                    <div class="settings-action-group report-builder">
+                                        <h4>Export Report</h4>
+                                        <p>Build a report of your smart home inventory. Choose the format and the sections you want to include.</p>
+
+                                        <div class="report-subsection">
+                                            <span class="report-subsection-label">Format</span>
+                                            <div class="report-format-options" role="radiogroup" aria-label="Report format">
+                                                <label class="report-format-option" for="report-format-pdf">
+                                                    <input type="radio" id="report-format-pdf" name="report-format" value="pdf" checked>
+                                                    <span class="report-format-content">
+                                                        <span class="report-format-title">PDF</span>
+                                                        <span class="report-format-description">Polished, printable document with charts and the device diagram.</span>
+                                                    </span>
+                                                </label>
+                                                <label class="report-format-option" for="report-format-markdown">
+                                                    <input type="radio" id="report-format-markdown" name="report-format" value="markdown">
+                                                    <span class="report-format-content">
+                                                        <span class="report-format-title">Markdown (.md)</span>
+                                                        <span class="report-format-description">Plain-text wiki with every field for each device — ideal as context for AI assistants.</span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="report-subsection">
+                                            <span class="report-subsection-label">Sections</span>
+                                            <div class="report-sections" id="report-sections">
+                                                <label class="report-section-option">
+                                                    <input type="checkbox" class="report-section-check" value="summary" checked>
+                                                    <span class="report-section-content">
+                                                        <span class="report-section-title">Summary &amp; Statistics</span>
+                                                        <span class="report-section-description">Device counts and breakdowns by status, type, brand, connectivity, power and more.</span>
+                                                    </span>
+                                                </label>
+                                                <label class="report-section-option">
+                                                    <input type="checkbox" class="report-section-check" value="devices" checked>
+                                                    <span class="report-section-content">
+                                                        <span class="report-section-title">Device Details</span>
+                                                        <span class="report-section-description">Complete specifications, connections and integration info for every device.</span>
+                                                    </span>
+                                                </label>
+                                                <label class="report-section-option">
+                                                    <input type="checkbox" class="report-section-check" value="diagram" checked>
+                                                    <span class="report-section-content">
+                                                        <span class="report-section-title">Network Diagram</span>
+                                                        <span class="report-section-description">Visual connection map in PDF. In Markdown it is exported as a textual connection list.</span>
+                                                    </span>
+                                                </label>
+                                                <label class="report-section-option">
+                                                    <input type="checkbox" class="report-section-check" value="testCases" checked>
+                                                    <span class="report-section-content">
+                                                        <span class="report-section-title">Test Cases</span>
+                                                        <span class="report-section-description">Manual test cases grouped by category with steps and expected results.</span>
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="report-actions">
+                                            <button class="btn btn-primary" id="export-report-btn">Export to PDF</button>
+                                            <span id="export-report-status" style="display: none; font-size: 0.875rem; color: var(--text-muted, #64748b);">Generating report…</span>
                                         </div>
                                     </div>
                                 </div>

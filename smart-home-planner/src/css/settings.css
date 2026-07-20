@@ -557,6 +557,91 @@
     line-height: 1.4;
 }
 
+.report-subsection {
+    margin-top: 1.25rem;
+}
+
+.report-subsection-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 0.6rem;
+}
+
+.report-format-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.report-sections {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.report-format-option,
+.report-section-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-bg);
+    cursor: pointer;
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.report-format-option:hover,
+.report-section-option:hover {
+    border-color: var(--border-hover);
+}
+
+.report-format-option:has(input:checked),
+.report-section-option:has(input:checked) {
+    border-color: var(--primary-color, #0e7490);
+    box-shadow: inset 0 0 0 1px var(--primary-color, #0e7490);
+}
+
+.report-format-option input,
+.report-section-option input {
+    margin-top: 0.2rem;
+    width: auto;
+    flex-shrink: 0;
+    accent-color: var(--primary-color, #0e7490);
+}
+
+.report-format-content,
+.report-section-content {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.report-format-title,
+.report-section-title {
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.report-format-description,
+.report-section-description {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.report-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1.5rem;
+}
+
 .excluded-devices-empty {
     color: var(--text-muted);
     font-size: 0.95rem;

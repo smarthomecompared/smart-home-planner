@@ -2210,6 +2210,13 @@ function initializeCytoscape() {
                 }
             },
             {
+                selector: 'edge[connectionType="ethernet"][?bidirectional]',
+                style: {
+                    'source-arrow-color': '#3b82f6',
+                    'source-arrow-shape': 'triangle'
+                }
+            },
+            {
                 selector: 'edge[connectionType="usb"]',
                 style: {
                     'width': 2,
@@ -2970,15 +2977,10 @@ async function renderNetwork(options = {}) {
             // Check if connected device is in filtered list
             if (!filteredDevicesList.find(d => d.id === port.connectedTo)) return;
             
-            // Create unique connection ID to avoid duplicates
-            const connectionId = [device.id, port.connectedTo].sort().join('-');
-            if (processedConnections.has(connectionId)) return;
-            processedConnections.add(connectionId);
-            
             // Determine connection type
             let connectionType;
             let show;
-            
+
             if (port.type.startsWith('ethernet')) {
                 connectionType = 'ethernet';
                 show = showEthernet;
@@ -2989,6 +2991,12 @@ async function renderNetwork(options = {}) {
                 connectionType = 'power';
                 show = showPower;
             }
+
+            // Create unique connection ID per device pair and type, so the mirrored
+            // port collapses but distinct connection types between the same pair don't
+            const connectionId = `${[device.id, port.connectedTo].sort().join('-')}-${connectionType}`;
+            if (processedConnections.has(connectionId)) return;
+            processedConnections.add(connectionId);
             
             if (show) {
                 let label = '';
@@ -3004,8 +3012,10 @@ async function renderNetwork(options = {}) {
                 // Determine arrow direction based on port type
                 // Input ports: arrow points TO this device (receives data/power)
                 // Output ports: arrow points FROM this device (sends data/power)
-                const isInputPort = port.type.includes('input');
-                
+                // Input/Output ports: arrows on both ends (bidirectional)
+                const isBidirectionalPort = port.type.endsWith('-io');
+                const isInputPort = !isBidirectionalPort && port.type.includes('input');
+
                 elements.push({
                     group: 'edges',
                     data: {
@@ -3013,7 +3023,8 @@ async function renderNetwork(options = {}) {
                         source: isInputPort ? port.connectedTo : device.id,
                         target: isInputPort ? device.id : port.connectedTo,
                         connectionType: connectionType,
-                        label: label
+                        label: label,
+                        bidirectional: isBidirectionalPort
                     }
                 });
             }

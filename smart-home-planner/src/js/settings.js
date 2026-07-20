@@ -179,9 +179,16 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
-    document.getElementById('export-pdf-btn').addEventListener('click', () => {
-        void generateSmartHomePDF();
+    const exportReportBtn = document.getElementById('export-report-btn');
+    if (exportReportBtn) {
+        exportReportBtn.addEventListener('click', () => {
+            void handleExportReport();
+        });
+    }
+    document.querySelectorAll('input[name="report-format"]').forEach((radio) => {
+        radio.addEventListener('change', updateReportExportButtonLabel);
     });
+    updateReportExportButtonLabel();
     document.querySelectorAll('input[name="ha-area-sync-target"]').forEach((radio) => {
         radio.addEventListener('change', saveHaIntegrationSettings);
     });
@@ -241,6 +248,42 @@ function initializeEventListeners() {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', () => { void _notifAutoSave(); });
     });
+}
+
+// Reports
+function getSelectedReportFormat() {
+    const checked = document.querySelector('input[name="report-format"]:checked');
+    return checked ? checked.value : 'pdf';
+}
+
+function getSelectedReportSections() {
+    const sections = {};
+    document.querySelectorAll('.report-section-check').forEach((cb) => {
+        sections[cb.value] = cb.checked;
+    });
+    return sections;
+}
+
+function updateReportExportButtonLabel() {
+    const btn = document.getElementById('export-report-btn');
+    if (!btn) return;
+    btn.textContent = getSelectedReportFormat() === 'markdown' ? 'Export Markdown' : 'Export to PDF';
+}
+
+async function handleExportReport() {
+    const format = getSelectedReportFormat();
+    const sections = getSelectedReportSections();
+
+    if (!Object.values(sections).some(Boolean)) {
+        showToast('Select at least one section to export.', 'error');
+        return;
+    }
+
+    if (format === 'markdown') {
+        await generateSmartHomeMarkdown({ sections });
+    } else {
+        await generateSmartHomePDF({ sections });
+    }
 }
 
 function initializeExcludedDevicesTableControls() {

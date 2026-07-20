@@ -4086,7 +4086,8 @@ function normalizePortKind(kind, isPower) {
     return 'ethernet';
 }
 
-function normalizePortDirection(direction) {
+function normalizePortDirection(direction, kind) {
+    if (direction === 'io' && kind === 'ethernet') return 'io';
     return direction === 'output' ? 'output' : 'input';
 }
 
@@ -4094,6 +4095,7 @@ function getPortLabel(portType) {
     const labels = {
         'ethernet-input': 'Ethernet Input',
         'ethernet-output': 'Ethernet Output',
+        'ethernet-io': 'Ethernet Input/Output',
         'usb-input': 'USB Input',
         'usb-output': 'USB Output',
         'power-input': 'Power Input',
@@ -4110,7 +4112,7 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
     const isPowerContainer = containerId === 'power-ports-container';
     const parsed = parsePortType(portType);
     const portKind = normalizePortKind(parsed.kind, isPowerContainer);
-    const portDirection = normalizePortDirection(parsed.direction);
+    const portDirection = normalizePortDirection(parsed.direction, portKind);
     
     const portEl = document.createElement('div');
     portEl.className = 'port-item';
@@ -4163,6 +4165,7 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             <select id="${portId}-direction" class="port-select port-direction-select">
                 <option value="input"${portDirection === 'input' ? ' selected' : ''}>Input</option>
                 <option value="output"${portDirection === 'output' ? ' selected' : ''}>Output</option>
+                ${isPowerContainer ? '' : `<option value="io"${portDirection === 'io' ? ' selected' : ''}${isEthernetPort ? '' : ' disabled hidden'}>Input/Output</option>`}
             </select>
         </div>
     `;
@@ -4229,6 +4232,15 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
 
     const updatePortType = () => {
         const kind = typeSelect ? typeSelect.value : portEl.dataset.portKind;
+        const isEthernet = kind === 'ethernet';
+        const ioOption = directionSelect ? directionSelect.querySelector('option[value="io"]') : null;
+        if (ioOption) {
+            ioOption.disabled = !isEthernet;
+            ioOption.hidden = !isEthernet;
+            if (!isEthernet && directionSelect.value === 'io') {
+                directionSelect.value = 'input';
+            }
+        }
         const direction = directionSelect ? directionSelect.value : portEl.dataset.portDirection;
         portEl.dataset.portKind = kind;
         portEl.dataset.portDirection = direction;
@@ -4237,7 +4249,6 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
         if (labelEl) {
             labelEl.textContent = getPortLabel(newPortType);
         }
-        const isEthernet = kind === 'ethernet';
         if (ethernetFields) {
             ethernetFields.classList.toggle('is-hidden', !isEthernet);
         }
@@ -4439,54 +4450,54 @@ function loadPorts(ports) {
 
 // Get opposite port type
 function getOppositePortType(portType) {
-    const opposites = {
-        'ethernet-input': 'ethernet-output',
-        'ethernet-output': 'ethernet-input',
-        'usb-input': 'usb-output',
-        'usb-output': 'usb-input',
-        'power-input': 'power-output',
-        'power-output': 'power-input'
-    };
-    return opposites[portType];
+    const parsed = parsePortType(portType);
+    const oppositeDirection = parsed.direction === 'io'
+        ? 'io'
+        : (parsed.direction === 'output' ? 'input' : 'output');
+    return buildPortType(parsed.kind, oppositeDirection);
 }
 
 // Sync ports bidirectionally
 async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
+    const normalizedCurrentDeviceId = String(currentDeviceId || '').trim();
+    if (!normalizedCurrentDeviceId) return;
+
     // Reload all devices to get the latest data
     const allData = await loadData();
     const allDevices = allData.devices;
-    
+
     // Track which devices are connected in the current device's ports
     const connectedDeviceIds = new Set();
     currentDevicePorts.forEach(port => {
-        if (port.connectedTo) {
-            connectedDeviceIds.add(port.connectedTo);
+        const connectedTo = String(port.connectedTo || '').trim();
+        if (connectedTo) {
+            connectedDeviceIds.add(connectedTo);
         }
     });
-    
+
     // Update each connected device
     connectedDeviceIds.forEach(targetDeviceId => {
-        const targetDevice = allDevices.find(d => d.id === targetDeviceId);
+        const targetDevice = allDevices.find(d => String(d.id || '').trim() === targetDeviceId);
         if (!targetDevice) return;
-        
+
         // Get current device's ports that connect to this target device
-        const portsToTarget = currentDevicePorts.filter(p => p.connectedTo === targetDeviceId);
-        
+        const portsToTarget = currentDevicePorts.filter(p => String(p.connectedTo || '').trim() === targetDeviceId);
+
         // Initialize target device ports if not exists
         if (!targetDevice.ports) {
             targetDevice.ports = [];
         }
-        
+
         // Remove old connections from target device to current device
-        targetDevice.ports = targetDevice.ports.filter(p => p.connectedTo !== currentDeviceId);
-        
+        targetDevice.ports = targetDevice.ports.filter(p => String(p.connectedTo || '').trim() !== normalizedCurrentDeviceId);
+
         // Add reverse connections
         portsToTarget.forEach(port => {
             const oppositeType = getOppositePortType(port.type);
             if (oppositeType) {
                 const reversePort = {
                     type: oppositeType,
-                    connectedTo: currentDeviceId
+                    connectedTo: normalizedCurrentDeviceId
                 };
                 if (oppositeType.startsWith('ethernet')) {
                     if (port.cableType) {
@@ -4500,15 +4511,16 @@ async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
             }
         });
     });
-    
+
     // Clean up ports from devices that are no longer connected
     allDevices.forEach(device => {
-        if (device.id === currentDeviceId) return;
+        const deviceId = String(device.id || '').trim();
+        if (deviceId === normalizedCurrentDeviceId) return;
         if (!device.ports) return;
-        
+
         // If this device has ports connecting to current device, but current device doesn't connect back, remove them
-        if (!connectedDeviceIds.has(device.id)) {
-            device.ports = device.ports.filter(p => p.connectedTo !== currentDeviceId);
+        if (!connectedDeviceIds.has(deviceId)) {
+            device.ports = device.ports.filter(p => String(p.connectedTo || '').trim() !== normalizedCurrentDeviceId);
         }
     });
     

@@ -85,6 +85,7 @@ const _STATUS_LABELS = {
 const _PORT_LABELS = {
     'ethernet-input':  'Ethernet In',
     'ethernet-output': 'Ethernet Out',
+    'ethernet-io':     'Ethernet In/Out',
     'usb-input':       'USB In',
     'usb-output':      'USB Out',
     'power-input':     'Power In',
@@ -104,14 +105,32 @@ function _drawPageCanvas(doc) {
 
 // ─── Main orchestrator ─────────────────────────────────────────────────────────
 
-async function generateSmartHomePDF() {
+/**
+ * Normalizes the section-selection object. Every section defaults to `true`
+ * (included) unless explicitly set to `false`, so callers can pass a partial
+ * object or nothing at all.
+ */
+function _resolveReportSections(sections) {
+    const s  = sections || {};
+    const on = (v) => v !== false;
+    return {
+        summary:   on(s.summary),
+        devices:   on(s.devices),
+        diagram:   on(s.diagram),
+        testCases: on(s.testCases),
+    };
+}
+
+async function generateSmartHomePDF(options = {}) {
     if (!window.jspdf || typeof window.jspdf.jsPDF !== 'function') {
         showToast('PDF library not loaded. Please refresh and try again.', 'error');
         return;
     }
 
-    const btn    = document.getElementById('export-pdf-btn');
-    const status = document.getElementById('export-pdf-status');
+    const sections = _resolveReportSections(options.sections);
+
+    const btn    = document.getElementById('export-report-btn');
+    const status = document.getElementById('export-report-status');
 
     if (btn)    btn.disabled = true;
     if (status) status.style.display = 'inline';
@@ -157,27 +176,47 @@ async function generateSmartHomePDF() {
         const TOC_PAGE = doc.getNumberOfPages(); // = 2
         const nextPg   = () => doc.getNumberOfPages() + 1;
 
-        const tocPages = {};
-        tocPages.visualSummary = nextPg();
-        _pdfChartsPage(doc, data);
+        const tocEntries = [];
+        const addToc = (title, desc, pdfPage) => tocEntries.push({ title, desc, pdfPage });
 
-        tocPages.summary = nextPg();
-        _pdfSummaryPage(doc, data, config);
+        if (sections.summary) {
+            addToc('Visual Summary',
+                'Status, connectivity, power source, UPS, integrations & local vs. cloud charts',
+                nextPg());
+            _pdfChartsPage(doc, data);
 
-        tocPages.deviceDetails = nextPg();
-        _pdfDeviceDetailPages(doc, data, config);
+            addToc('Summary Report',
+                'Full breakdown by status, connectivity, area, floor, power and integrations',
+                nextPg());
+            _pdfSummaryPage(doc, data, config);
+        }
 
-        tocPages.diagram = nextPg();
-        await _pdfDiagramPage(doc, data);
+        if (sections.devices) {
+            addToc('Device Details',
+                'Complete specifications, connections and integration info for every device',
+                nextPg());
+            _pdfDeviceDetailPages(doc, data, config);
+        }
 
-        tocPages.testCases = nextPg();
-        _pdfTestCasesPages(doc, data);
+        if (sections.diagram) {
+            addToc('Network Diagrams',
+                'Overview of all devices, then one diagram per connection type',
+                nextPg());
+            await _pdfDiagramPage(doc, data);
+        }
+
+        if (sections.testCases) {
+            addToc('Test Cases',
+                'Manual test cases grouped by category with steps and expected results',
+                nextPg());
+            _pdfTestCasesPages(doc, data);
+        }
 
         _pdfFooters(doc);
 
         // Now fill in the TOC on page 2
         doc.setPage(TOC_PAGE);
-        _pdfTocPage(doc, tocPages, config);
+        _pdfTocPage(doc, tocEntries, config);
 
         const yy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -2071,7 +2110,7 @@ function _pdfChartsPage(doc, data) {
 
 // ─── Page 2: Table of Contents (drawn last, after all pages are known) ──────────
 
-function _pdfTocPage(doc, tocPages, { houseName, dateStr }) {
+function _pdfTocPage(doc, tocEntries, { houseName, dateStr }) {
     _drawPageCanvas(doc);
     _drawPageHeader(doc, 'Table of Contents');
 
@@ -2094,40 +2133,14 @@ function _pdfTocPage(doc, tocPages, { houseName, dateStr }) {
     doc.setTextColor(..._C.textOnLight);
     doc.text(`${houseName}  ·  ${dateStr}`, M + 4, _PDF_HEADER_H + 15);
 
-    // Sections definition
+    // Sections are provided in render order; numbering/paging computed here.
     // Display page = pdf page - 1  (cover page 1 is not counted)
-    const sections = [
-        {
-            num:      1,
-            title:    'Visual Summary',
-            desc:     'Status, connectivity, power source, UPS, integrations & local vs. cloud charts',
-            pdfPage:  tocPages.visualSummary,
-        },
-        {
-            num:      2,
-            title:    'Summary Report',
-            desc:     'Full breakdown by status, connectivity, area, floor, power and integrations',
-            pdfPage:  tocPages.summary,
-        },
-        {
-            num:      3,
-            title:    'Device Details',
-            desc:     'Complete specifications, connections and integration info for every device',
-            pdfPage:  tocPages.deviceDetails,
-        },
-        {
-            num:      4,
-            title:    'Network Diagrams',
-            desc:     'Overview of all devices, then one diagram per connection type',
-            pdfPage:  tocPages.diagram,
-        },
-        {
-            num:      5,
-            title:    'Test Cases',
-            desc:     'Manual test cases grouped by category with steps and expected results',
-            pdfPage:  tocPages.testCases,
-        },
-    ];
+    const sections = (tocEntries || []).map((entry, i) => ({
+        num:     i + 1,
+        title:   entry.title,
+        desc:    entry.desc,
+        pdfPage: entry.pdfPage,
+    }));
 
     const rowH    = 34;
     const startY  = _PDF_HEADER_H + 24;
@@ -2488,4 +2501,529 @@ function _pdfTestCasesPages(doc, data) {
         },
         didDrawPage: () => _drawPageHeader(doc, 'Test Cases'),
     });
+}
+
+// ═══ Markdown / Wiki Export ════════════════════════════════════════════════════
+//
+// Unlike the PDF (a curated, printable document), the Markdown export is a plain
+// "wiki" that dumps *every* available field for each device. It is designed to be
+// handed to an AI assistant as context, so completeness beats visual polish.
+
+/** Sanitizes a value for use inside a single Markdown table cell. */
+function _mdCell(value) {
+    return String(value === null || value === undefined ? '' : value)
+        .replace(/\r?\n+/g, ' ')
+        .replace(/\|/g, '\\|')
+        .trim();
+}
+
+/** Trims a value for inline body use (headings, list items). */
+function _mdInline(value) {
+    return String(value === null || value === undefined ? '' : value).trim();
+}
+
+/** Converts a camelCase / snake_case key into a human-friendly Title Case label. */
+function _humanizeKey(key) {
+    return String(key || '')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .trim();
+}
+
+/** Triggers a client-side download of a text file. */
+function _downloadTextFile(filename, text, mime) {
+    const blob = new Blob([text], { type: `${mime || 'text/plain'};charset=utf-8` });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Renders a `label | Devices | %` distribution table. `entries` = [[label, count], …]. */
+function _mdDistTable(lines, title, columnLabel, entries, total) {
+    if (!entries || !entries.length) return;
+    lines.push(`### ${title}`, '');
+    lines.push(`| ${columnLabel} | Devices | % |`);
+    lines.push('| --- | ---: | ---: |');
+    entries.forEach(([label, count]) => {
+        const pct = total ? Math.round((count / total) * 100) : 0;
+        lines.push(`| ${_mdCell(label)} | ${count} | ${pct}% |`);
+    });
+    lines.push('');
+}
+
+function _mdSummarySection(lines, data, config) {
+    const { devices, areas, floors, labels } = data;
+    const areaMap = new Map((areas || []).map((a) => [a.id, a]));
+    const total   = devices.length;
+
+    lines.push('## Summary & Statistics', '');
+    lines.push(`- **Total devices:** ${total}`);
+    lines.push(`- **Areas:** ${(areas || []).length}`);
+    lines.push(`- **Floors:** ${(floors || []).length}`);
+    lines.push(`- **Working:** ${config.stats.working}  ·  **Pending:** ${config.stats.pending}  ·  **Not working:** ${config.stats.notWorking}`);
+    lines.push('');
+
+    // By Status
+    const byStatus = _groupBy(devices, (d) => d.status || 'unknown');
+    const statusEntries = ['working', 'pending', 'not-working', 'wishlist']
+        .filter((s) => byStatus[s])
+        .map((s) => [_STATUS_LABELS[s] || s, byStatus[s].length]);
+    _mdDistTable(lines, 'By Status', 'Status', statusEntries, total);
+
+    // By Type
+    const byType = _groupBy(devices.filter((d) => d.type), (d) => d.type);
+    const typeEntries = Object.entries(byType)
+        .map(([k, v]) => [_fmtType(k), v.length])
+        .sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Type', 'Type', typeEntries, devices.filter((d) => d.type).length);
+
+    // By Brand
+    const byBrand = _groupBy(devices.filter((d) => d.brand), (d) => d.brand);
+    const brandEntries = Object.entries(byBrand)
+        .map(([k, v]) => [k, v.length])
+        .sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Brand', 'Brand', brandEntries, devices.filter((d) => d.brand).length);
+
+    // By Connectivity
+    const byConn = _groupBy(devices.filter((d) => d.connectivity), (d) => d.connectivity);
+    const connEntries = Object.entries(byConn)
+        .map(([k, v]) => [_fmtConnectivity(k), v.length])
+        .sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Connectivity', 'Connectivity', connEntries, devices.filter((d) => d.connectivity).length);
+
+    // By Power Source
+    const byPower = _groupBy(devices.filter((d) => d.power), (d) => d.power);
+    const powerEntries = Object.entries(byPower)
+        .map(([k, v]) => [_fmtPower(k), v.length])
+        .sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Power Source', 'Power Source', powerEntries, devices.filter((d) => d.power).length);
+
+    // By Installed / Controlled Area
+    const areaEntries = (selector, emptyLabel) => {
+        const counts = {};
+        devices.forEach((d) => {
+            const id   = selector(d);
+            const name = id ? ((areaMap.get(id) || {}).name || id) : emptyLabel;
+            counts[name] = (counts[name] || 0) + 1;
+        });
+        return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    };
+    _mdDistTable(lines, 'By Installed Area', 'Installed Area',
+        areaEntries((d) => d.area, 'No Installed Area'), total);
+    _mdDistTable(lines, 'By Controlled Area', 'Controlled Area',
+        areaEntries((d) => d.controlledArea, 'No Controlled Area'), total);
+
+    // By Battery Type
+    const battDevices = devices.filter((d) => d.power === 'battery' && d.batteryType);
+    const byBatt = _groupBy(battDevices, (d) => d.batteryType);
+    const battEntries = Object.entries(byBatt)
+        .map(([k, v]) => [k, v.length])
+        .sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Battery Type', 'Battery Type', battEntries, battDevices.length);
+
+    // By Label
+    const labelMap = new Map((labels || []).map((l) => [l.id, l]));
+    const labelCount = {};
+    devices.forEach((d) => (d.labels || []).forEach((id) => {
+        const name = (labelMap.get(id) || {}).name || id;
+        labelCount[name] = (labelCount[name] || 0) + 1;
+    }));
+    const labelEntries = Object.entries(labelCount).sort((a, b) => b[1] - a[1]);
+    _mdDistTable(lines, 'By Label', 'Label', labelEntries, total);
+}
+
+function _mdDevicesSection(lines, data, maps) {
+    const { devices } = data;
+    const { areaMap, floorMap, labelMap, netMap, devMap } = maps;
+
+    // Wireless relationships are stored one-way: the child/client keeps a pointer
+    // to its parent (wifiAccessPointId / zigbeeParentId / zwaveControllerId). Build
+    // reverse indexes so a parent device (access point / coordinator / controller)
+    // also lists the devices that connect to it.
+    const wirelessChildren = new Map(); // parentId -> ['Name (Wi-Fi)', …]
+    const pushChild = (parentId, label) => {
+        if (!parentId) return;
+        const key = String(parentId);
+        const arr = wirelessChildren.get(key) || [];
+        arr.push(label);
+        wirelessChildren.set(key, arr);
+    };
+    (devices || []).forEach((d) => {
+        const nm = d.name || 'Unnamed';
+        if (d.wifiAccessPointId) pushChild(d.wifiAccessPointId, `${nm} — Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`);
+        if (d.zigbeeParentId)    pushChild(d.zigbeeParentId, `${nm} — Zigbee`);
+        if (d.zwaveControllerId) pushChild(d.zwaveControllerId, `${nm} — Z-Wave`);
+    });
+
+    const sorted = [...devices].sort((a, b) => {
+        const aArea = ((areaMap.get(a.area) || {}).name || '').toLowerCase();
+        const bArea = ((areaMap.get(b.area) || {}).name || '').toLowerCase();
+        return (aArea + '|' + (a.name || '').toLowerCase())
+            .localeCompare(bArea + '|' + (b.name || '').toLowerCase());
+    });
+
+    lines.push('## Devices', '');
+    if (!sorted.length) {
+        lines.push('_No devices registered._', '');
+        return;
+    }
+
+    sorted.forEach((device, i) => {
+        const handled = new Set();
+        const rows    = [];
+        const skip    = (...keys) => keys.forEach((k) => handled.add(k));
+        const add     = (label, value, ...keys) => {
+            skip(...keys);
+            const s = value === null || value === undefined ? '' : String(value).trim();
+            if (s) rows.push([label, s]);
+        };
+
+        skip('name');
+        lines.push(`### ${i + 1}. ${_mdInline(device.name) || 'Unnamed'}`, '');
+
+        // ── Identity ──────────────────────────────────────────────────────────
+        add('Status',        _STATUS_LABELS[device.status] || device.status, 'status');
+        add('Brand',         device.brand, 'brand');
+        add('Model',         device.model, 'model');
+        add('Type',          device.type ? _fmtType(device.type) : '', 'type');
+        add('Serial Number', device.serialNumber, 'serialNumber');
+        add('Device ID',     device.id, 'id');
+
+        // ── Location ──────────────────────────────────────────────────────────
+        const area  = areaMap.get(device.area)  || {};
+        const floor = floorMap.get(area.floor)  || {};
+        add('Installed Area', area.name, 'area');
+        add('Floor',          floor.name);
+        if (device.controlledArea) {
+            const ca = areaMap.get(device.controlledArea);
+            add('Controlled Area', ca ? ca.name : device.controlledArea, 'controlledArea');
+        } else { skip('controlledArea'); }
+        add('Installation Date', device.installationDate, 'installationDate');
+
+        // ── Network ───────────────────────────────────────────────────────────
+        add('Connectivity', device.connectivity ? _fmtConnectivity(device.connectivity) : '', 'connectivity');
+        if (device.networkId) {
+            const net = netMap.get(device.networkId);
+            add('Network', net ? (net.name || net.id) : device.networkId, 'networkId');
+        } else { skip('networkId'); }
+        add('IP Address',  device.ip,  'ip');
+        add('MAC Address', device.mac, 'mac');
+        if (device.wifiAccessPointId) {
+            const ap   = devMap.get(String(device.wifiAccessPointId));
+            const band = device.wifiBand ? ` (${device.wifiBand})` : '';
+            add('Wi-Fi Access Point', `${ap ? ap.name : device.wifiAccessPointId}${band}`, 'wifiAccessPointId', 'wifiBand');
+        } else { skip('wifiAccessPointId', 'wifiBand'); }
+        if (device.wifiDownloadSpeed !== null && device.wifiDownloadSpeed !== undefined && device.wifiDownloadSpeed !== '') {
+            add('Wi-Fi Download', device.wifiDownloadSpeed + ' Mbps', 'wifiDownloadSpeed');
+        } else { skip('wifiDownloadSpeed'); }
+        if (device.wifiUploadSpeed !== null && device.wifiUploadSpeed !== undefined && device.wifiUploadSpeed !== '') {
+            add('Wi-Fi Upload', device.wifiUploadSpeed + ' Mbps', 'wifiUploadSpeed');
+        } else { skip('wifiUploadSpeed'); }
+        if (device.zigbeeParentId) {
+            const zb = devMap.get(String(device.zigbeeParentId));
+            add('Zigbee Parent', zb ? zb.name : device.zigbeeParentId, 'zigbeeParentId');
+        } else { skip('zigbeeParentId'); }
+        if (device.zwaveControllerId) {
+            const zw = devMap.get(String(device.zwaveControllerId));
+            add('Z-Wave Parent', zw ? zw.name : device.zwaveControllerId, 'zwaveControllerId');
+        } else { skip('zwaveControllerId'); }
+
+        // ── Storage ───────────────────────────────────────────────────────────
+        if (device.storageSize !== null && device.storageSize !== undefined && String(device.storageSize).trim()) {
+            const unit = device.storageUnit ? String(device.storageUnit).trim() : '';
+            add('Storage', unit ? `${device.storageSize} ${unit}` : String(device.storageSize), 'storageSize', 'storageUnit');
+        } else { skip('storageSize', 'storageUnit'); }
+
+        // ── Power ─────────────────────────────────────────────────────────────
+        add('Power Source', device.power ? _fmtPower(device.power) : '', 'power');
+        if (device.power && device.power !== 'battery') {
+            add('UPS Protected', device.upsProtected ? 'Yes' : 'No', 'upsProtected');
+        } else { skip('upsProtected'); }
+        if (device.idleConsumption !== null && device.idleConsumption !== undefined) add('Idle Consumption', device.idleConsumption + ' W', 'idleConsumption'); else skip('idleConsumption');
+        if (device.meanConsumption !== null && device.meanConsumption !== undefined) add('Mean Consumption', device.meanConsumption + ' W', 'meanConsumption'); else skip('meanConsumption');
+        if (device.maxConsumption  !== null && device.maxConsumption  !== undefined) add('Max Consumption',  device.maxConsumption  + ' W', 'maxConsumption');  else skip('maxConsumption');
+
+        // ── Battery ───────────────────────────────────────────────────────────
+        add('Battery Type', device.batteryType, 'batteryType');
+        if (device.batteryCount !== null && device.batteryCount !== undefined) add('Battery Count', String(device.batteryCount), 'batteryCount'); else skip('batteryCount');
+        add('Last Battery Change', device.lastBatteryChange, 'lastBatteryChange');
+        if (device.batteryDuration !== null && device.batteryDuration !== undefined) add('Battery Duration', device.batteryDuration + ' months', 'batteryDuration'); else skip('batteryDuration');
+
+        // ── Purchase & warranty ───────────────────────────────────────────────
+        add('Purchase Date',  device.purchaseDate,  'purchaseDate');
+        add('Purchase Store', device.purchaseStore, 'purchaseStore');
+        if (device.purchasePrice !== null && device.purchasePrice !== undefined) {
+            const currency = device.purchaseCurrency ? ' ' + device.purchaseCurrency : '';
+            add('Purchase Price', device.purchasePrice + currency, 'purchasePrice', 'purchaseCurrency');
+        } else { skip('purchasePrice', 'purchaseCurrency'); }
+        add('Warranty Expiration', device.warrantyExpiration, 'warrantyExpiration');
+
+        // ── Integrations & roles ──────────────────────────────────────────────
+        add('Local Only', device.localOnly ? 'Yes' : 'No', 'localOnly');
+        const integrations = [];
+        if (Array.isArray(device.haDeviceIds) && device.haDeviceIds.length) integrations.push('Home Assistant');
+        if (device.googleHome)         integrations.push('Google Home');
+        if (device.alexa)              integrations.push('Amazon Alexa');
+        if (device.appleHomeKit)       integrations.push('Apple HomeKit');
+        if (device.samsungSmartThings) integrations.push('Samsung SmartThings');
+        skip('googleHome', 'alexa', 'appleHomeKit', 'samsungSmartThings', 'homeAssistant');
+        if (integrations.length) add('Integrations', integrations.join(', '));
+        if (Array.isArray(device.haDeviceIds) && device.haDeviceIds.length) {
+            add('HA Device IDs', device.haDeviceIds.join(', '), 'haDeviceIds');
+        } else { skip('haDeviceIds'); }
+
+        const roles = [];
+        if (device.zigbeeController)   roles.push('Zigbee Coordinator');
+        if (device.zigbeeRepeater)     roles.push('Zigbee Router');
+        if (device.zwaveController)    roles.push('Z-Wave Coordinator');
+        if (device.matterHub)          roles.push('Matter Bridge');
+        if (device.threadBorderRouter) roles.push('Thread Border Router');
+        skip('zigbeeController', 'zigbeeRepeater', 'zwaveController', 'matterHub', 'threadBorderRouter');
+        if (roles.length) add('Roles', roles.join(', '));
+
+        // ── Labels ────────────────────────────────────────────────────────────
+        if (Array.isArray(device.labels) && device.labels.length) {
+            const names = device.labels.map((id) => (labelMap.get(id) || {}).name || null).filter(Boolean);
+            if (names.length) add('Labels', names.join(', '));
+        }
+        skip('labels');
+
+        // ── Misc / bookkeeping ────────────────────────────────────────────────
+        if (device.deviceImage) add('Device Photo', 'Yes', 'deviceImage'); else skip('deviceImage');
+        if (Array.isArray(device.files) && device.files.length) {
+            const names = device.files.map((f) => (f && (f.name || f.path)) || null).filter(Boolean);
+            add('Files', names.length ? names.join(', ') : String(device.files.length), 'files');
+        } else { skip('files'); }
+        add('Created At', device.createdAt, 'createdAt');
+        skip('notes', 'ports', 'links');
+
+        // ── Catch-all: any remaining primitive field, so nothing is lost ──────
+        Object.keys(device).forEach((k) => {
+            if (handled.has(k)) return;
+            const v = device[k];
+            if (v === null || v === undefined || v === '' || typeof v === 'object') return;
+            if (typeof v === 'boolean') { if (v) add(_humanizeKey(k), 'Yes'); return; }
+            add(_humanizeKey(k), v);
+        });
+
+        // ── Render field table ────────────────────────────────────────────────
+        if (rows.length) {
+            lines.push('| Field | Value |', '| --- | --- |');
+            rows.forEach(([k, v]) => lines.push(`| ${_mdCell(k)} | ${_mdCell(v)} |`));
+            lines.push('');
+        }
+
+        // ── Links ─────────────────────────────────────────────────────────────
+        if (Array.isArray(device.links) && device.links.some((l) => l && l.url)) {
+            lines.push('**Links:**', '');
+            device.links.forEach((l) => {
+                if (l && l.url) lines.push(`- [${_mdInline(l.name || l.url)}](${l.url})`);
+            });
+            lines.push('');
+        }
+
+        // ── Physical connections (Ethernet / USB / Power ports) ───────────────
+        const conns = (Array.isArray(device.ports) ? device.ports : []).filter((p) => p.connectedTo);
+        if (conns.length) {
+            lines.push('**Connections:**', '');
+            conns.forEach((p) => {
+                const target    = devMap.get(String(p.connectedTo));
+                const tName     = target ? target.name : String(p.connectedTo);
+                const portLabel = _PORT_LABELS[p.type] || p.type || 'Port';
+                const details   = [];
+                if (p.cableType) details.push(String(p.cableType).replace(/^cat/i, 'Cat'));
+                if (p.speed)     details.push(String(p.speed));
+                lines.push(`- ${portLabel} → ${_mdInline(tName)}${details.length ? ` (${details.join(', ')})` : ''}`);
+            });
+            lines.push('');
+        }
+
+        // ── Wireless clients (devices connecting to this AP / coordinator) ────
+        const children = wirelessChildren.get(String(device.id)) || [];
+        if (children.length) {
+            lines.push('**Wireless Clients:**', '');
+            children.forEach((c) => lines.push(`- ${_mdInline(c)}`));
+            lines.push('');
+        }
+
+        // ── Notes ─────────────────────────────────────────────────────────────
+        if (device.notes && String(device.notes).trim()) {
+            lines.push('**Notes:**', '');
+            String(device.notes).trim().split(/\r?\n/).forEach((l) => lines.push(`> ${l}`));
+            lines.push('');
+        }
+    });
+}
+
+function _mdConnectionsSection(lines, data, devMap) {
+    const { devices } = data;
+    lines.push('## Network Connections', '');
+
+    // Physical (port-based) links
+    const physical = [];
+    (devices || []).forEach((device) => {
+        if (!Array.isArray(device.ports)) return;
+        device.ports.forEach((port) => {
+            if (!port.connectedTo) return;
+            const target     = devMap.get(String(port.connectedTo));
+            const targetName = target ? target.name : port.connectedTo;
+            const portLabel  = _PORT_LABELS[port.type] || port.type || '-';
+            const cable      = [
+                port.cableType ? String(port.cableType).toUpperCase() : '',
+                port.speed     ? String(port.speed) : '',
+            ].filter(Boolean).join(' ');
+            physical.push([device.name || 'Unnamed', targetName, portLabel, cable || '-']);
+        });
+    });
+
+    lines.push('### Physical Connections', '');
+    if (physical.length) {
+        lines.push('| Device | Connected To | Connection Type | Cable Details |');
+        lines.push('| --- | --- | --- | --- |');
+        physical.forEach((r) => lines.push(`| ${r.map(_mdCell).join(' | ')} |`));
+    } else {
+        lines.push('_No physical connections defined._');
+    }
+    lines.push('');
+
+    // Wireless links (Wi-Fi / Zigbee / Z-Wave)
+    const wireless = [];
+    (devices || []).forEach((d) => {
+        if (d.wifiAccessPointId) {
+            const ap = devMap.get(String(d.wifiAccessPointId));
+            wireless.push([d.name || 'Unnamed', ap ? ap.name : d.wifiAccessPointId, `Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`]);
+        }
+        if (d.zigbeeParentId) {
+            const p = devMap.get(String(d.zigbeeParentId));
+            wireless.push([d.name || 'Unnamed', p ? p.name : d.zigbeeParentId, 'Zigbee']);
+        }
+        if (d.zwaveControllerId) {
+            const p = devMap.get(String(d.zwaveControllerId));
+            wireless.push([d.name || 'Unnamed', p ? p.name : d.zwaveControllerId, 'Z-Wave']);
+        }
+    });
+
+    lines.push('### Wireless Links', '');
+    if (wireless.length) {
+        lines.push('| Device | Connected To | Type |');
+        lines.push('| --- | --- | --- |');
+        wireless.forEach((r) => lines.push(`| ${r.map(_mdCell).join(' | ')} |`));
+    } else {
+        lines.push('_No wireless links defined._');
+    }
+    lines.push('');
+}
+
+function _mdTestCasesSection(lines, data) {
+    const testCases = (data.testCases || []).filter((tc) => tc && tc.name);
+    lines.push('## Test Cases', '');
+    if (!testCases.length) {
+        lines.push('_No test cases defined._', '');
+        return;
+    }
+
+    const sorted = [...testCases].sort((a, b) => {
+        const ca = (a.category || 'General').localeCompare(b.category || 'General');
+        return ca !== 0 ? ca : (a.name || '').localeCompare(b.name || '');
+    });
+
+    let lastCategory = null;
+    sorted.forEach((tc) => {
+        const cat = tc.category || 'General';
+        if (cat !== lastCategory) {
+            lines.push(`### ${_mdInline(cat)}`, '');
+            lastCategory = cat;
+        }
+        const p        = (tc.priority || 'medium').toLowerCase();
+        const priority = p.charAt(0).toUpperCase() + p.slice(1);
+        lines.push(`#### ${_mdInline(tc.name)}`, '');
+        lines.push(`- **Priority:** ${priority}`);
+        if (tc.description)    lines.push(`- **Description:** ${_mdInline(tc.description).replace(/\r?\n+/g, ' ')}`);
+        if (tc.steps)          lines.push(`- **Steps:** ${_mdInline(tc.steps).replace(/\r?\n+/g, ' ')}`);
+        if (tc.expectedResult) lines.push(`- **Expected Result:** ${_mdInline(tc.expectedResult).replace(/\r?\n+/g, ' ')}`);
+        lines.push('');
+    });
+}
+
+function _buildMarkdownReport(data, config, sections) {
+    const areaMap  = new Map((data.areas    || []).map((a) => [a.id, a]));
+    const floorMap = new Map((data.floors   || []).map((f) => [f.id, f]));
+    const labelMap = new Map((data.labels   || []).map((l) => [l.id, l]));
+    const netMap   = new Map((data.networks || []).map((n) => [n.id, n]));
+    const devMap   = new Map((data.devices  || []).map((d) => [String(d.id), d]));
+
+    const lines = [];
+    lines.push(`# Smart Home Inventory — ${_mdInline(config.houseName)}`, '');
+    lines.push(`_Generated by Smart Home Planner on ${config.dateStr}_  `);
+    lines.push('_planner.smarthomecompared.com_', '');
+
+    const toc = [];
+    if (sections.summary)   toc.push('- [Summary & Statistics](#summary--statistics)');
+    if (sections.devices)   toc.push('- [Devices](#devices)');
+    if (sections.diagram)   toc.push('- [Network Connections](#network-connections)');
+    if (sections.testCases) toc.push('- [Test Cases](#test-cases)');
+    if (toc.length) lines.push('## Contents', '', ...toc, '');
+
+    if (sections.summary)   _mdSummarySection(lines, data, config);
+    if (sections.devices)   _mdDevicesSection(lines, data, { areaMap, floorMap, labelMap, netMap, devMap });
+    if (sections.diagram)   _mdConnectionsSection(lines, data, devMap);
+    if (sections.testCases) _mdTestCasesSection(lines, data);
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+async function generateSmartHomeMarkdown(options = {}) {
+    const sections = _resolveReportSections(options.sections);
+
+    const btn    = document.getElementById('export-report-btn');
+    const status = document.getElementById('export-report-status');
+
+    if (btn)    btn.disabled = true;
+    if (status) status.style.display = 'inline';
+
+    try {
+        const [data, haConfig] = await Promise.all([
+            loadData(),
+            window.loadHaConfig().catch(() => ({})),
+        ]);
+
+        const houseName = ((haConfig && haConfig.location_name) || '').trim() || 'My Smart Home';
+        const now       = new Date();
+        const dateStr   = now.toLocaleDateString(undefined, {
+            year: 'numeric', month: 'long', day: 'numeric',
+        });
+
+        const config = {
+            houseName,
+            dateStr,
+            stats: {
+                working:    data.devices.filter((d) => d.status === 'working').length,
+                pending:    data.devices.filter((d) => d.status === 'pending').length,
+                notWorking: data.devices.filter((d) => d.status === 'not-working').length,
+            },
+        };
+
+        const md = _buildMarkdownReport(data, config, sections);
+
+        const yy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        _downloadTextFile(`smart-home-inventory-${yy}-${mm}-${dd}.md`, md, 'text/markdown');
+
+        showToast('Markdown exported successfully.', 'success');
+
+    } catch (err) {
+        console.error('[md-export] Generation failed:', err);
+        showToast('Markdown export failed: ' + (err.message || String(err)), 'error');
+    } finally {
+        if (btn)    btn.disabled = false;
+        if (status) status.style.display = 'none';
+    }
 }

@@ -1,5 +1,10 @@
 ## 1.7.0 - 2026-07-07
 
+### Added
+- New "Input/Output" direction for ethernet ports, displayed with arrows on both ends on the diagram
+- Reports export now lets you pick which sections to include (Summary & Statistics, Device Details, Network Diagram, Test Cases)
+- New Markdown (.md) report format that exports a full wiki with every field for each device, ideal as context for AI assistants
+
 ### Changed
 - 
 
