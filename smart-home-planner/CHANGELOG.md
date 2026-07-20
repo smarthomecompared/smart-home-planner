@@ -6,8 +6,8 @@
 - New Markdown (.md) report format that exports a full wiki with every field for each device, ideal as context for AI assistants
 - New "Power Strips" device type with its own icon
 
-### Changed
-- 
+### Fixed
+- Fix linked Zigbee/Z-Wave devices not being saved when the coordinator connects to the hub through USB, Ethernet or Wi-Fi instead of the Zigbee/Z-Wave protocol itself. Linked devices are now persisted and shown on the diagram based on the coordinator/router role, regardless of the coordinator's own connectivity
 
 ## 1.6.1 - 2026-07-07
 

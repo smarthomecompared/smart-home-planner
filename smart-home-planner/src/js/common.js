@@ -939,20 +939,79 @@ function ensureAppFooter() {
     footer.id = "app-global-footer";
     footer.className = "app-footer";
     footer.setAttribute("role", "contentinfo");
+
+    const repoUrl = (typeof appRepoUrl === "string" && appRepoUrl)
+        ? appRepoUrl
+        : "https://github.com/smarthomecompared/smart-home-planner";
+    const year = new Date().getFullYear();
+
     footer.innerHTML = `
-        <div class="app-footer-grid">
-            <section class="app-footer-card app-footer-donation" aria-label="Donations">
-                <a class="app-footer-donation-link" href="https://ko-fi.com/C0C7E7OEA" target="_blank" rel="noopener noreferrer" aria-label="Support Smart Home Planner on Ko-fi">
-                    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support us on Ko-fi">
-                </a>
-            </section>
-            <a class="app-footer-card app-footer-ad" href="https://smarthomecompared.com/" target="_blank" rel="noopener noreferrer" aria-label="Visit Smart Home Compared">
-                <img class="app-footer-ad-logo" src="img/logo.png" alt="Smart Home Planner logo">
-                <div class="app-footer-ad-text">
-                    <h3 class="app-footer-title">Smart Home Compared</h3>
-                    <p class="app-footer-copy">Comparing the best Smart Home devices: thermostats, cameras, doorbells, lights, sensors, sirens, air quality monitors, smoke &amp; CO alarms and more.</p>
+        <div class="app-footer-inner">
+            <div class="app-footer-main">
+                <div class="app-footer-brand">
+                    <img class="app-footer-logo" src="img/logo.png" alt="Smart Home Planner logo">
+                    <div class="app-footer-brand-text">
+                        <span class="app-footer-brand-name">Smart Home Planner</span>
+                        <span class="app-footer-brand-tag">Plan, track &amp; document your smart home.</span>
+                    </div>
                 </div>
-            </a>
+
+                <nav class="app-footer-col" aria-label="Project links">
+                    <h3 class="app-footer-heading">Project</h3>
+                    <a class="app-footer-link" href="${repoUrl}" target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.31-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.87.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+                        <span>GitHub Repository</span>
+                    </a>
+                    <a class="app-footer-link" href="${repoUrl}/issues" target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1 5h2v7h-2V7zm0 9h2v2h-2v-2z"/></svg>
+                        <span>Report an issue</span>
+                    </a>
+                    <a class="app-footer-link" href="https://smarthomecompared.com/" target="_blank" rel="noopener noreferrer">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 6h-2.95a15.7 15.7 0 0 0-1.38-3.56A8.03 8.03 0 0 1 18.9 8zM12 4c.83 1.2 1.48 2.53 1.91 4h-3.82c.43-1.47 1.08-2.8 1.91-4zM4.26 14a7.96 7.96 0 0 1 0-4h3.38a16.6 16.6 0 0 0 0 4H4.26zm.84 2h2.95c.35 1.28.82 2.5 1.38 3.56A8.03 8.03 0 0 1 5.1 16zm2.95-8H5.1a8.03 8.03 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.05 8zM12 20c-.83-1.2-1.48-2.53-1.91-4h3.82A13.9 13.9 0 0 1 12 20zm2.34-6H9.66a14.7 14.7 0 0 1 0-4h4.68a14.7 14.7 0 0 1 0 4zm.23 5.56c.56-1.06 1.03-2.28 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56zM16.36 14a16.6 16.6 0 0 0 0-4h3.38a7.96 7.96 0 0 1 0 4h-3.38z"/></svg>
+                        <span>Smart Home Compared</span>
+                    </a>
+                </nav>
+
+                <div class="app-footer-col app-footer-support">
+                    <h3 class="app-footer-heading">Enjoying the app?</h3>
+                    <p class="app-footer-support-copy">It's free and open source. A coffee keeps development going.</p>
+                    <a class="app-footer-kofi" href="https://ko-fi.com/C0C7E7OEA" target="_blank" rel="noopener noreferrer" aria-label="Support Smart Home Planner on Ko-fi">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h13a4 4 0 0 1 0 8h-1.09A6 6 0 0 1 11 17H9a6 6 0 0 1-6-6V4a1 1 0 0 1 1-1h1zm12 6a2 2 0 0 0 0-4h-1v4h1zM4 19h13a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z"/></svg>
+                        <span>Support on Ko-fi</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="app-footer-bottom">
+                <p class="app-footer-copy">&copy; ${year} <strong>Smart Home Compared</strong> &middot; Built for the Home Assistant community</p>
+                <ul class="app-footer-social" aria-label="Social media links">
+                    <li>
+                        <a href="https://x.com/shcompared" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://youtube.com/@SmartHomeCompared" target="_blank" rel="noopener noreferrer" aria-label="Follow us on YouTube">
+                            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M31.7,9.6c0,0-0.3-2.2-1.3-3.2c-1.2-1.3-2.6-1.3-3.2-1.4C22.7,4.7,16,4.7,16,4.7h0c0,0-6.7,0-11.2,0.3 c-0.6,0.1-2,0.1-3.2,1.4c-1,1-1.3,3.2-1.3,3.2S0,12.2,0,14.8v2.4c0,2.6,0.3,5.2,0.3,5.2s0.3,2.2,1.3,3.2c1.2,1.3,2.8,1.2,3.5,1.4 C7.7,27.2,16,27.3,16,27.3s6.7,0,11.2-0.3c0.6-0.1,2-0.1,3.2-1.4c1-1,1.3-3.2,1.3-3.2s0.3-2.6,0.3-5.2v-2.4 C32,12.2,31.7,9.6,31.7,9.6z M12.7,20.2l0-9l8.6,4.5L12.7,20.2z"/></svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://instagram.com/smarthomecompared" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Instagram">
+                            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16,3.7c4,0,4.479.015,6.061.087a6.426,6.426,0,0,1,4.51,1.639,6.426,6.426,0,0,1,1.639,4.51C28.282,11.521,28.3,12,28.3,16s-.015,4.479-.087,6.061a6.426,6.426,0,0,1-1.639,4.51,6.425,6.425,0,0,1-4.51,1.639c-1.582.072-2.056.087-6.061.087s-4.479-.015-6.061-.087a6.426,6.426,0,0,1-4.51-1.639,6.425,6.425,0,0,1-1.639-4.51C3.718,20.479,3.7,20.005,3.7,16s.015-4.479.087-6.061a6.426,6.426,0,0,1,1.639-4.51A6.426,6.426,0,0,1,9.939,3.79C11.521,3.718,12,3.7,16,3.7M16,1c-4.073,0-4.584.017-6.185.09a8.974,8.974,0,0,0-6.3,2.427,8.971,8.971,0,0,0-2.427,6.3C1.017,11.416,1,11.927,1,16s.017,4.584.09,6.185a8.974,8.974,0,0,0,2.427,6.3,8.971,8.971,0,0,0,6.3,2.427c1.6.073,2.112.09,6.185.09s4.584-.017,6.185-.09a8.974,8.974,0,0,0,6.3-2.427,8.971,8.971,0,0,0,2.427-6.3c.073-1.6.09-2.112.09-6.185s-.017-4.584-.09-6.185a8.974,8.974,0,0,0-2.427-6.3,8.971,8.971,0,0,0-6.3-2.427C20.584,1.017,20.073,1,16,1Z"/><path d="M16,8.3A7.7,7.7,0,1,0,23.7,16,7.7,7.7,0,0,0,16,8.3ZM16,21a5,5,0,1,1,5-5A5,5,0,0,1,16,21Z"/><circle cx="24.007" cy="7.993" r="1.8"/></svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://www.reddit.com/user/smarthomecompared" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Reddit">
+                            <svg viewBox="0 0 90 90" aria-hidden="true"><path d="M89.998 45.604c-.201-5.442-4.77-9.691-10.229-9.506-2.419.084-4.719 1.075-6.466 2.737-7.693-5.24-16.729-8.113-26.017-8.314L51.67 9.442l14.461 3.041c.402 3.712 3.728 6.4 7.44 5.996 3.712-.402 6.4-3.728 5.996-7.44-.404-3.712-3.728-6.4-7.44-5.996-2.134.218-4.048 1.461-5.105 3.309L50.461 5.043c-1.125-.252-2.251.453-2.503 1.596 0 0 0 .017 0 .033L42.97 30.119c-9.406.152-18.559 3.041-26.352 8.314-3.964-3.728-10.212-3.544-13.94.437-3.728 3.964-3.544 10.212.437 13.94.773.722 1.662 1.344 2.653 1.781-.068.991-.068 1.982 0 2.973 0 15.133 17.636 27.444 39.386 27.444 21.75 0 39.386-12.295 39.386-27.444.068-.991.068-1.982 0-2.973 3.392-1.697 5.526-5.191 5.458-8.987zM22.429 52.373c0-3.728 3.041-6.769 6.769-6.769s6.769 3.041 6.769 6.769c0 3.728-3.041 6.769-6.769 6.769-3.745-.034-6.769-3.04-6.769-6.769zm39.252 18.845v-.269c-4.804 3.611-10.682 5.458-16.696 5.207-6.014.252-11.891-1.596-16.696-5.207-.638-.773-.521-1.931.252-2.569.671-.554 1.629-.554 2.318 0 4.065 2.973 9.02 4.485 14.058 4.249 5.039.269 10.011-1.176 14.125-4.114.739-.722 1.948-.706 2.671.033.723.739.706 1.948-.032 2.67zm-.924-11.589c-.117 0-.218 0-.336 0l.051-.252c-3.728 0-6.769-3.041-6.769-6.769 0-3.728 3.041-6.769 6.769-6.769 3.728 0 6.769 3.041 6.769 6.769.15 3.729-2.755 6.869-6.484 7.021z"/></svg>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://stacker.news/shcompared" target="_blank" rel="noopener noreferrer" aria-label="Follow us on Stacker News">
+                            <svg viewBox="0 0 200 307" aria-hidden="true"><path d="M56 0L107.606 131H90.2129H89L1.52588e-05 131L177 307L106.979 165H121H160H200L56 0Z"/></svg>
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     `;
 

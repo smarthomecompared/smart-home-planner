@@ -192,11 +192,14 @@ function isZwaveConnectivity(value) {
 }
 
 function isZigbeeParentDevice(device) {
-    return Boolean(device && isZigbeeConnectivity(device.connectivity) && (device.zigbeeController || device.zigbeeRepeater));
+    // A Zigbee coordinator/router acts as a parent regardless of how it connects to
+    // the hub (USB, Ethernet, Wi-Fi, ...), so the role is driven by the flags only.
+    return Boolean(device && (device.zigbeeController || device.zigbeeRepeater));
 }
 
 function isZwaveParentDevice(device) {
-    return Boolean(device && isZwaveConnectivity(device.connectivity) && device.zwaveController);
+    // A Z-Wave coordinator acts as a parent regardless of its own connectivity.
+    return Boolean(device && device.zwaveController);
 }
 
 function escapeFileParam(value) {
@@ -2387,10 +2390,13 @@ async function handleDeviceSubmit(e) {
     const zigbeeControllerChecked = document.getElementById('device-zigbee-controller').checked;
     const zigbeeRepeaterChecked = document.getElementById('device-zigbee-repeater').checked;
     const zwaveControllerChecked = document.getElementById('device-zwave-controller').checked;
-    const zigbeeLinkedDeviceIds = isZigbee && (zigbeeControllerChecked || zigbeeRepeaterChecked)
+    // Linked devices are gated on the coordinator/router role only, not on the
+    // coordinator's own connectivity — a Zigbee/Z-Wave coordinator typically
+    // connects via USB/Ethernet/Wi-Fi, yet still owns Zigbee/Z-Wave children.
+    const zigbeeLinkedDeviceIds = (zigbeeControllerChecked || zigbeeRepeaterChecked)
         ? getSelectedZigbeeChildIds()
         : [];
-    const zwaveLinkedDeviceIds = isZwave && zwaveControllerChecked
+    const zwaveLinkedDeviceIds = zwaveControllerChecked
         ? getSelectedZwaveChildIds()
         : [];
     let batteryTypeValue = document.getElementById('device-battery-type').value;

@@ -53,6 +53,11 @@ npx stylelint "smart-home-planner/src/css/*.css"
 
 - When you change code, verify whether `smart-home-planner/DOCS.md` must be updated to reflect the new behavior and update it when needed.
 
+## Changelog & Versioning
+
+- Always add changelog entries to the **latest (topmost) version** in `smart-home-planner/CHANGELOG.md` — it is the in-development release. Do **not** create a new version section or bump `version` in `config.yaml` for regular work; the version is released as a separate, explicit step.
+- Place each entry under the correct heading within that latest version: `### Added`, `### Changed`, or `### Fixed`.
+
 ## Code Style Guidelines
 
 ### Python

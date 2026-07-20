@@ -3243,11 +3243,14 @@ function isZwaveConnectionDevice(device) {
 }
 
 function isZigbeeParentDiagramDevice(device) {
-    return Boolean(device && isZigbeeConnectionDevice(device) && (device.zigbeeController || device.zigbeeRepeater));
+    // A coordinator/router is a valid Zigbee parent regardless of its own
+    // connectivity (USB/Ethernet/Wi-Fi), so only the role flags matter here.
+    return Boolean(device && (device.zigbeeController || device.zigbeeRepeater));
 }
 
 function isZwaveParentDiagramDevice(device) {
-    return Boolean(device && isZwaveConnectionDevice(device) && device.zwaveController);
+    // A Z-Wave coordinator is a valid parent regardless of its own connectivity.
+    return Boolean(device && device.zwaveController);
 }
 
 function formatWifiBandLabel(value) {
