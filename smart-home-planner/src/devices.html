@@ -65,7 +65,8 @@
             <!-- Device Filters Component -->
             <div class="filters-container is-collapsed">
                 <div class="filters-header">
-                    <h3>Filters</h3>
+                    <h3>Filters<span class="filters-count-badge" id="filters-active-count" hidden>0</span></h3>
+                    <div class="filters-active-chips" id="filters-active-chips"></div>
                     <div class="filters-actions">
                         <button class="btn btn-secondary btn-sm btn-icon filters-toggle no-tooltip" type="button" id="toggle-advanced-filters" aria-expanded="false" aria-controls="advanced-filters" aria-label="Toggle advanced filters">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -151,22 +152,24 @@
                                         <option value="">All</option>
                                     </select>
                                 </div>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-thread-border-router">
-                                    <span>Thread Border Router</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-matter-hub">
-                                    <span>Matter Hub</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-zigbee-controller">
-                                    <span>Zigbee Controller</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-zigbee-repeater">
-                                    <span>Zigbee Repeater</span>
-                                </label>
+                                <div class="checkbox-chip-group">
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-thread-border-router">
+                                        <span>Thread Border Router</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-matter-hub">
+                                        <span>Matter Hub</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-zigbee-controller">
+                                        <span>Zigbee Controller</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-zigbee-repeater">
+                                        <span>Zigbee Repeater</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <div class="filters-block">
@@ -214,26 +217,28 @@
                         <div class="filters-block">
                             <div class="filters-block-title">Integrations</div>
                             <div class="filters-block-body">
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-home-assistant">
-                                    <span>Home Assistant</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-google-home">
-                                    <span>Google Home</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-alexa">
-                                    <span>Alexa</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-apple-home-kit">
-                                    <span>Apple Home Kit</span>
-                                </label>
-                                <label class="checkbox-chip">
-                                    <input type="checkbox" id="filter-samsung-smartthings">
-                                    <span>Samsung SmartThings</span>
-                                </label>
+                                <div class="checkbox-chip-group">
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-home-assistant">
+                                        <span>Home Assistant</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-google-home">
+                                        <span>Google Home</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-alexa">
+                                        <span>Alexa</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-apple-home-kit">
+                                        <span>Apple Home Kit</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-samsung-smartthings">
+                                        <span>Samsung SmartThings</span>
+                                    </label>
+                                </div>
                                 <div class="filter-field">
                                     <label for="filter-local-only">Local Only</label>
                                     <select id="filter-local-only" class="filter-select">
@@ -442,6 +447,10 @@
                             <label class="connection-toggle">
                                 <span class="connection-name">Show device icons</span>
                                 <input type="checkbox" id="diagram-show-icons" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="connection-name">Dim filtered-out devices</span>
+                                <input type="checkbox" id="diagram-dim-filtered" class="ui-switch" checked>
                             </label>
                         </div>
                         <div class="settings-group map-background-group">

@@ -827,7 +827,10 @@ function renderDevices() {
     const countLabel = document.getElementById('devices-count');
     if (countLabel) {
         const count = filteredDevices.length;
-        countLabel.textContent = `${count} device${count !== 1 ? 's' : ''}`;
+        const total = allDevices.length;
+        countLabel.textContent = count === total
+            ? `${count} device${count !== 1 ? 's' : ''}`
+            : `Showing ${count} of ${total} devices`;
     }
     const labelNameMap = buildLabelNameMap(labels);
     const labelMetaMap = buildLabelMetaMap(labels);

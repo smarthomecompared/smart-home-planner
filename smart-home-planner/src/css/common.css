@@ -3025,6 +3025,10 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     pointer-events: none;
 }
 
+.filters-container.is-collapsed {
+    cursor: pointer;
+}
+
 .filters-header {
     display: flex;
     align-items: center;
@@ -3045,15 +3049,106 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     text-transform: uppercase;
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    flex: 1 1 200px;
+    gap: 0;
+    flex: 0 0 auto;
 }
 
-.filters-header h3::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, rgba(126, 133, 149, 0.35), transparent);
+.filters-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    margin-left: 0.55rem;
+    border-radius: 9px;
+    background: var(--primary-color);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+/* Removable chips describing the active filters */
+.filters-active-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 260px;
+    padding: 0.2rem 0.25rem 0.2rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 111, 255, 0.4);
+    background: var(--primary-light);
+    color: var(--text-color);
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.filter-chip-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.filter-chip-remove:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--text-color);
+}
+
+.filter-chip-remove svg {
+    width: 9px;
+    height: 9px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+}
+
+.filter-chip-clear-all {
+    border: none;
+    background: transparent;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.filter-chip-clear-all:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-color);
 }
 
 .filters-actions {
@@ -3348,40 +3443,61 @@ select,
     align-content: start;
 }
 
-.checkbox-chip {
+/* Compact selectable filter chips (checkbox pills) */
+.checkbox-chip-group {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    grid-column: 1 / -1;
+}
+
+.checkbox-chip {
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: 10px;
-    border: 1px solid rgba(126, 133, 149, 0.25);
-    background: rgba(16, 18, 22, 0.65);
+    padding: 0.32rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
     transition: all var(--transition-base);
     min-width: 0;
     line-height: 1.2;
     color: var(--text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
 }
 
 .checkbox-chip:hover {
-    border-color: rgba(126, 133, 149, 0.5);
+    border-color: var(--border-hover);
     color: var(--text-color);
 }
 
-.checkbox-chip.is-active {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(0, 111, 255, 0.2);
-    color: var(--text-color);
+.checkbox-chip:has(input:checked) {
+    border-color: rgba(0, 111, 255, 0.55);
+    background: var(--primary-light);
+    color: var(--primary-text);
+}
+
+.checkbox-chip:has(input:focus-visible) {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
 }
 
 .checkbox-chip input[type="checkbox"] {
-    width: auto;
+    position: absolute;
+    width: 0;
+    height: 0;
     margin: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .checkbox-chip span {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
+    white-space: nowrap;
 }
 
 .filters-advanced.is-collapsed {
@@ -3401,12 +3517,13 @@ select,
         gap: 0.5rem;
     }
 
-    .filters-header h3::after {
-        display: none;
-    }
-
     .filters-header h3 {
         line-height: 1.1;
+    }
+
+    .filters-active-chips {
+        order: 3;
+        flex-basis: 100%;
     }
 
     .filters-actions {

@@ -182,7 +182,8 @@ window.DeviceDiagram = (() => {
             showZwaveConnections: false,
             deviceAreaMode: 'installed',
             powerLabelMode: 'mean',
-            showDeviceIcons: true
+            showDeviceIcons: true,
+            dimFilteredDevices: true
         };
     }
 
@@ -200,7 +201,8 @@ window.DeviceDiagram = (() => {
             showZwaveConnections: value.showZwaveConnections !== undefined ? Boolean(value.showZwaveConnections) : defaults.showZwaveConnections,
             deviceAreaMode: value.deviceAreaMode === 'controlled' ? 'controlled' : defaults.deviceAreaMode,
             powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode,
-            showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons
+            showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons,
+            dimFilteredDevices: value.dimFilteredDevices !== undefined ? Boolean(value.dimFilteredDevices) : defaults.dimFilteredDevices
         };
     }
 
@@ -214,7 +216,8 @@ window.DeviceDiagram = (() => {
             showZwaveConnections: Boolean(document.getElementById('show-zwave-connections')?.checked),
             deviceAreaMode: document.getElementById('device-area-mode')?.value || 'installed',
             powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean',
-            showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true)
+            showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true),
+            dimFilteredDevices: Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true)
         };
     }
 
@@ -239,6 +242,8 @@ window.DeviceDiagram = (() => {
         if (powerLabelMode) powerLabelMode.value = settings.powerLabelMode;
         const showIconsToggle = document.getElementById('diagram-show-icons');
         if (showIconsToggle) showIconsToggle.checked = settings.showDeviceIcons;
+        const dimFilteredToggle = document.getElementById('diagram-dim-filtered');
+        if (dimFilteredToggle) dimFilteredToggle.checked = settings.dimFilteredDevices;
         syncDiagramLegend();
     }
 
@@ -366,7 +371,8 @@ window.DeviceDiagram = (() => {
 
     function setFilteredDevices(next) {
         filteredDevices = Array.isArray(next) ? next : [];
-        renderNetwork();
+        const dimFilteredMode = Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true);
+        renderNetwork({ preserveViewport: dimFilteredMode });
     }
 
     function setVisible(isVisible) {
@@ -1664,6 +1670,10 @@ window.DeviceDiagram = (() => {
     if (showIconsToggle) {
         showIconsToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const dimFilteredToggle = document.getElementById('diagram-dim-filtered');
+    if (dimFilteredToggle) {
+        dimFilteredToggle.addEventListener('change', handleDiagramConnectionToggleChange);
+    }
     const powerLabelMode = document.getElementById('power-label-mode');
     if (powerLabelMode) {
         powerLabelMode.addEventListener('change', handleDiagramDisplaySelectChange);
@@ -2206,6 +2216,20 @@ function initializeCytoscape() {
                     'overlay-color': '#006fff',
                     'overlay-opacity': 0.12,
                     'overlay-padding': 6
+                }
+            },
+            // Devices excluded by the active filters (highlight mode)
+            {
+                selector: 'node.filter-dimmed',
+                style: {
+                    'opacity': 0.14
+                }
+            },
+            {
+                selector: 'edge.filter-dimmed',
+                style: {
+                    'opacity': 0.08,
+                    'text-opacity': 0
                 }
             },
             // Edge styles
@@ -2815,16 +2839,20 @@ async function renderNetwork(options = {}) {
     const showZigbee = zigbeeToggle ? zigbeeToggle.checked : false;
     const showZwave = zwaveToggle ? zwaveToggle.checked : false;
     
-    const sourceDevices = Array.isArray(filteredDevices)
+    const matchedDevices = Array.isArray(filteredDevices)
         ? filteredDevices
         : (deviceFilters ? deviceFilters.getFilteredDevices() : devices);
+    const dimFilteredMode = Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true);
+    const sourceDevices = dimFilteredMode ? devices : matchedDevices;
     const filteredDevicesList = sourceDevices.filter(device => device.status !== 'wishlist');
+    const matchedDeviceIds = dimFilteredMode ? new Set(matchedDevices.map(device => device.id)) : null;
     const hasBackground = hasDiagramBackground();
     const showIcons = Boolean(document.getElementById('diagram-show-icons')?.checked ?? true);
 
     const mapCountLabel = document.getElementById('map-devices-count');
     if (mapCountLabel) {
-        mapCountLabel.textContent = `${filteredDevicesList.length} device${filteredDevicesList.length !== 1 ? 's' : ''}`;
+        const matchedCount = matchedDevices.filter(device => device.status !== 'wishlist').length;
+        mapCountLabel.textContent = `${matchedCount} device${matchedCount !== 1 ? 's' : ''}`;
     }
 
     console.log('Rendering map with devices:', filteredDevicesList.length);
@@ -3395,9 +3423,24 @@ async function renderNetwork(options = {}) {
     await setLayoutEditable(isLayoutEditable);
     lockBackgroundNode();
     updateAreaFloorSelectability();
+    applyFilterDimming(matchedDeviceIds);
     if (hasLegacyAbsoluteBackgroundPositions && diagramBackgroundImageSize) {
         void migratePositionsToBackgroundNormalized(savedPositions);
     }
+}
+
+// Dim devices excluded by the active filters (highlight mode); pass null to clear
+function applyFilterDimming(matchedIds) {
+    if (!cy) return;
+    cy.batch(() => {
+        cy.nodes('node[type="device"]').forEach((node) => {
+            node.toggleClass('filter-dimmed', matchedIds ? !matchedIds.has(node.id()) : false);
+        });
+        cy.edges().forEach((edge) => {
+            const dimmed = edge.source().hasClass('filter-dimmed') || edge.target().hasClass('filter-dimmed');
+            edge.toggleClass('filter-dimmed', dimmed);
+        });
+    });
 }
 
 function getEthernetConnectionMeta(device, port, devicesList) {

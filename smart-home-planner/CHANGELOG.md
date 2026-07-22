@@ -4,15 +4,20 @@
 - Device finder on the Diagram view: search from the map toolbar and the view zooms to and highlights the matching device
 - Floating connection legend on the Diagram view; each chip also toggles its connection layer on and off
 - Floor plan suggestion banner on the Diagram view when no background image is set, with a one-click upload button (dismissible)
+- Active filters are now shown as removable chips in the Filters header, with a count badge and a "Clear all" shortcut
+- The device counter now reads "Showing X of Y devices" while filters are active
+- Filtered-out devices on the Diagram view are now dimmed in place instead of removed, keeping them visible in context (configurable via the new "Dim filtered-out devices" toggle in Diagram Settings)
 
 ### Changed
 - Complete UI redesign
 - Redesigned the diagram device popover: dark card with device icon and status badge, empty fields are hidden, and the device's visible connections are listed
 - Redesigned the diagram device cards: cleaner dark cards with a subtle gradient, hairline border, and a status dot with glow instead of the thick colored frame
 - Improved Diagram view accessibility: the Diagram Settings header is now a keyboard-focusable button and the device counter announces filter changes to screen readers
+- Redesigned the boolean filter checkboxes (Integrations, connectivity roles) as compact selectable chips, making the filters panel much shorter
 
 ### Fixed
 - Fix the diagram background image being shifted towards the top-left corner in fullscreen mode
+- Fix "Clear Filters" not resetting the Model and Network filters
 
 ## 1.7.0 - 2026-07-07
 

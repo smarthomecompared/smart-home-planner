@@ -8,6 +8,34 @@ function resolveLabelColorSafe(value) {
     return String(value || '').trim();
 }
 
+// Metadata used to render removable "active filter" chips in the header
+const FILTER_CHIP_FIELDS = [
+    { id: 'filter-name', label: 'Name', type: 'text' },
+    { id: 'filter-floor', label: 'Floor', type: 'select' },
+    { id: 'filter-area', label: 'Installed Area', type: 'select' },
+    { id: 'filter-controlled-area', label: 'Controlled Area', type: 'select' },
+    { id: 'filter-brand', label: 'Brand', type: 'select' },
+    { id: 'filter-model', label: 'Model', type: 'select' },
+    { id: 'filter-status', label: 'Status', type: 'select' },
+    { id: 'filter-type', label: 'Type', type: 'select' },
+    { id: 'filter-connectivity', label: 'Connectivity', type: 'select' },
+    { id: 'filter-network', label: 'Network', type: 'select' },
+    { id: 'filter-power', label: 'Power', type: 'select' },
+    { id: 'filter-ups-protected', label: 'UPS Protected', type: 'select' },
+    { id: 'filter-battery-type', label: 'Battery Type', type: 'select' },
+    { id: 'filter-local-only', label: 'Local Only', type: 'select' },
+    { id: 'filter-thread-border-router', label: 'Thread Border Router', type: 'checkbox' },
+    { id: 'filter-matter-hub', label: 'Matter Hub', type: 'checkbox' },
+    { id: 'filter-zigbee-controller', label: 'Zigbee Controller', type: 'checkbox' },
+    { id: 'filter-zigbee-repeater', label: 'Zigbee Repeater', type: 'checkbox' },
+    { id: 'filter-home-assistant', label: 'Home Assistant', type: 'checkbox' },
+    { id: 'filter-google-home', label: 'Google Home', type: 'checkbox' },
+    { id: 'filter-alexa', label: 'Alexa', type: 'checkbox' },
+    { id: 'filter-apple-home-kit', label: 'Apple Home Kit', type: 'checkbox' },
+    { id: 'filter-samsung-smartthings', label: 'Samsung SmartThings', type: 'checkbox' },
+    { id: 'filter-labels', label: 'Labels', type: 'labels' }
+];
+
 class DeviceFilters {
     constructor() {
         this.devices = [];
@@ -133,7 +161,6 @@ class DeviceFilters {
         const toggleBtn = document.getElementById('toggle-advanced-filters');
         const advancedFilters = document.getElementById('advanced-filters');
         const container = toggleBtn ? toggleBtn.closest('.filters-container') : document.querySelector('.filters-container');
-        const header = container ? container.querySelector('.filters-header') : null;
         const toggleFilters = () => {
             if (!container) return;
             const isCollapsed = container.classList.toggle('is-collapsed');
@@ -151,12 +178,15 @@ class DeviceFilters {
                 toggleFilters();
             });
         }
-        if (header) {
-            header.addEventListener('click', (event) => {
+        if (container) {
+            container.addEventListener('click', (event) => {
                 const target = event.target;
                 if (!target) return;
                 if (target.closest('button, a, input, select, textarea, label')) return;
                 if (target.closest('.filters-actions')) return;
+                if (target.closest('.filter-chip')) return;
+                // Collapsed: the whole card toggles. Expanded: only the header row does.
+                if (!container.classList.contains('is-collapsed') && !target.closest('.filters-header')) return;
                 toggleFilters();
             });
         }
@@ -166,6 +196,107 @@ class DeviceFilters {
         if (clearBtn) {
             clearBtn.addEventListener('click', () => this.clearFilters());
         }
+
+        // Active filter chips (remove single filter / clear all)
+        const chipsContainer = document.getElementById('filters-active-chips');
+        if (chipsContainer) {
+            chipsContainer.addEventListener('click', (event) => {
+                const removeBtn = event.target.closest('.filter-chip-remove');
+                if (removeBtn) {
+                    event.stopPropagation();
+                    this.clearSingleFilter(removeBtn.getAttribute('data-filter-id'));
+                    return;
+                }
+                if (event.target.closest('.filter-chip-clear-all')) {
+                    event.stopPropagation();
+                    this.clearFilters();
+                }
+            });
+        }
+    }
+
+    // Build a human-readable descriptor for each active filter
+    getActiveFilterDescriptors() {
+        const descriptors = [];
+        FILTER_CHIP_FIELDS.forEach((field) => {
+            if (field.type === 'labels') {
+                const values = this.getSelectedLabelValues();
+                if (!values.length) return;
+                const options = this.buildLabelOptions();
+                const names = values.map((id) => {
+                    const option = options.find(o => o.id === id);
+                    return option ? option.name : id;
+                });
+                descriptors.push({ id: field.id, text: `${field.label}: ${names.join(', ')}` });
+                return;
+            }
+            const el = document.getElementById(field.id);
+            if (!el) return;
+            if (field.type === 'checkbox') {
+                if (el.checked) {
+                    descriptors.push({ id: field.id, text: field.label });
+                }
+                return;
+            }
+            if (field.type === 'text') {
+                const value = String(el.value || '').trim();
+                if (value) {
+                    descriptors.push({ id: field.id, text: `${field.label}: "${value}"` });
+                }
+                return;
+            }
+            if (el.value) {
+                const selectedOption = el.selectedOptions && el.selectedOptions[0];
+                const optionLabel = selectedOption ? selectedOption.textContent.trim() : el.value;
+                descriptors.push({ id: field.id, text: `${field.label}: ${optionLabel === '-' ? 'None' : optionLabel}` });
+            }
+        });
+        return descriptors;
+    }
+
+    // Reset a single filter control and re-apply
+    clearSingleFilter(filterId) {
+        if (filterId === 'filter-labels') {
+            this.setSelectedLabels([]);
+            this.applyFilters();
+            return;
+        }
+        const el = document.getElementById(filterId);
+        if (!el) return;
+        if (el.type === 'checkbox') {
+            el.checked = false;
+        } else {
+            el.value = '';
+        }
+        this.applyFilters();
+    }
+
+    // Render removable chips for active filters in the collapsed header
+    renderActiveFilterChips() {
+        const container = document.getElementById('filters-active-chips');
+        const badge = document.getElementById('filters-active-count');
+        const descriptors = this.getActiveFilterDescriptors();
+        if (badge) {
+            badge.hidden = descriptors.length === 0;
+            badge.textContent = String(descriptors.length);
+        }
+        if (!container) return;
+        if (!descriptors.length) {
+            container.innerHTML = '';
+            return;
+        }
+        const chips = descriptors.map(descriptor => `
+            <span class="filter-chip">
+                <span class="filter-chip-label">${this.escapeHtml(descriptor.text)}</span>
+                <button type="button" class="filter-chip-remove" data-filter-id="${this.escapeHtml(descriptor.id)}" aria-label="Remove filter: ${this.escapeHtml(descriptor.text)}">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"></path></svg>
+                </button>
+            </span>
+        `).join('');
+        const clearAll = descriptors.length > 1
+            ? '<button type="button" class="filter-chip-clear-all">Clear all</button>'
+            : '';
+        container.innerHTML = chips + clearAll;
     }
 
     setupNameFilterClearButton() {
@@ -601,6 +732,8 @@ class DeviceFilters {
         // Log results
         console.log(`Filters applied: ${this.devices.length} devices → ${this.filteredDevices.length} filtered`);
         
+        this.renderActiveFilterChips();
+
         // Call callback if provided
         if (this.onFilterChange) {
             this.onFilterChange(this.filteredDevices);
@@ -631,10 +764,12 @@ class DeviceFilters {
         setValue('filter-area', '');
         setValue('filter-controlled-area', '');
         setValue('filter-brand', '');
+        setValue('filter-model', '');
         setValue('filter-status', '');
         setValue('filter-type', '');
         setValue('filter-connectivity', '');
         setValue('filter-labels', '');
+        setValue('filter-network', '');
         setValue('filter-power', '');
         setValue('filter-ups-protected', '');
         setValue('filter-battery-type', '');
