@@ -168,7 +168,9 @@ The layout editor lets you position devices in a way that matches your real-worl
 
 You can upload a background image such as a floor plan in the Diagram Settings panel. Device positions are stored relative to the background image, so they stay aligned regardless of zoom, pan, fullscreen, or window resize. Use the opacity slider to adjust the background visibility.
 
-Diagram Settings also lets you toggle Ethernet, USB, Power, Wi-Fi, Zigbee, and Z-Wave connection overlays independently so you can focus on the relationship layer you need.
+Diagram Settings also lets you toggle Ethernet, USB, Power, Wi-Fi, Zigbee, and Z-Wave connection overlays independently so you can focus on the relationship layer you need. The floating legend at the bottom-left of the diagram shows what each line style means, and clicking a legend chip toggles that connection layer directly.
+
+Use the search button in the map toolbar to find a device by name: the diagram zooms to the device and highlights it. Clicking a device opens a popover with its key details and currently visible connections.
 
 ## Add Device
 

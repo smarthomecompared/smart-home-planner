@@ -1,7 +1,14 @@
 ## 1.8.0
 
+### Added
+- Device finder on the Diagram view: search from the map toolbar and the view zooms to and highlights the matching device
+- Floating connection legend on the Diagram view; each chip also toggles its connection layer on and off
+- Floor plan suggestion banner on the Diagram view when no background image is set, with a one-click upload button (dismissible)
+
 ### Changed
 - Complete UI redesign
+- Redesigned the diagram device popover: dark card with device icon and status badge, empty fields are hidden, and the device's visible connections are listed
+- Improved Diagram view accessibility: the Diagram Settings header is now a keyboard-focusable button and the device counter announces filter changes to screen readers
 
 ### Fixed
 - Fix the diagram background image being shifted towards the top-left corner in fullscreen mode

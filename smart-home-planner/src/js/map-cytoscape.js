@@ -239,6 +239,7 @@ window.DeviceDiagram = (() => {
         if (powerLabelMode) powerLabelMode.value = settings.powerLabelMode;
         const showIconsToggle = document.getElementById('diagram-show-icons');
         if (showIconsToggle) showIconsToggle.checked = settings.showDeviceIcons;
+        syncDiagramLegend();
     }
 
     async function persistDiagramDisplaySettings() {
@@ -624,6 +625,7 @@ window.DeviceDiagram = (() => {
         if (opacityValue) {
             opacityValue.textContent = `${diagramBackgroundOpacity}%`;
         }
+        updateDiagramFloorPlanCta(hasBackground);
     }
 
     function hasDiagramBackground() {
@@ -1466,10 +1468,12 @@ window.DeviceDiagram = (() => {
 
     async function loadDiagramBackgroundPreference() {
         try {
-            const [storedFile, storedOpacity] = await Promise.all([
+            const [storedFile, storedOpacity, storedCtaDismissed] = await Promise.all([
                 getUiPreference(DIAGRAM_BACKGROUND_UI_KEY),
-                getUiPreference(DIAGRAM_BACKGROUND_OPACITY_UI_KEY)
+                getUiPreference(DIAGRAM_BACKGROUND_OPACITY_UI_KEY),
+                getUiPreference(DIAGRAM_FLOORPLAN_CTA_DISMISSED_UI_KEY)
             ]);
+            diagramFloorPlanCtaDismissed = Boolean(storedCtaDismissed);
             diagramBackgroundOpacity = normalizeDiagramBackgroundOpacity(storedOpacity);
             await setDiagramBackgroundState(storedFile, false, true);
             updateDiagramBackgroundControls();
@@ -1724,6 +1728,9 @@ window.DeviceDiagram = (() => {
     if (zoomInBtn) {
         zoomInBtn.addEventListener('click', () => adjustZoom(0.15));
     }
+    initDiagramSearch();
+    initDiagramLegend();
+    initDiagramFloorPlanCta();
     const backgroundInput = document.getElementById('diagram-background-input');
     if (backgroundInput) {
         backgroundInput.addEventListener('change', handleDiagramBackgroundInputChange);
@@ -2191,6 +2198,15 @@ function initializeCytoscape() {
                     'border-color': '#38cc65'
                 }
             },
+            // Search highlight (subtle glow while the locate ping animates)
+            {
+                selector: 'node.search-pulse',
+                style: {
+                    'overlay-color': '#006fff',
+                    'overlay-opacity': 0.12,
+                    'overlay-padding': 6
+                }
+            },
             // Edge styles
             {
                 selector: 'edge[connectionType="ethernet"]',
@@ -2424,6 +2440,208 @@ function initializeCytoscape() {
 }
 
 // Show device tooltip
+const DIAGRAM_FLOORPLAN_CTA_DISMISSED_UI_KEY = 'diagramFloorPlanCtaDismissed';
+let diagramFloorPlanCtaDismissed = false;
+
+function updateDiagramFloorPlanCta(hasBackground) {
+    const cta = document.getElementById('map-floorplan-cta');
+    if (!cta) return;
+    cta.hidden = Boolean(hasBackground) || diagramFloorPlanCtaDismissed;
+}
+
+function initDiagramFloorPlanCta() {
+    const uploadBtn = document.getElementById('map-floorplan-cta-upload');
+    const dismissBtn = document.getElementById('map-floorplan-cta-dismiss');
+    const backgroundInput = document.getElementById('diagram-background-input');
+    if (uploadBtn && backgroundInput) {
+        uploadBtn.addEventListener('click', () => backgroundInput.click());
+    }
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+            diagramFloorPlanCtaDismissed = true;
+            updateDiagramFloorPlanCta(true);
+            setUiPreference(DIAGRAM_FLOORPLAN_CTA_DISMISSED_UI_KEY, true).catch((error) => {
+                console.error('Failed to persist floor plan CTA dismissal:', error);
+            });
+        });
+    }
+}
+
+let mapSearchMatches = [];
+let mapSearchActiveIndex = 0;
+
+function isDiagramSearchOpen() {
+    const panel = document.getElementById('map-search');
+    return Boolean(panel && !panel.hidden);
+}
+
+function openDiagramSearch() {
+    const panel = document.getElementById('map-search');
+    const input = document.getElementById('map-search-input');
+    const trigger = document.getElementById('map-search-btn');
+    if (!panel || !input) return;
+    panel.hidden = false;
+    if (trigger) trigger.setAttribute('aria-expanded', 'true');
+    input.value = '';
+    renderDiagramSearchResults('');
+    input.focus();
+}
+
+function closeDiagramSearch() {
+    const panel = document.getElementById('map-search');
+    const trigger = document.getElementById('map-search-btn');
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+}
+
+function renderDiagramSearchResults(query) {
+    const resultsEl = document.getElementById('map-search-results');
+    if (!resultsEl || !cy) return;
+    const normalized = String(query || '').trim().toLowerCase();
+    const deviceNodes = cy.nodes('node[type="device"]').map((deviceNode) => ({
+        id: deviceNode.id(),
+        label: String(deviceNode.data('label') || '')
+    }));
+    deviceNodes.sort((a, b) => a.label.localeCompare(b.label));
+    mapSearchMatches = deviceNodes
+        .filter(item => !normalized || item.label.toLowerCase().includes(normalized))
+        .slice(0, 7);
+    mapSearchActiveIndex = 0;
+    if (!mapSearchMatches.length) {
+        resultsEl.innerHTML = '<div class="map-search-empty">No devices found</div>';
+        return;
+    }
+    resultsEl.innerHTML = mapSearchMatches.map((item, index) => `
+        <button type="button" class="map-search-item${index === 0 ? ' is-active' : ''}" data-device-id="${escapeHtml(item.id)}">${escapeHtml(item.label)}</button>
+    `).join('');
+}
+
+function updateDiagramSearchActiveItem() {
+    const resultsEl = document.getElementById('map-search-results');
+    if (!resultsEl) return;
+    resultsEl.querySelectorAll('.map-search-item').forEach((item, index) => {
+        item.classList.toggle('is-active', index === mapSearchActiveIndex);
+    });
+}
+
+function focusDiagramDevice(deviceId) {
+    if (!cy) return;
+    const node = cy.getElementById(String(deviceId || ''));
+    if (!node || node.empty()) return;
+    closeDiagramSearch();
+    hideDeviceTooltip();
+    cy.stop();
+    cy.animate(
+        { zoom: Math.max(cy.zoom(), 0.9), center: { eles: node } },
+        { duration: 450, easing: 'ease-in-out-cubic', complete: () => pulseDiagramNode(node) }
+    );
+}
+
+function pulseDiagramNode(node) {
+    const mapContainer = document.getElementById('network-map');
+    if (!mapContainer) return;
+    const existingPing = mapContainer.querySelector('.map-locate-ping');
+    if (existingPing) existingPing.remove();
+
+    const position = node.renderedPosition();
+    const size = Math.max(node.renderedWidth(), node.renderedHeight()) * 2.4;
+    const ping = document.createElement('div');
+    ping.className = 'map-locate-ping';
+    ping.style.left = `${position.x}px`;
+    ping.style.top = `${position.y}px`;
+    ping.style.width = `${size}px`;
+    ping.style.height = `${size}px`;
+    ping.innerHTML = '<span></span><span></span><span></span>';
+    mapContainer.appendChild(ping);
+
+    node.addClass('search-pulse');
+    setTimeout(() => {
+        node.removeClass('search-pulse');
+        ping.remove();
+    }, 1900);
+}
+
+function initDiagramSearch() {
+    const trigger = document.getElementById('map-search-btn');
+    const panel = document.getElementById('map-search');
+    const input = document.getElementById('map-search-input');
+    const resultsEl = document.getElementById('map-search-results');
+    if (!trigger || !panel || !input || !resultsEl) return;
+
+    trigger.addEventListener('click', () => {
+        if (isDiagramSearchOpen()) {
+            closeDiagramSearch();
+        } else {
+            openDiagramSearch();
+        }
+    });
+
+    input.addEventListener('input', () => renderDiagramSearchResults(input.value));
+    input.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeDiagramSearch();
+            return;
+        }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!mapSearchMatches.length) return;
+            const delta = event.key === 'ArrowDown' ? 1 : -1;
+            mapSearchActiveIndex = (mapSearchActiveIndex + delta + mapSearchMatches.length) % mapSearchMatches.length;
+            updateDiagramSearchActiveItem();
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const match = mapSearchMatches[mapSearchActiveIndex];
+            if (match) {
+                focusDiagramDevice(match.id);
+            }
+        }
+    });
+
+    resultsEl.addEventListener('click', (event) => {
+        const item = event.target.closest('.map-search-item');
+        if (item) {
+            focusDiagramDevice(item.getAttribute('data-device-id'));
+        }
+    });
+
+    document.addEventListener('mousedown', (event) => {
+        if (!isDiagramSearchOpen()) return;
+        if (panel.contains(event.target) || trigger.contains(event.target)) return;
+        closeDiagramSearch();
+    });
+}
+
+function syncDiagramLegend() {
+    document.querySelectorAll('.map-legend-chip').forEach((chip) => {
+        const checkbox = document.getElementById(chip.getAttribute('data-connection') || '');
+        if (!checkbox) return;
+        chip.classList.toggle('is-off', !checkbox.checked);
+        chip.setAttribute('aria-pressed', checkbox.checked ? 'true' : 'false');
+    });
+}
+
+function initDiagramLegend() {
+    const legend = document.getElementById('map-legend');
+    if (!legend) return;
+    legend.querySelectorAll('.map-legend-chip').forEach((chip) => {
+        const checkbox = document.getElementById(chip.getAttribute('data-connection') || '');
+        if (!checkbox) return;
+        chip.addEventListener('click', () => checkbox.click());
+        checkbox.addEventListener('change', syncDiagramLegend);
+    });
+    syncDiagramLegend();
+}
+
+function formatConnectionTypeLabel(type) {
+    if (type === 'wifi') return 'Wi-Fi';
+    if (type === 'usb') return 'USB';
+    if (type === 'zwave') return 'Z-Wave';
+    return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 function showDeviceTooltip(node) {
     hideDeviceTooltip();
     
@@ -2444,43 +2662,60 @@ function showDeviceTooltip(node) {
     tooltip.className = 'device-tooltip';
     
     const name = device.name || device.model || 'Unnamed Device';
-    const floorName = floor ? floor.name : 'No Floor';
-    const installedAreaName = installedAreaId ? getAreaName(areas, installedAreaId) : 'No Area';
-    const controlledAreaName = controlledAreaId ? getAreaName(areas, controlledAreaId) : 'No Area';
-    const type = device.type ? getFriendlyOption(settings?.types, device.type, formatDeviceType) : 'N/A';
-    const brand = device.brand ? getFriendlyOption(settings?.brands, device.brand, formatDeviceType) : 'N/A';
-    const status = device.status || 'N/A';
-    
+    const statusRaw = String(device.status || '');
+    const statusLabel = statusRaw.replace(/-/g, ' ');
+    const iconUrl = device.type ? `img/devices/${encodeURIComponent(device.type)}.svg` : 'img/devices/generic.svg';
+
+    const detailRows = [];
+    if (floor) detailRows.push(['Floor', floor.name]);
+    const installedAreaName = installedAreaId ? getAreaName(areas, installedAreaId) : '';
+    if (installedAreaName && installedAreaName !== 'Unknown') detailRows.push(['Installed area', installedAreaName]);
+    const controlledAreaName = controlledAreaId ? getAreaName(areas, controlledAreaId) : '';
+    if (controlledAreaName && controlledAreaName !== 'Unknown') detailRows.push(['Controlled area', controlledAreaName]);
+    if (device.type) detailRows.push(['Type', getFriendlyOption(settings?.types, device.type, formatDeviceType)]);
+    if (device.brand) detailRows.push(['Brand', getFriendlyOption(settings?.brands, device.brand, formatDeviceType)]);
+    if (device.model) detailRows.push(['Model', device.model]);
+
+    // Connections currently visible on the diagram for this device
+    const connectionItems = [];
+    node.connectedEdges().forEach((edge) => {
+        const connectionType = String(edge.data('connectionType') || '');
+        if (!connectionType) return;
+        const other = edge.source().id() === node.id() ? edge.target() : edge.source();
+        if (!other || other.empty() || other.data('type') !== 'device') return;
+        connectionItems.push({ type: connectionType, name: String(other.data('label') || '') });
+    });
+    const visibleConnections = connectionItems.slice(0, 6);
+    const extraConnections = connectionItems.length - visibleConnections.length;
+
+    const detailsHtml = detailRows.map(([label, value]) => `
+            <div class="tooltip-row">
+                <span class="tooltip-label">${escapeHtml(label)}</span>
+                <span class="tooltip-value">${escapeHtml(value)}</span>
+            </div>`).join('');
+
+    const connectionsHtml = connectionItems.length ? `
+            <div class="tooltip-connections">
+                <span class="tooltip-connections-title">Connections</span>
+                ${visibleConnections.map(item => `
+                <div class="tooltip-conn-row">
+                    <span class="legend-line ${escapeHtml(item.type)}" aria-hidden="true"></span>
+                    <span class="tooltip-conn-name">${escapeHtml(item.name)}</span>
+                    <span class="tooltip-conn-type">${escapeHtml(formatConnectionTypeLabel(item.type))}</span>
+                </div>`).join('')}
+                ${extraConnections > 0 ? `<span class="tooltip-conn-more">+${extraConnections} more</span>` : ''}
+            </div>` : '';
+
     tooltip.innerHTML = `
         <div class="tooltip-header">
-            <strong>${escapeHtml(name)}</strong>
+            <span class="tooltip-device-icon" aria-hidden="true"><img src="${iconUrl}" alt=""></span>
+            <span class="tooltip-title">${escapeHtml(name)}</span>
+            ${statusRaw ? `<span class="status-badge status-${escapeHtml(statusRaw)}">${escapeHtml(statusLabel)}</span>` : ''}
             <button class="tooltip-close-btn" onclick="document.getElementById('device-tooltip').remove()">×</button>
         </div>
         <div class="tooltip-body">
-            <div class="tooltip-row">
-                <span class="tooltip-label">Floor:</span>
-                <span class="tooltip-value">${escapeHtml(floorName)}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Installed area:</span>
-                <span class="tooltip-value">${escapeHtml(installedAreaName)}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Controlled area:</span>
-                <span class="tooltip-value">${escapeHtml(controlledAreaName)}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Type:</span>
-                <span class="tooltip-value">${escapeHtml(type)}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Brand:</span>
-                <span class="tooltip-value">${escapeHtml(brand)}</span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">Status:</span>
-                <span class="tooltip-value status-${status}">${escapeHtml(status)}</span>
-            </div>
+            ${detailsHtml}
+            ${connectionsHtml}
         </div>
         <div class="tooltip-footer">
             <button class="tooltip-edit-btn" data-device-id="${escapeHtml(device.id)}">
