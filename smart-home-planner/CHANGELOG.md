@@ -1,3 +1,8 @@
+## 1.8.0
+
+### Changed
+- Complete UI redesign
+
 ## 1.7.0 - 2026-07-07
 
 ### Added

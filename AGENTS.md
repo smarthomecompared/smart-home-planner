@@ -117,6 +117,7 @@ async function loadHaRegistry(url) {
 - **Naming:** `kebab-case` for class names and IDs
 - **Variables:** Use CSS custom properties defined in `:root` (see `common.css`)
 - **Colors:** Use CSS variables from the dark theme palette
+- **Design language:** Follow the UniFi OS-inspired design system documented in the "Design System" section of `CLAUDE.md` (flat surfaces, hairline borders, no decorative gradients or shadow lifts)
 - **Organization:** One property per line, alphabetical or logical ordering
 - **Selectors:** Prefer class selectors over ID selectors for reusability
 
@@ -124,9 +125,8 @@ Example:
 ```css
 .dashboard-card {
     background: var(--card-bg);
-    border-radius: 14px;
+    border-radius: 8px;
     padding: 1.5rem;
-    box-shadow: var(--shadow-lg);
     border: 1px solid var(--border-color);
 }
 ```

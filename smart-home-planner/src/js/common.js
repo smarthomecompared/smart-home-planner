@@ -253,26 +253,26 @@ function normalizeLabels(rawLabels) {
 }
 
 const LABEL_COLOR_MAP = {
-    red: '#ef4444',
-    pink: '#ec4899',
-    purple: '#a855f7',
-    indigo: '#6366f1',
-    blue: '#3b82f6',
-    'light-blue': '#38bdf8',
-    cyan: '#06b6d4',
-    teal: '#14b8a6',
-    green: '#22c55e',
-    'light-green': '#4ade80',
-    lime: '#84cc16',
-    yellow: '#eab308',
-    amber: '#f59e0b',
-    orange: '#f97316',
-    'deep-orange': '#ea580c',
-    brown: '#a16207',
-    grey: '#94a3b8',
-    gray: '#94a3b8',
-    'blue-grey': '#64748b',
-    'blue-gray': '#64748b'
+    red: '#f0383b',
+    pink: '#d9569b',
+    purple: '#8f6aff',
+    indigo: '#4d6aff',
+    blue: '#006fff',
+    'light-blue': '#339fff',
+    cyan: '#00a0e0',
+    teal: '#00a0e0',
+    green: '#38cc65',
+    'light-green': '#52d67f',
+    lime: '#52d67f',
+    yellow: '#e0a51e',
+    amber: '#f5a524',
+    orange: '#f6862d',
+    'deep-orange': '#d97a1f',
+    brown: '#a5761c',
+    grey: '#7e8595',
+    gray: '#7e8595',
+    'blue-grey': '#565d6b',
+    'blue-gray': '#565d6b'
 };
 
 function resolveLabelColor(value) {
@@ -755,6 +755,10 @@ function openDialog({ title, message, confirmText, cancelText, showCancel }) {
     titleEl.textContent = title || 'Notice';
     messageEl.textContent = message || '';
     confirmBtn.textContent = confirmText || 'OK';
+    // Destructive confirmations get the danger treatment without touching every caller
+    const isDestructive = /\b(delete|remove|discard|reset)\b/i.test(confirmText || '');
+    confirmBtn.classList.toggle('btn-danger', isDestructive);
+    confirmBtn.classList.toggle('btn-primary', !isDestructive);
     cancelBtn.textContent = cancelText || 'Cancel';
     cancelBtn.style.display = shouldShowCancel ? 'inline-flex' : 'none';
     closeBtn.style.display = shouldShowCancel ? 'none' : 'inline-flex';
@@ -841,13 +845,13 @@ function getSiteNavIconMarkup(href) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-7 9 7"></path><path d="M6 9.5v10.5h12v-10.5"></path><path d="M10 20v-5h4v5"></path></svg>';
     }
     if (cleanHref.endsWith('devices.html')) {
-        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"></path><path d="M7 7v10"></path><path d="M17 7v10"></path><path d="M4 17h16"></path></svg>';
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>';
     }
     if (cleanHref.endsWith('test-cases.html')) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14"></path><path d="M5 12h14"></path><path d="M5 17h14"></path><path d="M3 7h.01"></path><path d="M3 12h.01"></path><path d="M3 17h.01"></path></svg>';
     }
     if (cleanHref.endsWith('settings.html')) {
-        return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h10"></path><path d="M4 18h16"></path></svg>';
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
     }
     if (cleanHref.endsWith('debug-settings.html')) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6"></path><path d="M10 3v3"></path><path d="M14 3v3"></path><rect x="6" y="6" width="12" height="10" rx="2"></rect><path d="M10 16v3"></path><path d="M14 16v3"></path><path d="M9 10h6"></path><path d="M9 13h6"></path></svg>';
@@ -1036,25 +1040,10 @@ let globalSearchIndex = null;
 let globalSearchReady = false;
 let globalSearchLoading = null;
 
-function ensureSiteNavLayout() {
-    const nav = document.querySelector('.site-nav');
-    if (!nav) return null;
-    let links = nav.querySelector('.site-nav-links');
-    if (links) return links;
-    links = document.createElement('div');
-    links.className = 'site-nav-links';
-    const anchors = Array.from(nav.querySelectorAll('a'));
-    anchors.forEach(anchor => links.appendChild(anchor));
-    nav.prepend(links);
-    return links;
-}
-
 function ensureGlobalSearchMarkup() {
-    const nav = document.querySelector('.site-nav');
-    if (!nav) return null;
-    const links = ensureSiteNavLayout();
-    if (!links) return null;
-    let container = links.querySelector('.global-search');
+    const header = document.querySelector('header');
+    if (!header) return null;
+    let container = header.querySelector('.global-search');
     if (container) return container;
 
     container = document.createElement('div');
@@ -1068,12 +1057,7 @@ function ensureGlobalSearchMarkup() {
             </svg>
         </button>
     `;
-    const firstLink = links.querySelector('a');
-    if (firstLink) {
-        links.insertBefore(container, firstLink);
-    } else {
-        links.appendChild(container);
-    }
+    header.appendChild(container);
     return container;
 }
 

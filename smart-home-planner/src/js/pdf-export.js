@@ -64,12 +64,12 @@ const _C = {
     pending:      [234,  88,  12],
     notWorking:   [220,  38,  38],
     wishlist:     [124,  58, 237],
-    connEthernet: [ 59, 130, 246],  // #3b82f6 — matches Cytoscape ethernet edge
-    connUsb:      [ 20, 184, 166],  // #14b8a6 — matches Cytoscape usb edge (teal)
-    connPower:    [245, 158,  11],  // #f59e0b — matches Cytoscape power edge (amber)
-    connWifi:     [ 56, 189, 248],  // #38bdf8 — matches Cytoscape wifi edge (sky, dashed)
-    connZigbee:   [250, 204,  21],  // #facc15 — matches Cytoscape zigbee edge (yellow, dashed)
-    connZwave:    [ 34, 197,  94],  // #22c55e — matches Cytoscape z-wave edge (green, dashed)
+    connEthernet: [ 59, 130, 246],  // #006fff — matches Cytoscape ethernet edge
+    connUsb:      [ 20, 184, 166],  // #00a0e0 — matches Cytoscape usb edge (teal)
+    connPower:    [245, 158,  11],  // #f5a524 — matches Cytoscape power edge (amber)
+    connWifi:     [ 56, 189, 248],  // #339fff — matches Cytoscape wifi edge (sky, dashed)
+    connZigbee:   [250, 204,  21],  // #f7c948 — matches Cytoscape zigbee edge (yellow, dashed)
+    connZwave:    [ 34, 197,  94],  // #38cc65 — matches Cytoscape z-wave edge (green, dashed)
     connDefault:  [100, 116, 139],
     barBg:        [226, 232, 240],
     barFill:      [ 14, 116, 144],
@@ -1022,9 +1022,9 @@ async function _pdfDiagramPage(doc, data) {
 
 // App-matching status colours for diagram nodes (match Cytoscape getDeviceStatusColor)
 const _DIAGRAM_STATUS_COLOR = {
-    'working':     [16, 185, 129],   // #10b981 emerald-500
-    'pending':     [245, 158,  11],  // #f59e0b amber-500
-    'not-working': [239,  68,  68],  // #ef4444 red-500
+    'working':     [16, 185, 129],   // #38cc65 emerald-500
+    'pending':     [245, 158,  11],  // #f5a524 amber-500
+    'not-working': [239,  68,  68],  // #f0383b red-500
 };
 
 /** Draws a filled arrowhead tip at (tx,ty) pointing from (fx,fy). */

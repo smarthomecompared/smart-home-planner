@@ -11,8 +11,11 @@
     <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
     <link rel="manifest" href="img/site.webmanifest">
     <link rel="shortcut icon" href="img/favicon.ico">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#101216">
     <title>Smart Home Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700;900&display=swap">
     <link rel="stylesheet" href="css/common.css">
     <style>
         .home-cards {
@@ -28,7 +31,7 @@
 
         .dashboard-card {
             background: var(--card-bg);
-            border-radius: 14px;
+            border-radius: 8px;
             padding: 1.5rem;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border-color);
@@ -83,8 +86,8 @@
         .overview-metric {
             padding: 0.85rem 0.9rem;
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: rgba(15, 23, 42, 0.45);
+            border-radius: 8px;
+            background: rgba(16, 18, 22, 0.45);
             display: grid;
             gap: 0.3rem;
         }
@@ -116,10 +119,10 @@
             align-items: center;
             gap: 0.4rem;
             padding: 0.25rem 0.65rem;
-            border-radius: 999px;
+            border-radius: 4px;
             font-size: 0.78rem;
             border: 1px solid transparent;
-            background: rgba(15, 23, 42, 0.58);
+            background: rgba(16, 18, 22, 0.58);
             color: var(--text-secondary);
         }
 
@@ -133,23 +136,23 @@
         }
 
         .overview-chip.working {
-            color: #4ade80;
-            border-color: rgba(74, 222, 128, 0.35);
+            color: #52d67f;
+            border-color: rgba(82, 214, 127, 0.35);
         }
 
         .overview-chip.pending {
-            color: #fbbf24;
-            border-color: rgba(251, 191, 36, 0.35);
+            color: #f7b955;
+            border-color: rgba(247, 185, 85, 0.35);
         }
 
         .overview-chip.not-working {
             color: #f87171;
-            border-color: rgba(248, 113, 113, 0.35);
+            border-color: rgba(244, 89, 92, 0.35);
         }
 
         .chart-card {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 8px;
             padding: 1.5rem;
             box-shadow: var(--shadow-lg);
             border: 1px solid var(--border-color);
@@ -171,25 +174,13 @@
         }
 
         .chart-card.warning-card {
-            border-color: rgba(245, 158, 11, 0.45);
-            background:
-                linear-gradient(180deg, rgba(245, 158, 11, 0.14) 0%, rgba(245, 158, 11, 0.04) 42%, rgba(15, 23, 42, 0) 100%),
-                var(--card-bg);
-            box-shadow: 0 14px 30px rgba(245, 158, 11, 0.12);
+            border-color: var(--border-color);
+            background: var(--card-bg);
+            box-shadow: none;
         }
 
         .chart-card.warning-card .chart-title {
-            color: #fbbf24;
-        }
-
-        .chart-card.warning-card .chart-expand {
-            border-color: rgba(245, 158, 11, 0.45);
-            background: rgba(245, 158, 11, 0.12);
-            color: #fbbf24;
-        }
-
-        .chart-card.warning-card .chart-expand:hover {
-            background: rgba(245, 158, 11, 0.2);
+            color: #f7b955;
         }
 
         .backup-status {
@@ -204,9 +195,9 @@
             gap: 0.75rem;
             padding: 0.6rem 0.75rem;
             border-radius: 10px;
-            border: 1px solid rgba(59, 130, 246, 0.28);
-            background: rgba(59, 130, 246, 0.1);
-            color: #bfdbfe;
+            border: 1px solid rgba(0, 111, 255, 0.28);
+            background: rgba(0, 111, 255, 0.1);
+            color: #99c5ff;
             font-size: 0.8rem;
             line-height: 1.35;
         }
@@ -217,7 +208,7 @@
             justify-content: center;
             min-width: 92px;
             padding: 0.22rem 0.58rem;
-            border-radius: 999px;
+            border-radius: 4px;
             font-size: 0.7rem;
             font-weight: 700;
             letter-spacing: 0.01em;
@@ -226,27 +217,27 @@
         }
 
         .backup-status-banner.ok {
-            border-color: rgba(74, 222, 128, 0.34);
-            background: rgba(74, 222, 128, 0.12);
-            color: #bbf7d0;
+            border-color: rgba(82, 214, 127, 0.34);
+            background: rgba(82, 214, 127, 0.12);
+            color: #b8ecc6;
         }
 
         .backup-status-banner.ok .status-pill {
-            color: #4ade80;
-            border-color: rgba(74, 222, 128, 0.38);
-            background: rgba(74, 222, 128, 0.12);
+            color: #52d67f;
+            border-color: rgba(82, 214, 127, 0.38);
+            background: rgba(82, 214, 127, 0.12);
         }
 
         .backup-status-banner.warn {
-            border-color: rgba(245, 158, 11, 0.45);
-            background: rgba(245, 158, 11, 0.16);
-            color: #fde68a;
+            border-color: rgba(245, 165, 36, 0.45);
+            background: rgba(245, 165, 36, 0.16);
+            color: #fbdc9b;
         }
 
         .backup-status-banner.warn .status-pill {
-            color: #fbbf24;
-            border-color: rgba(245, 158, 11, 0.45);
-            background: rgba(245, 158, 11, 0.15);
+            color: #f7b955;
+            border-color: rgba(245, 165, 36, 0.45);
+            background: rgba(245, 165, 36, 0.15);
         }
 
         .pending-list {
@@ -279,7 +270,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #38bdf8;
+            background: #339fff;
         }
 
         .battery-alert-list {
@@ -485,12 +476,12 @@
 
         .legend-item:hover {
             color: var(--text-color);
-            background: rgba(59, 130, 246, 0.12);
+            background: rgba(0, 111, 255, 0.12);
         }
 
         .legend-item.is-active {
             color: var(--text-color);
-            background: rgba(59, 130, 246, 0.12);
+            background: rgba(0, 111, 255, 0.12);
         }
 
         .legend-more {
@@ -530,7 +521,7 @@
 
         .power-total-bar {
             height: 8px;
-            border-radius: 999px;
+            border-radius: 4px;
             background: var(--bg-secondary);
             overflow: hidden;
             box-shadow: inset 0 0 0 1px var(--border-color);
@@ -544,15 +535,15 @@
         }
 
         .power-total-bar.idle span {
-            background: #64748b;
+            background: #565d6b;
         }
 
         .power-total-bar.mean span {
-            background: #3b82f6;
+            background: #006fff;
         }
 
         .power-total-bar.max span {
-            background: #f59e0b;
+            background: #f5a524;
         }
 
         .power-usage-list .legend-item {
@@ -581,14 +572,14 @@
         .modal-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(15, 23, 42, 0.7);
+            background: rgba(16, 18, 22, 0.7);
             backdrop-filter: blur(4px);
         }
 
         .modal-content {
             position: relative;
             background: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-xl);
             width: min(920px, 94vw);
@@ -1224,16 +1215,16 @@
             }));
 
             const colors = [
-                '#2563eb',
-                '#16a34a',
-                '#f97316',
-                '#0ea5e9',
-                '#eab308',
-                '#14b8a6',
-                '#f59e0b',
-                '#84cc16',
-                '#64748b',
-                '#38bdf8'
+                '#0062e0',
+                '#2bab54',
+                '#f6862d',
+                '#00a0e0',
+                '#e0a51e',
+                '#00a0e0',
+                '#f5a524',
+                '#52d67f',
+                '#565d6b',
+                '#339fff'
             ];
 
             let start = 0;
@@ -1616,7 +1607,7 @@
             const rows = wishlist.map(device => ({
                 label: device.name || 'Unnamed',
                 href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
-                dotColor: '#38bdf8'
+                dotColor: '#339fff'
             }));
             renderLegendList(targetId, rows, {
                 maxItems: getLegendMaxItems(),
@@ -1631,7 +1622,7 @@
             const rows = notWorking.map(device => ({
                 label: device.name || 'Unnamed',
                 href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
-                dotColor: '#ef4444'
+                dotColor: '#f0383b'
             }));
             renderLegendList(targetId, rows, {
                 maxItems: 'fit',
@@ -1658,7 +1649,7 @@
                 .map(device => ({
                     label: device.name || 'Unnamed',
                     href: `device-edit.html?id=${encodeURIComponent(device.id)}`,
-                    dotColor: '#f59e0b'
+                    dotColor: '#f5a524'
                 }));
 
             renderLegendList(targetId, rows, {
@@ -1783,7 +1774,7 @@
                         label: name,
                         meta: 'Failed',
                         href,
-                        dotColor: '#ef4444',
+                        dotColor: '#f0383b',
                         severity: 0,
                         sortDue: daysUntilDue
                     });
@@ -1795,7 +1786,7 @@
                         label: name,
                         meta: 'Overdue',
                         href,
-                        dotColor: '#f59e0b',
+                        dotColor: '#f5a524',
                         severity: 1,
                         sortDue: daysUntilDue
                     });
@@ -1809,7 +1800,7 @@
                             ? 'Due today'
                             : `Due in ${daysUntilDue} day${daysUntilDue === 1 ? '' : 's'}`,
                         href,
-                        dotColor: '#fbbf24',
+                        dotColor: '#f7b955',
                         severity: 2,
                         sortDue: daysUntilDue
                     });

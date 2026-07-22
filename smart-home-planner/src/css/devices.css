@@ -62,7 +62,7 @@
 }
 
 .devices-table th.sortable:hover {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: rgba(0, 111, 255, 0.1);
 }
 
 .sort-icon {
@@ -115,14 +115,14 @@
 .ha-enabled-icon {
     width: 22px;
     height: 22px;
-    border-radius: 999px;
+    border-radius: 4px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #e0f2fe;
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
-    border: 1px solid rgba(56, 189, 248, 0.7);
-    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+    color: #dbeeff;
+    background: #0082c0;
+    border: none;
+    box-shadow: none;
 }
 
 .ha-enabled-icon img {
@@ -185,10 +185,10 @@
 
 .devices-bulk-btn.is-active,
 .devices-bulk-btn[aria-pressed="true"] {
-    background: linear-gradient(140deg, rgba(59, 130, 246, 0.2), rgba(14, 165, 233, 0.14));
-    border-color: rgba(56, 189, 248, 0.7);
+    background: var(--primary-light);
+    border-color: rgba(0, 111, 255, 0.55);
     color: var(--text-color);
-    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45), 0 12px 26px rgba(15, 23, 42, 0.45);
+    box-shadow: none;
 }
 
 .devices-bulk-btn.is-active::after,
@@ -196,9 +196,9 @@
     content: "On";
     margin-left: 0.55rem;
     padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-    background: rgba(15, 23, 42, 0.6);
+    border-radius: 4px;
+    border: 1px solid rgba(126, 133, 149, 0.4);
+    background: rgba(16, 18, 22, 0.6);
     font-size: 0.65rem;
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -222,10 +222,10 @@
     display: none;
     margin: 1.5rem auto;
     padding: 1.25rem 1.5rem;
-    border-radius: 16px;
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(30, 41, 59, 0.74));
-    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06);
+    border-radius: 10px;
+    border: 1px solid rgba(61, 68, 83, 0.6);
+    background: var(--card-bg);
+    box-shadow: none;
     width: 100%;
     max-width: 980px;
 }
@@ -340,7 +340,7 @@
 .device-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 14px;
+    border-radius: 8px;
     padding: 1rem 1.1rem;
     box-shadow: var(--shadow-lg);
     display: grid;
@@ -354,9 +354,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(160deg, #e7eaef, #d6dbe4);
-    border-bottom: 1px solid var(--border-color-light, #e5e7eb);
-    border-radius: 14px 14px 0 0;
+    background: linear-gradient(160deg, #e7eaef, #d3d7df);
+    border-bottom: 1px solid var(--border-color-light, #dfe2e8);
+    border-radius: 8px 14px 0 0;
     overflow: hidden;
     flex-shrink: 0;
     margin: -1rem -1.1rem 0;
@@ -438,8 +438,8 @@
     border-radius: 6px;
     object-fit: contain;
     flex-shrink: 0;
-    background: linear-gradient(160deg, #e7eaef, #d6dbe4);
-    border: 1px solid var(--border-color-light, #e5e7eb);
+    background: linear-gradient(160deg, #e7eaef, #d3d7df);
+    border: 1px solid var(--border-color-light, #dfe2e8);
     padding: 4px;
     box-sizing: border-box;
     align-self: center;
@@ -467,24 +467,24 @@
     height: 10px;
     border-radius: 50%;
     background: var(--text-muted);
-    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.85);
+    box-shadow: 0 0 0 2px rgba(16, 18, 22, 0.85);
     cursor: default;
 }
 
 .device-card-status.status-working {
-    background: #10b981;
+    background: #38cc65;
 }
 
 .device-card-status.status-pending {
-    background: #f59e0b;
+    background: #f5a524;
 }
 
 .device-card-status.status-wishlist {
-    background: #38bdf8;
+    background: #339fff;
 }
 
 .device-card-status.status-not-working {
-    background: #ef4444;
+    background: #f0383b;
 }
 
 .device-card-status::after,
@@ -494,9 +494,9 @@
     left: 50%;
     bottom: calc(100% + 8px);
     transform: translateX(-50%);
-    background: rgba(15, 23, 42, 0.9);
-    color: #f8fafc;
-    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(16, 18, 22, 0.9);
+    color: #f7f8fa;
+    border: 1px solid rgba(126, 133, 149, 0.35);
     padding: 0.25rem 0.5rem;
     border-radius: 6px;
     font-size: 0.7rem;
@@ -637,7 +637,7 @@
 }
 
 .page-number.active {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+    background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
     box-shadow: var(--shadow);

@@ -10,10 +10,10 @@
 /* Map Display Settings */
 .map-display-settings {
     padding: 1.25rem 1.5rem;
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
-    border-radius: 14px;
+    background: var(--card-bg);
+    border-radius: 8px;
     margin-bottom: 1.25rem;
-    border: 1px solid rgba(71, 85, 105, 0.7);
+    border: 1px solid rgba(61, 68, 83, 0.7);
     box-shadow: var(--shadow-lg);
     display: grid;
     gap: 1rem;
@@ -58,7 +58,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent 55%, rgba(16, 185, 129, 0.08));
+    background: none;
     pointer-events: none;
 }
 
@@ -81,7 +81,7 @@
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(148, 163, 184, 0.35), transparent);
+    background: linear-gradient(90deg, rgba(126, 133, 149, 0.35), transparent);
 }
 
 @media (max-width: 768px) {
@@ -116,7 +116,7 @@
 
 .settings-group + .settings-group {
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(71, 85, 105, 0.5);
+    border-top: 1px solid rgba(61, 68, 83, 0.5);
 }
 
 .connection-toggles {
@@ -133,8 +133,8 @@
     gap: 0.625rem;
     padding: 0.65rem 0.8rem;
     border-radius: 10px;
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(61, 68, 83, 0.6);
+    background: rgba(16, 18, 22, 0.7);
     transition: all var(--transition-base);
 }
 
@@ -149,35 +149,35 @@
 }
 
 .legend-line.ethernet {
-    background: #3b82f6;
+    background: #006fff;
 }
 
 .legend-line.usb {
-    background: #14b8a6;
+    background: #00a0e0;
 }
 
 .legend-line.power {
-    background: #f59e0b;
+    background: #f5a524;
 }
 
 .legend-line.wifi {
     height: 0;
     background: transparent;
-    border-top: 3px dashed #38bdf8;
+    border-top: 3px dashed #339fff;
     border-radius: 0;
 }
 
 .legend-line.zigbee {
     height: 0;
     background: transparent;
-    border-top: 3px dashed #facc15;
+    border-top: 3px dashed #f7c948;
     border-radius: 0;
 }
 
 .legend-line.zwave {
     height: 0;
     background: transparent;
-    border-top: 3px dashed #22c55e;
+    border-top: 3px dashed #38cc65;
     border-radius: 0;
 }
 
@@ -205,8 +205,8 @@
 }
 
 .map-display-settings .form-group select {
-    background-color: rgba(15, 23, 42, 0.85);
-    border-color: rgba(71, 85, 105, 0.7);
+    background-color: rgba(16, 18, 22, 0.85);
+    border-color: rgba(61, 68, 83, 0.7);
 }
 
 .map-settings-row {
@@ -237,7 +237,7 @@
     display: grid;
     gap: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(71, 85, 105, 0.5);
+    border-top: 1px solid rgba(61, 68, 83, 0.5);
 }
 
 .map-background-header {
@@ -300,8 +300,8 @@
 
 .map-range-row input[type="range"]::-webkit-slider-runnable-track {
     height: 6px;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+    background: rgba(126, 133, 149, 0.35);
 }
 
 .map-range-row input[type="range"]::-webkit-slider-thumb {
@@ -310,31 +310,31 @@
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2px solid #dbeafe;
+    border: 2px solid #cce2ff;
     background: var(--primary-color);
     margin-top: -5px;
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 0 0 1px rgba(16, 18, 22, 0.35);
 }
 
 .map-range-row input[type="range"]::-moz-range-track {
     height: 6px;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+    background: rgba(126, 133, 149, 0.35);
 }
 
 .map-range-row input[type="range"]::-moz-range-thumb {
     width: 16px;
     height: 16px;
     border-radius: 50%;
-    border: 2px solid #dbeafe;
+    border: 2px solid #cce2ff;
     background: var(--primary-color);
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    box-shadow: 0 0 0 1px rgba(16, 18, 22, 0.35);
 }
 
 .map-range-row input[type="range"]::-moz-range-progress {
     height: 6px;
-    border-radius: 999px;
-    background: rgba(59, 130, 246, 0.55);
+    border-radius: 4px;
+    background: rgba(0, 111, 255, 0.55);
 }
 
 .map-range-value {
@@ -407,7 +407,7 @@
 }
 
 #network-map-background.has-background {
-    background-color: #0f172a;
+    background-color: #101216;
     opacity: 0.55;
 }
 
@@ -429,7 +429,7 @@
 }
 
 .map-controls-overlay .map-controls {
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(16, 18, 22, 0.9);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 0.5rem;
@@ -550,16 +550,16 @@ body.map-fullscreen .map-controls-overlay {
 
 .device-resize-outline {
     position: absolute;
-    border: 1px dashed rgba(59, 130, 246, 0.65);
+    border: 1px dashed rgba(0, 111, 255, 0.65);
     border-radius: 10px;
-    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.45);
+    box-shadow: 0 0 0 1px rgba(16, 18, 22, 0.45);
     pointer-events: none;
 }
 
 .device-rotate-line {
     position: absolute;
     width: 2px;
-    background: rgba(59, 130, 246, 0.65);
+    background: rgba(0, 111, 255, 0.65);
     transform: translateX(-50%);
     pointer-events: none;
 }
@@ -568,10 +568,10 @@ body.map-fullscreen .map-controls-overlay {
     position: absolute;
     width: 20px;
     height: 20px;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.9);
-    background: rgba(15, 23, 42, 0.95);
-    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.45);
+    border-radius: 4px;
+    border: 1px solid rgba(126, 133, 149, 0.9);
+    background: rgba(16, 18, 22, 0.95);
+    box-shadow: 0 6px 12px rgba(16, 18, 22, 0.45);
     transform: translate(-50%, -50%);
     pointer-events: auto;
     touch-action: none;
@@ -582,8 +582,8 @@ body.map-fullscreen .map-controls-overlay {
     content: '';
     position: absolute;
     inset: 5px;
-    border-radius: 999px;
-    border: 2px solid rgba(56, 189, 248, 0.95);
+    border-radius: 4px;
+    border: 2px solid rgba(51, 159, 255, 0.95);
 }
 
 .device-rotate-handle:active {
@@ -595,9 +595,9 @@ body.map-fullscreen .map-controls-overlay {
     width: 14px;
     height: 14px;
     border-radius: 4px;
-    border: 1px solid rgba(148, 163, 184, 0.9);
-    background: rgba(15, 23, 42, 0.95);
-    box-shadow: 0 6px 12px rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(126, 133, 149, 0.9);
+    background: rgba(16, 18, 22, 0.95);
+    box-shadow: 0 6px 12px rgba(16, 18, 22, 0.45);
     transform: translate(-50%, -50%);
     pointer-events: auto;
     touch-action: none;
@@ -608,7 +608,7 @@ body.map-fullscreen .map-controls-overlay {
     position: absolute;
     inset: 3px;
     border-radius: 2px;
-    background: rgba(56, 189, 248, 0.9);
+    background: rgba(51, 159, 255, 0.9);
 }
 
 .device-resize-handle[data-handle="nw"],
@@ -674,7 +674,7 @@ body.map-fullscreen .map-controls-overlay {
 .connection-dialog-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.7);
+    background: rgba(16, 18, 22, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -746,7 +746,7 @@ body.map-fullscreen .map-controls-overlay {
 
 .tooltip-header {
     padding: 0.875rem 1rem;
-    background: linear-gradient(135deg, var(--primary-color), #2563eb);
+    background: var(--primary-color);
     color: white;
     font-size: 1rem;
     font-weight: 600;

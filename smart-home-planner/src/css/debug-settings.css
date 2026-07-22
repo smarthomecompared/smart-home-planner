@@ -1,7 +1,7 @@
 .debug-build-card {
     border: 1px solid var(--border-color);
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 0.85rem 1rem;
     margin-bottom: 1rem;
 }
@@ -30,7 +30,7 @@
 .debug-viewer-panel {
     border: 1px solid var(--border-color);
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 1rem;
     min-width: 0;
 }
@@ -78,19 +78,19 @@
 }
 
 .debug-file-btn:hover {
-    background: #243247;
-    border-color: #4b5f78;
+    background: #22262e;
+    border-color: #454c5c;
 }
 
 .debug-file-btn:focus-visible {
-    outline: 2px solid rgba(59, 130, 246, 0.7);
+    outline: 2px solid rgba(0, 111, 255, 0.7);
     outline-offset: 2px;
 }
 
 .debug-file-item.is-active .debug-file-btn {
     border-color: var(--primary-color);
-    background: rgba(59, 130, 246, 0.16);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+    background: rgba(0, 111, 255, 0.16);
+    box-shadow: 0 0 0 1px rgba(0, 111, 255, 0.35);
 }
 
 .debug-download-btn {
@@ -100,12 +100,12 @@
 
 .debug-file-name {
     font-weight: 600;
-    color: #f8fafc;
+    color: #f7f8fa;
     word-break: break-all;
 }
 
 .debug-file-info {
-    color: #cbd5e1;
+    color: #b0b6c2;
     font-size: 0.82rem;
 }
 
@@ -135,15 +135,15 @@
 }
 
 .debug-meta-error {
-    color: #dc2626;
+    color: #d93033;
 }
 
 .debug-content {
     margin: 0;
     border: 1px solid var(--border-color);
     border-radius: 10px;
-    background: #0f172a;
-    color: #f1f5f9;
+    background: #101216;
+    color: #f4f5f7;
     padding: 0.9rem;
     font-size: 0.85rem;
     line-height: 1.45;
@@ -187,8 +187,8 @@
     display: inline-block;
     width: 0.55rem;
     height: 0.55rem;
-    border-right: 2px solid #94a3b8;
-    border-bottom: 2px solid #94a3b8;
+    border-right: 2px solid #7e8595;
+    border-bottom: 2px solid #7e8595;
     transform: rotate(-45deg);
     margin-top: 0.4rem;
     transition: transform 0.15s ease;
@@ -199,33 +199,33 @@
 }
 
 .json-key {
-    color: #93c5fd;
+    color: #66a8ff;
 }
 
 .json-meta {
-    color: #94a3b8;
+    color: #7e8595;
     font-size: 0.78rem;
 }
 
 .json-empty {
-    color: #94a3b8;
+    color: #7e8595;
     font-style: italic;
 }
 
 .json-value {
-    color: #e2e8f0;
+    color: #dfe2e8;
 }
 
 .json-value.json-string {
-    color: #a5b4fc;
+    color: #a3b8ff;
 }
 
 .json-value.json-number {
-    color: #38bdf8;
+    color: #339fff;
 }
 
 .json-value.json-boolean {
-    color: #fbbf24;
+    color: #f7b955;
 }
 
 .json-value.json-null {
@@ -235,7 +235,7 @@
 .json-children {
     margin-left: 1.25rem;
     padding-left: 0.65rem;
-    border-left: 1px dashed rgba(148, 163, 184, 0.35);
+    border-left: 1px dashed rgba(126, 133, 149, 0.35);
 }
 
 @media (max-width: 900px) {

@@ -112,7 +112,7 @@ The Devices screen is the heart of the app. It combines search, filtering, and m
 
 ### Global Search
 
-Use the search bar in the top navigation to find devices and test cases from anywhere in the app. Search is real time and scans text details, so you can locate records by name, notes, labels, model, test steps, and expected outcomes.
+Use the search icon in the top navigation bar to find devices and test cases from anywhere in the app. Search is real time and scans text details, so you can locate records by name, notes, labels, model, test steps, and expected outcomes.
 
 ### Filters
 

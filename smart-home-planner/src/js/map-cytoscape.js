@@ -1996,7 +1996,7 @@ function initializeCytoscape() {
                     'shape': 'rectangle',
                     'width': 'data(width)',
                     'height': 'data(height)',
-                    'background-color': '#0f172a',
+                    'background-color': '#101216',
                     'background-image': 'data(image)',
                     'background-fit': 'contain',
                     'background-repeat': 'no-repeat',
@@ -2026,8 +2026,8 @@ function initializeCytoscape() {
             {
                 selector: 'node[type="floor"]',
                 style: {
-                    'background-color': 'rgba(30, 41, 59, 0.4)',
-                    'border-color': '#3b82f6',
+                    'background-color': 'rgba(28, 31, 38, 0.4)',
+                    'border-color': '#006fff',
                     'border-width': 3,
                     'label': 'data(label)',
                     'text-valign': 'top',
@@ -2035,8 +2035,8 @@ function initializeCytoscape() {
                     'text-margin-y': 20,
                     'font-size': 20,
                     'font-weight': 'bold',
-                    'color': '#60a5fa',
-                    'text-background-color': 'rgba(30, 41, 59, 0.9)',
+                    'color': '#338bff',
+                    'text-background-color': 'rgba(28, 31, 38, 0.9)',
                     'text-background-opacity': 1,
                     'text-background-padding': 8,
                     'text-background-shape': 'roundrectangle',
@@ -2055,7 +2055,7 @@ function initializeCytoscape() {
                 selector: 'node[type="area"]',
                 style: {
                     'background-opacity': 0,
-                    'border-color': 'rgba(100, 116, 139, 0.4)',
+                    'border-color': 'rgba(86, 93, 107, 0.4)',
                     'border-width': 2,
                     'border-style': 'dashed',
                     'label': 'data(label)',
@@ -2064,8 +2064,8 @@ function initializeCytoscape() {
                     'text-margin-y': 18,
                     'font-size': 16,
                     'font-weight': 'bold',
-                    'color': '#94a3b8',
-                    'text-background-color': 'rgba(30, 41, 59, 0.9)',
+                    'color': '#7e8595',
+                    'text-background-color': 'rgba(28, 31, 38, 0.9)',
                     'text-background-opacity': 1,
                     'text-background-padding': 8,
                     'text-background-shape': 'roundrectangle',
@@ -2172,21 +2172,21 @@ function initializeCytoscape() {
             {
                 selector: 'node[type="device"][status="pending"]',
                 style: {
-                    'border-color': '#f59e0b'
+                    'border-color': '#f5a524'
                 }
             },
             // Device not working status
             {
                 selector: 'node[type="device"][status="not-working"]',
                 style: {
-                    'border-color': '#ef4444'
+                    'border-color': '#f0383b'
                 }
             },
             // Device working status
             {
                 selector: 'node[type="device"][status="working"]',
                 style: {
-                    'border-color': '#10b981'
+                    'border-color': '#38cc65'
                 }
             },
             // Edge styles
@@ -2194,16 +2194,16 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="ethernet"]',
                 style: {
                     'width': 2,
-                    'line-color': '#3b82f6',
-                    'target-arrow-color': '#3b82f6',
+                    'line-color': '#006fff',
+                    'target-arrow-color': '#006fff',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -2212,7 +2212,7 @@ function initializeCytoscape() {
             {
                 selector: 'edge[connectionType="ethernet"][?bidirectional]',
                 style: {
-                    'source-arrow-color': '#3b82f6',
+                    'source-arrow-color': '#006fff',
                     'source-arrow-shape': 'triangle'
                 }
             },
@@ -2220,16 +2220,16 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="usb"]',
                 style: {
                     'width': 2,
-                    'line-color': '#14b8a6',
-                    'target-arrow-color': '#14b8a6',
+                    'line-color': '#00a0e0',
+                    'target-arrow-color': '#00a0e0',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -2239,16 +2239,16 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="power"]',
                 style: {
                     'width': 2,
-                    'line-color': '#f59e0b',
-                    'target-arrow-color': '#f59e0b',
+                    'line-color': '#f5a524',
+                    'target-arrow-color': '#f5a524',
                     'target-arrow-shape': 'triangle',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -2258,17 +2258,17 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="wifi"]',
                 style: {
                     'width': 2,
-                    'line-color': '#38bdf8',
+                    'line-color': '#339fff',
                     'line-style': 'dashed',
                     'line-dash-pattern': [8, 6],
                     'target-arrow-shape': 'none',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -2278,17 +2278,17 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="zigbee"]',
                 style: {
                     'width': 2,
-                    'line-color': '#facc15',
+                    'line-color': '#f7c948',
                     'line-style': 'dashed',
                     'line-dash-pattern': [7, 5],
                     'target-arrow-shape': 'none',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -2298,17 +2298,17 @@ function initializeCytoscape() {
                 selector: 'edge[connectionType="zwave"]',
                 style: {
                     'width': 2,
-                    'line-color': '#22c55e',
+                    'line-color': '#38cc65',
                     'line-style': 'dashed',
                     'line-dash-pattern': [7, 5],
                     'target-arrow-shape': 'none',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
                     'font-size': 10,
-                    'color': '#f8fafc',
+                    'color': '#f7f8fa',
                     'text-outline-width': 2,
-                    'text-outline-color': 'rgba(15, 23, 42, 0.9)',
-                    'text-background-color': 'rgba(15, 23, 42, 0.8)',
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
@@ -3282,10 +3282,10 @@ function formatStorageLabel(device) {
 
 function getDeviceStatusColor(status) {
     const normalized = String(status || '').trim().toLowerCase();
-    if (normalized === 'pending') return '#f59e0b';
-    if (normalized === 'not-working') return '#ef4444';
-    if (normalized === 'working') return '#10b981';
-    return '#3b82f6';
+    if (normalized === 'pending') return '#f5a524';
+    if (normalized === 'not-working') return '#f0383b';
+    if (normalized === 'working') return '#38cc65';
+    return '#006fff';
 }
 
 function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
@@ -3389,9 +3389,9 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
         const badgeY = safeHeight - badgeHeight - 6;
         const safeLabel = escapeSvgText(storageLabel);
         storageMarkup = [
-            `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="4" ry="4" fill="none" stroke="#94a3b8" stroke-width="1.2"/>`,
-            `<rect x="${badgeX + 3}" y="${badgeY + 6}" width="${badgeWidth - 6}" height="2" fill="#94a3b8" opacity="0.6"/>`,
-            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="Arial, sans-serif" fill="#94a3b8">${safeLabel}</text>`
+            `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="4" ry="4" fill="none" stroke="#7e8595" stroke-width="1.2"/>`,
+            `<rect x="${badgeX + 3}" y="${badgeY + 6}" width="${badgeWidth - 6}" height="2" fill="#7e8595" opacity="0.6"/>`,
+            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="Arial, sans-serif" fill="#7e8595">${safeLabel}</text>`
         ].join('');
     }
 
@@ -3399,7 +3399,7 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     if (showMedia) {
         const mediaClipId = 'mediaClip';
         const mediaFrame = [
-            `<rect x="${mediaX}" y="${mediaY}" width="${mediaSize}" height="${mediaSize}" rx="9" ry="9" fill="#111827" stroke="rgba(148,163,184,0.45)" stroke-width="1"/>`,
+            `<rect x="${mediaX}" y="${mediaY}" width="${mediaSize}" height="${mediaSize}" rx="9" ry="9" fill="#12141a" stroke="rgba(148,163,184,0.45)" stroke-width="1"/>`,
             `<clipPath id="${mediaClipId}"><rect x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" rx="8" ry="8"/></clipPath>`
         ].join('');
 
@@ -3415,7 +3415,7 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
             const iconScale = (iconSize / 24).toFixed(4);
             mediaMarkup = [
                 mediaFrame,
-                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
+                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#b0b6c2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
             ].join('');
         }
     }
@@ -3424,14 +3424,14 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
         `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">`,
         '<defs>',
         `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="${safeWidth}" y2="${safeHeight}" gradientUnits="userSpaceOnUse">`,
-        '<stop offset="0" stop-color="#0f172a"/>',
-        '<stop offset="1" stop-color="#1e293b"/>',
+        '<stop offset="0" stop-color="#101216"/>',
+        '<stop offset="1" stop-color="#1c1f26"/>',
         '</linearGradient>',
         '</defs>',
         `<g ${transform}>`,
         `<rect x="1" y="1" width="${safeWidth - 2}" height="${safeHeight - 2}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="${strokeColor}" stroke-width="2"/>`,
         mediaMarkup,
-        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-family="Arial, sans-serif" fill="#f1f5f9">${textMarkup}</text>`,
+        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-family="Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
         '</svg>'
