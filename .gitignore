@@ -4,6 +4,7 @@ deals/public
 temp/
 sample.tar
 .claude
+.playwright-mcp
 
 # Logs
 logs

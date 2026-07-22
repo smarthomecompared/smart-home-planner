@@ -1505,6 +1505,7 @@ window.DeviceDiagram = (() => {
             backgroundLayer.style.height = '';
             backgroundLayer.style.left = '';
             backgroundLayer.style.top = '';
+            backgroundLayer.style.transform = '';
         }
     }
 
@@ -1528,6 +1529,7 @@ window.DeviceDiagram = (() => {
         backgroundLayer.style.height = `${viewportHeight}px`;
         backgroundLayer.style.left = '0';
         backgroundLayer.style.top = '0';
+        backgroundLayer.style.transform = 'none';
     }
 
     async function deleteDiagramBackgroundFile(path) {

@@ -1008,6 +1008,46 @@ nav.site-nav a:focus-visible .site-nav-label {
     opacity: 1;
 }
 
+/* UniFi-style toggle switch */
+.ui-switch {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 32px;
+    height: 18px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: #3a4050;
+    position: relative;
+    cursor: pointer;
+    margin: 0;
+    transition: background var(--transition-base);
+}
+
+.ui-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #f4f5f7;
+    transition: transform var(--transition-fast);
+}
+
+.ui-switch:checked {
+    background: var(--primary-color);
+}
+
+.ui-switch:checked::after {
+    transform: translateX(14px);
+}
+
+.ui-switch:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .empty-state {
     text-align: center;
     padding: 4rem 1rem;

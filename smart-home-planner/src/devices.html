@@ -375,7 +375,15 @@
             <div id="diagram-section" class="devices-diagram">
                 <div class="map-display-settings is-collapsed" id="map-config">
                     <div class="map-display-header">
-                        <h3>Diagram settings</h3>
+                        <h3>
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 8h10"></path>
+                                <circle cx="17" cy="8" r="2.5"></circle>
+                                <path d="M20 16H10"></path>
+                                <circle cx="7" cy="16" r="2.5"></circle>
+                            </svg>
+                            Diagram Settings
+                        </h3>
                         <button class="btn btn-secondary btn-sm btn-icon map-display-toggle" type="button" aria-expanded="false" aria-controls="map-config-body" aria-label="Toggle diagram settings">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M6 9l6 6 6-6"></path>
@@ -383,39 +391,41 @@
                         </button>
                     </div>
                     <div class="map-display-body" id="map-config-body">
-                        <div class="settings-group map-settings-row">
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-ethernet-connections" checked>
+                        <div class="settings-group">
+                            <span class="map-group-title">Connections</span>
+                            <label class="connection-toggle">
                                 <span class="legend-line ethernet" aria-hidden="true"></span>
-                                <span>Ethernet Connection</span>
+                                <span class="connection-name">Ethernet</span>
+                                <input type="checkbox" id="show-ethernet-connections" class="ui-switch" checked>
                             </label>
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-usb-connections" checked>
+                            <label class="connection-toggle">
                                 <span class="legend-line usb" aria-hidden="true"></span>
-                                <span>USB Connection</span>
+                                <span class="connection-name">USB</span>
+                                <input type="checkbox" id="show-usb-connections" class="ui-switch" checked>
                             </label>
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-power-connections" checked>
+                            <label class="connection-toggle">
                                 <span class="legend-line power" aria-hidden="true"></span>
-                                <span>Power Connection</span>
+                                <span class="connection-name">Power</span>
+                                <input type="checkbox" id="show-power-connections" class="ui-switch" checked>
                             </label>
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-wifi-connections">
+                            <label class="connection-toggle">
                                 <span class="legend-line wifi" aria-hidden="true"></span>
-                                <span>Wi-Fi Connection</span>
+                                <span class="connection-name">Wi-Fi</span>
+                                <input type="checkbox" id="show-wifi-connections" class="ui-switch">
                             </label>
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-zigbee-connections">
+                            <label class="connection-toggle">
                                 <span class="legend-line zigbee" aria-hidden="true"></span>
-                                <span>Zigbee Connection</span>
+                                <span class="connection-name">Zigbee</span>
+                                <input type="checkbox" id="show-zigbee-connections" class="ui-switch">
                             </label>
-                            <label class="checkbox-label connection-toggle">
-                                <input type="checkbox" id="show-zwave-connections">
+                            <label class="connection-toggle">
                                 <span class="legend-line zwave" aria-hidden="true"></span>
-                                <span>Z-Wave Connection</span>
+                                <span class="connection-name">Z-Wave</span>
+                                <input type="checkbox" id="show-zwave-connections" class="ui-switch">
                             </label>
                         </div>
-                        <div class="settings-group connection-toggles">
+                        <div class="settings-group">
+                            <span class="map-group-title">View</span>
                             <div class="form-group">
                                 <label for="device-area-mode">Device location</label>
                                 <select id="device-area-mode">
@@ -431,16 +441,14 @@
                                     <option value="max">Max</option>
                                 </select>
                             </div>
-                            <label class="toggle-label">
-                                <input type="checkbox" id="diagram-show-icons" checked>
-                                Show device icons
+                            <label class="connection-toggle">
+                                <span class="connection-name">Show device icons</span>
+                                <input type="checkbox" id="diagram-show-icons" class="ui-switch" checked>
                             </label>
                         </div>
                         <div class="settings-group map-background-group">
-                            <div class="map-background-header">
-                                <span class="map-background-title">Diagram background</span>
-                                <span class="map-background-file" id="diagram-background-name">No background image</span>
-                            </div>
+                            <span class="map-group-title">Background</span>
+                            <span class="map-background-file" id="diagram-background-name">No background image</span>
                             <div class="map-background-actions">
                                 <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-upload-btn">Upload image</button>
                                 <button class="btn btn-secondary btn-sm btn-icon" type="button" id="diagram-background-help-btn" aria-label="About background images" title="About background images">

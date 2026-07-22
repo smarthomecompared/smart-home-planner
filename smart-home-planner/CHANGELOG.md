@@ -3,6 +3,9 @@
 ### Changed
 - Complete UI redesign
 
+### Fixed
+- Fix the diagram background image being shifted towards the top-left corner in fullscreen mode
+
 ## 1.7.0 - 2026-07-07
 
 ### Added
