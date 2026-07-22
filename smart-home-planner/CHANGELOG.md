@@ -8,6 +8,7 @@
 ### Changed
 - Complete UI redesign
 - Redesigned the diagram device popover: dark card with device icon and status badge, empty fields are hidden, and the device's visible connections are listed
+- Redesigned the diagram device cards: cleaner dark cards with a subtle gradient, hairline border, and a status dot with glow instead of the thick colored frame
 - Improved Diagram view accessibility: the Diagram Settings header is now a keyboard-focusable button and the device counter announces filter changes to screen readers
 
 ### Fixed

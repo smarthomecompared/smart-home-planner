@@ -381,6 +381,9 @@
     position: relative;
     border-radius: 8px;
     overflow: hidden;
+    background-color: #0c0e12;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1.2px);
+    background-size: 22px 22px;
 }
 
 .map-controls-overlay {
@@ -705,17 +708,21 @@ body.map-fullscreen {
 
 body.map-fullscreen #diagram-section,
 body.map-fullscreen #map-section {
-    background: var(--bg-color);
+    background-color: #0c0e12;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1.2px);
+    background-size: 22px 22px;
 }
 
 #diagram-section:fullscreen,
 #map-section:fullscreen {
-    background: var(--bg-color);
+    background-color: #0c0e12;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1.2px);
+    background-size: 22px 22px;
 }
 
 #diagram-section:fullscreen::backdrop,
 #map-section:fullscreen::backdrop {
-    background: var(--bg-color);
+    background: #0c0e12;
 }
 
 body.map-fullscreen .container {

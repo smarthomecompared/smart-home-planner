@@ -2035,9 +2035,10 @@ function initializeCytoscape() {
             {
                 selector: 'node[type="floor"]',
                 style: {
-                    'background-color': 'rgba(28, 31, 38, 0.4)',
-                    'border-color': '#006fff',
-                    'border-width': 3,
+                    'background-color': '#006fff',
+                    'background-opacity': 0.03,
+                    'border-color': 'rgba(0, 111, 255, 0.5)',
+                    'border-width': 1.5,
                     'label': 'data(label)',
                     'text-valign': 'top',
                     'text-halign': 'center',
@@ -3571,8 +3572,8 @@ function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
 function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref, width, height, fontSize, textMaxWidth, padding }) {
     const safeWidth = clampNumber(Number(width), DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
     const safeHeight = clampNumber(Number(height), DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
-    const strokeColor = getDeviceStatusColor(status);
-    const rx = 12;
+    const statusColor = getDeviceStatusColor(status);
+    const rx = 10;
     const safeFontSize = clampNumber(
         Number(fontSize),
         DEVICE_FONT_LIMITS.minFontSize,
@@ -3621,14 +3622,23 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     let storageMarkup = '';
     if (storageLabel) {
         const badgeWidth = clampNumber(Math.round(safeWidth * 0.38), 56, Math.max(56, safeWidth - 16));
-        const badgeHeight = clampNumber(Math.round(safeHeight * 0.28), 20, 28);
+        const badgeHeight = clampNumber(Math.round(safeHeight * 0.28), 18, 24);
         const badgeX = safeWidth - badgeWidth - 6;
         const badgeY = safeHeight - badgeHeight - 6;
         const safeLabel = escapeSvgText(storageLabel);
         storageMarkup = [
-            `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="4" ry="4" fill="none" stroke="#7e8595" stroke-width="1.2"/>`,
-            `<rect x="${badgeX + 3}" y="${badgeY + 6}" width="${badgeWidth - 6}" height="2" fill="#7e8595" opacity="0.6"/>`,
-            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight - 6}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="Arial, sans-serif" fill="#7e8595">${safeLabel}</text>`
+            `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="${Math.min(6, Math.round(badgeHeight / 2))}" ry="${Math.min(6, Math.round(badgeHeight / 2))}" fill="rgba(255,255,255,0.08)"/>`,
+            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight / 2 + Math.max(9, safeFontSize - 2) * 0.36}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#b0b6c2">${safeLabel}</text>`
+        ].join('');
+    }
+
+    let statusDotMarkup = '';
+    if (status) {
+        const dotX = safeWidth - 11;
+        const dotY = 11;
+        statusDotMarkup = [
+            `<circle cx="${dotX}" cy="${dotY}" r="6" fill="${statusColor}" opacity="0.18"/>`,
+            `<circle cx="${dotX}" cy="${dotY}" r="3" fill="${statusColor}"/>`
         ].join('');
     }
 
@@ -3636,8 +3646,8 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     if (showMedia) {
         const mediaClipId = 'mediaClip';
         const mediaFrame = [
-            `<rect x="${mediaX}" y="${mediaY}" width="${mediaSize}" height="${mediaSize}" rx="9" ry="9" fill="#12141a" stroke="rgba(148,163,184,0.45)" stroke-width="1"/>`,
-            `<clipPath id="${mediaClipId}"><rect x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" rx="8" ry="8"/></clipPath>`
+            `<rect x="${mediaX}" y="${mediaY}" width="${mediaSize}" height="${mediaSize}" rx="8" ry="8" fill="rgba(255,255,255,0.07)"/>`,
+            `<clipPath id="${mediaClipId}"><rect x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" rx="7" ry="7"/></clipPath>`
         ].join('');
 
         if (hasImage) {
@@ -3652,7 +3662,7 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
             const iconScale = (iconSize / 24).toFixed(4);
             mediaMarkup = [
                 mediaFrame,
-                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#b0b6c2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
+                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#c6cbd6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
             ].join('');
         }
     }
@@ -3660,15 +3670,17 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     const svg = [
         `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">`,
         '<defs>',
-        `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="${safeWidth}" y2="${safeHeight}" gradientUnits="userSpaceOnUse">`,
-        '<stop offset="0" stop-color="#101216"/>',
-        '<stop offset="1" stop-color="#1c1f26"/>',
+        `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="0" y2="${safeHeight}" gradientUnits="userSpaceOnUse">`,
+        '<stop offset="0" stop-color="#293039"/>',
+        '<stop offset="1" stop-color="#1a1e25"/>',
         '</linearGradient>',
         '</defs>',
         `<g ${transform}>`,
-        `<rect x="1" y="1" width="${safeWidth - 2}" height="${safeHeight - 2}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="${strokeColor}" stroke-width="2"/>`,
+        `<rect x="0.5" y="0.5" width="${safeWidth - 1}" height="${safeHeight - 1}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`,
+        `<path d="M ${rx} 1.5 H ${safeWidth - rx}" stroke="rgba(255,255,255,0.08)" stroke-width="1" fill="none"/>`,
+        statusDotMarkup,
         mediaMarkup,
-        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-family="Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
+        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-weight="600" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
         '</svg>'
