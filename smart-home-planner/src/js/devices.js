@@ -20,6 +20,7 @@ let devices = [];
 let areas = [];
 let floors = [];
 let networks = [];
+let isps = [];
 let labels = [];
 let settings = {};
 
@@ -95,6 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     areas = data.areas;
     floors = data.floors;
     networks = data.networks || [];
+    isps = data.isps || [];
     labels = normalizeLabelCatalog(data.labels);
     devices = allDevices;
     applyAreaColumnVisibility();
@@ -504,6 +506,7 @@ function ensureDiagramReady() {
         areas,
         floors,
         networks,
+        isps,
         settings,
         filteredDevices
     });
@@ -546,7 +549,7 @@ async function createDevice(deviceData) {
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
+        window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
     }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
     return device;
@@ -587,7 +590,7 @@ async function updateDevice(id, deviceData) {
         devices = allDevices;
         deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
         if (diagramReady && window.DeviceDiagram) {
-            window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
+            window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
         }
         deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
         return device;
@@ -630,7 +633,7 @@ async function deleteDevice(id) {
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, networks, settings });
+        window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
     }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }

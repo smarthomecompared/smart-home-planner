@@ -47,6 +47,7 @@ window.DeviceDiagram = (() => {
     let areas = [];
     let floors = [];
     let networks = [];
+    let isps = [];
     let settings = {};
     let filteredDevices = null;
     let cy = null;
@@ -186,7 +187,8 @@ window.DeviceDiagram = (() => {
             deviceAreaMode: 'installed',
             powerLabelMode: 'mean',
             showDeviceIcons: true,
-            dimFilteredDevices: true
+            dimFilteredDevices: true,
+            showInternet: true
         };
     }
 
@@ -205,7 +207,8 @@ window.DeviceDiagram = (() => {
             deviceAreaMode: value.deviceAreaMode === 'controlled' ? 'controlled' : defaults.deviceAreaMode,
             powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode,
             showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons,
-            dimFilteredDevices: value.dimFilteredDevices !== undefined ? Boolean(value.dimFilteredDevices) : defaults.dimFilteredDevices
+            dimFilteredDevices: value.dimFilteredDevices !== undefined ? Boolean(value.dimFilteredDevices) : defaults.dimFilteredDevices,
+            showInternet: value.showInternet !== undefined ? Boolean(value.showInternet) : defaults.showInternet
         };
     }
 
@@ -220,7 +223,8 @@ window.DeviceDiagram = (() => {
             deviceAreaMode: document.getElementById('device-area-mode')?.value || 'installed',
             powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean',
             showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true),
-            dimFilteredDevices: Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true)
+            dimFilteredDevices: Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true),
+            showInternet: Boolean(document.getElementById('diagram-show-internet')?.checked ?? true)
         };
     }
 
@@ -247,6 +251,8 @@ window.DeviceDiagram = (() => {
         if (showIconsToggle) showIconsToggle.checked = settings.showDeviceIcons;
         const dimFilteredToggle = document.getElementById('diagram-dim-filtered');
         if (dimFilteredToggle) dimFilteredToggle.checked = settings.dimFilteredDevices;
+        const showInternetToggle = document.getElementById('diagram-show-internet');
+        if (showInternetToggle) showInternetToggle.checked = settings.showInternet;
         syncDiagramLegend();
     }
 
@@ -311,6 +317,7 @@ window.DeviceDiagram = (() => {
         areas = Array.isArray(options.areas) ? options.areas : [];
         floors = Array.isArray(options.floors) ? options.floors : [];
         networks = Array.isArray(options.networks) ? options.networks : [];
+        isps = Array.isArray(options.isps) ? options.isps : [];
         settings = options.settings || {};
         filteredDevices = Array.isArray(options.filteredDevices) ? options.filteredDevices : null;
 
@@ -343,6 +350,7 @@ window.DeviceDiagram = (() => {
             areas: data.areas || [],
             floors: data.floors || [],
             networks: data.networks || [],
+            isps: data.isps || [],
             settings: await loadSettings()
         });
     }
@@ -359,6 +367,9 @@ window.DeviceDiagram = (() => {
         }
         if (Array.isArray(next.networks)) {
             networks = next.networks;
+        }
+        if (Array.isArray(next.isps)) {
+            isps = next.isps;
         }
         if (next.settings) {
             settings = next.settings;
@@ -1673,6 +1684,10 @@ window.DeviceDiagram = (() => {
     if (showIconsToggle) {
         showIconsToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const showInternetToggle = document.getElementById('diagram-show-internet');
+    if (showInternetToggle) {
+        showInternetToggle.addEventListener('change', handleDiagramConnectionToggleChange);
+    }
     const dimFilteredToggle = document.getElementById('diagram-dim-filtered');
     if (dimFilteredToggle) {
         dimFilteredToggle.addEventListener('change', handleDiagramConnectionToggleChange);
@@ -1907,6 +1922,9 @@ function updateAreaFloorSelectability() {
     if (cy) {
         const nodes = cy.nodes('[type="device"]');
         const floorsAndAreas = cy.nodes('node[type="floor"], node[type="area"]');
+        // ISP clouds are only grabified, never locked: positionIspNodes() must
+        // still be able to move the auto-positioned ones programmatically.
+        const ispNodes = cy.nodes('[type="internet"]');
         if (isLayoutEditable) {
             if (!cachedPositions) {
                 cachedPositionsUseBackground = hasDiagramBackground();
@@ -1916,11 +1934,13 @@ function updateAreaFloorSelectability() {
             nodes.grabify();
             floorsAndAreas.unlock();
             floorsAndAreas.grabify();
+            ispNodes.grabify();
         } else {
             nodes.lock();
             nodes.ungrabify();
             floorsAndAreas.lock();
             floorsAndAreas.ungrabify();
+            ispNodes.ungrabify();
         }
         lockBackgroundNode();
         updateAreaFloorSelectability();
@@ -2365,6 +2385,42 @@ function initializeCytoscape() {
                     'text-background-shape': 'roundrectangle'
                 }
             },
+            // Internet provider clouds and WAN links
+            {
+                selector: 'node[type="internet"]',
+                style: {
+                    'background-color': 'rgba(0, 0, 0, 0)',
+                    'background-opacity': 0,
+                    'border-width': 0,
+                    'overlay-opacity': 0,
+                    'background-image': 'data(cardSvg)',
+                    'background-fit': 'contain',
+                    'background-repeat': 'no-repeat',
+                    'shape': 'rectangle',
+                    'width': 'data(width)',
+                    'height': 'data(height)',
+                    'label': '',
+                    'text-opacity': 0
+                }
+            },
+            {
+                selector: 'edge[connectionType="wan"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#7e8595',
+                    'target-arrow-shape': 'none',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f7f8fa',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
+            },
             // Trace path highlight (kept after the per-type edge styles so the
             // accent color wins over the connection-type line colors)
             {
@@ -2425,6 +2481,16 @@ function initializeCytoscape() {
                     'underlay-shape': 'roundrectangle'
                 }
             },
+            // Devices that keep LAN connectivity but lose their path to internet
+            {
+                selector: 'node.sim-no-internet',
+                style: {
+                    'underlay-color': '#f5a524',
+                    'underlay-opacity': 0.22,
+                    'underlay-padding': 4,
+                    'underlay-shape': 'roundrectangle'
+                }
+            },
             {
                 selector: 'edge.sim-dead',
                 style: {
@@ -2475,6 +2541,17 @@ function initializeCytoscape() {
         }
     });
 
+    cy.on('tap', 'node[type="internet"]', function(evt) {
+        if (canResizeDevices()) return;
+        hideResizeHandles();
+        showIspTooltip(evt.target);
+    });
+
+    // Clouds follow their gateway while it is dragged in layout edit mode
+    cy.on('position', 'node[type="device"]', (event) => {
+        repositionIspNodesForGateway(event.target.id());
+    });
+
     cy.on('drag', 'node[type="device"]', (event) => {
         if (activeResizeNodeId && event.target.id() === activeResizeNodeId) {
             scheduleResizeOverlayUpdate();
@@ -2486,6 +2563,12 @@ function initializeCytoscape() {
         scheduleResizeOverlayUpdate();
     });
 
+    // Dragging a cloud detaches it from auto-follow and marks the layout dirty
+    cy.on('dragfree', 'node[type="internet"]', (event) => {
+        event.target.data('hasSavedPosition', 'true');
+        markLayoutDirty();
+    });
+
 
 
     // Allow panning by dragging on nodes when not in edit mode (devices), always for background/areas/floors
@@ -2495,7 +2578,7 @@ function initializeCytoscape() {
         lastPanPosition = event.renderedPosition;
     });
 
-    cy.on('tapstart', 'node[type="area"], node[type="floor"], node[type="diagram-background"]', (event) => {
+    cy.on('tapstart', 'node[type="area"], node[type="floor"], node[type="diagram-background"], node[type="internet"]', (event) => {
         if (isLayoutEditable && event.target && event.target.data('type') !== 'diagram-background') {
             return;
         }
@@ -2905,6 +2988,93 @@ function showDeviceTooltip(node) {
         top = Math.max(margin, Math.min(top, window.innerHeight - tooltipRect.height - margin));
         tooltip.style.left = left + 'px';
         tooltip.style.top = top + 'px';
+    }
+}
+
+// Minimal tooltip for ISP cloud nodes (they are not devices: no edit page)
+function showIspTooltip(node) {
+    hideDeviceTooltip();
+
+    const isp = getIspByNodeId(node.id());
+    if (!isp) return;
+
+    const renderedPosition = node.renderedPosition();
+    const tooltip = document.createElement('div');
+    tooltip.id = 'device-tooltip';
+    tooltip.className = 'device-tooltip';
+
+    const name = isp.name || 'Internet';
+    const technologyLabel = typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
+    const download = formatIspSpeedValue(isp.downloadSpeed);
+    const upload = formatIspSpeedValue(isp.uploadSpeed);
+    const gatewayNode = cy ? cy.$id(String(node.data('gatewayId') || '')) : null;
+    const gatewayName = gatewayNode && !gatewayNode.empty() ? String(gatewayNode.data('label') || '') : '';
+    const gatewayAuto = node.data('gatewayAuto') === 'true';
+    const isSimulatedDown = simulatedFailedDeviceIds.has(node.id());
+
+    const detailRows = [];
+    if (technologyLabel) detailRows.push(['Technology', technologyLabel]);
+    if (download) detailRows.push(['Download', `${download} Mbps`]);
+    if (upload) detailRows.push(['Upload', `${upload} Mbps`]);
+    if (gatewayName) detailRows.push(['Gateway', gatewayAuto ? `${gatewayName} (auto)` : gatewayName]);
+    if (isp.notes) detailRows.push(['Notes', isp.notes]);
+
+    const detailsHtml = detailRows.map(([label, value]) => `
+            <div class="tooltip-row">
+                <span class="tooltip-label">${escapeHtml(label)}</span>
+                <span class="tooltip-value">${escapeHtml(value)}</span>
+            </div>`).join('');
+
+    tooltip.innerHTML = `
+        <div class="tooltip-header">
+            <span class="tooltip-device-icon tooltip-isp-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">${getIspIconSvgContent(isp.technology)}</svg>
+            </span>
+            <span class="tooltip-title">${escapeHtml(name)}</span>
+            ${isp.role === 'backup' ? '<span class="status-badge status-pending">Backup</span>' : ''}
+            <button class="tooltip-close-btn" onclick="document.getElementById('device-tooltip').remove()">×</button>
+        </div>
+        <div class="tooltip-body">
+            <div class="tooltip-row">
+                <span class="tooltip-label">Type</span>
+                <span class="tooltip-value">Internet provider</span>
+            </div>
+            ${detailsHtml}
+        </div>
+        <div class="tooltip-actions">
+            <button class="tooltip-action-btn tooltip-action-danger tooltip-simulate-btn" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4v7"></path>
+                    <path d="M7.5 6.5a7 7 0 1 0 9 0"></path>
+                </svg>
+                ${isSimulatedDown ? 'Restore provider' : 'Simulate outage'}
+            </button>
+        </div>
+    `;
+
+    const tooltipRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
+    tooltipRoot.appendChild(tooltip);
+
+    const simulateButton = tooltip.querySelector('.tooltip-simulate-btn');
+    if (simulateButton) {
+        simulateButton.addEventListener('click', () => {
+            hideDeviceTooltip();
+            toggleSimulatedFailure(node.id());
+        });
+    }
+
+    bindTooltipDismiss(tooltip);
+
+    if (window.innerWidth <= 640) {
+        tooltip.classList.add('is-centered');
+        tooltip.style.left = '50%';
+        tooltip.style.top = '50%';
+        tooltip.style.transform = 'translate(-50%, -50%)';
+    } else {
+        tooltip.classList.remove('is-centered');
+        tooltip.style.transform = '';
+        tooltip.style.left = (renderedPosition.x + 20) + 'px';
+        tooltip.style.top = (renderedPosition.y + 20) + 'px';
     }
 }
 
@@ -3363,6 +3533,25 @@ async function renderNetwork(options = {}) {
         yOffset += floorHeight + floorSpacing;
     }
     
+    // Add Internet provider clouds attached to their gateway devices. Clouds
+    // with a user-saved position keep it; the rest auto-follow their gateway.
+    const showInternet = Boolean(document.getElementById('diagram-show-internet')?.checked ?? true);
+    if (showInternet) {
+        buildIspDiagramElements(filteredDevicesList).forEach((element) => {
+            if (element.group === 'nodes') {
+                const resolved = resolveSavedPosition(element.data.id, null);
+                if (resolved) {
+                    element.position = resolved;
+                    element.data.hasSavedPosition = 'true';
+                } else if (backgroundNormalizedPositions.has(element.data.id)) {
+                    // Normalized position captured by the resolver; applied after layout.
+                    element.data.hasSavedPosition = 'true';
+                }
+            }
+            elements.push(element);
+        });
+    }
+
     // Add edges for connections
     const processedConnections = new Set();
     
@@ -3514,7 +3703,8 @@ async function renderNetwork(options = {}) {
     hideEmptyMapMessage();
     cy.elements().remove();
     cy.add(elements);
-    
+    positionIspNodes();
+
     // Run layout
     cy.layout({
         name: 'preset',
@@ -3555,6 +3745,7 @@ async function renderNetwork(options = {}) {
     await setLayoutEditable(isLayoutEditable);
     lockBackgroundNode();
     updateAreaFloorSelectability();
+    positionIspNodes();
     applyFilterDimming(matchedDeviceIds);
     reapplyDiagramAnalysis();
     if (hasLegacyAbsoluteBackgroundPositions && diagramBackgroundImageSize) {
@@ -3569,6 +3760,12 @@ function applyFilterDimming(matchedIds) {
         cy.nodes('node[type="device"]').forEach((node) => {
             node.toggleClass('filter-dimmed', matchedIds ? !matchedIds.has(node.id()) : false);
         });
+        // ISP clouds follow their gateway's dimming state
+        cy.nodes('node[type="internet"]').forEach((node) => {
+            const gateway = cy.$id(String(node.data('gatewayId') || ''));
+            const dimmed = Boolean(matchedIds) && (gateway.empty() || gateway.hasClass('filter-dimmed'));
+            node.toggleClass('filter-dimmed', dimmed);
+        });
         cy.edges().forEach((edge) => {
             const dimmed = edge.source().hasClass('filter-dimmed') || edge.target().hasClass('filter-dimmed');
             edge.toggleClass('filter-dimmed', dimmed);
@@ -3576,11 +3773,187 @@ function applyFilterDimming(matchedIds) {
     });
 }
 
+// === Internet providers (ISP clouds) ===
+// ISPs render as synthetic diagram-only nodes attached to their gateway device.
+// They are never part of the devices store: no table/grid presence, no filters.
+
+const ISP_NODE_ID_PREFIX = 'isp-node-';
+const ISP_NODE_HEIGHT = 52;
+const ISP_NODE_VERTICAL_GAP = 110;
+const ISP_GATEWAY_TYPE_HINTS = new Set(['routers', 'modems', 'gateways']);
+
+function getIspByNodeId(nodeId) {
+    const ispId = String(nodeId || '').slice(ISP_NODE_ID_PREFIX.length);
+    return isps.find(isp => isp && isp.id === ispId) || null;
+}
+
+function countConnectedPorts(device) {
+    if (!Array.isArray(device?.ports)) return 0;
+    return device.ports.filter(port => port && port.connectedTo).length;
+}
+
+// Explicit gateway wins; otherwise fall back to the most-connected router/modem.
+function resolveIspGatewayDevice(isp, devicesList) {
+    const explicitId = String(isp?.gatewayDeviceId || '').trim();
+    if (explicitId) {
+        return { device: devicesList.find(d => d.id === explicitId) || null, auto: false };
+    }
+    const candidates = devicesList.filter((device) => {
+        const type = typeof normalizeOptionValue === 'function'
+            ? normalizeOptionValue(device?.type)
+            : String(device?.type || '').trim().toLowerCase();
+        return ISP_GATEWAY_TYPE_HINTS.has(type);
+    });
+    if (!candidates.length) {
+        return { device: null, auto: true };
+    }
+    candidates.sort((a, b) => countConnectedPorts(b) - countConnectedPorts(a));
+    return { device: candidates[0], auto: true };
+}
+
+function formatIspSpeedValue(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function buildIspSubtitle(isp) {
+    const parts = [];
+    const technologyLabel = typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
+    if (technologyLabel) parts.push(technologyLabel);
+    const download = formatIspSpeedValue(isp.downloadSpeed);
+    const upload = formatIspSpeedValue(isp.uploadSpeed);
+    if (download && upload) {
+        parts.push(`${download}/${upload} Mbps`);
+    } else if (download) {
+        parts.push(`${download} Mbps`);
+    } else if (upload) {
+        parts.push(`${upload} Mbps up`);
+    }
+    return parts.join(' · ');
+}
+
+function getIspIconSvgContent(technology) {
+    const normalized = String(technology || '').trim().toLowerCase();
+    if (normalized === '4g-5g' || normalized === 'fixed-wireless') {
+        return '<path d="M12 20v-7"></path><path d="M9.2 10.2a4 4 0 0 1 5.6 0"></path><path d="M6.7 7.7a7.5 7.5 0 0 1 10.6 0"></path><circle cx="12" cy="13" r="0.6" fill="currentColor"></circle>';
+    }
+    if (normalized === 'satellite') {
+        return '<path d="M5.5 9.5a9 9 0 0 0 9 9l3.2-3.2a9 9 0 0 0-9-9z"></path><path d="M12.5 16.5 15 19"></path><path d="M9 6l9 9"></path>';
+    }
+    return '<path d="M7.5 17.5a4 4 0 1 1 .7-7.95A5.5 5.5 0 0 1 18.9 11a3.5 3.5 0 0 1 -1.4 6.5z"></path>';
+}
+
+function buildIspCardSvg({ name, subtitle, technology, width, height }) {
+    const safeName = escapeSvgText(name);
+    const safeSubtitle = escapeSvgText(subtitle || '');
+    const radius = (height / 2) - 1;
+    const iconSize = 20;
+    const iconX = 15;
+    const iconY = (height - iconSize) / 2;
+    const textX = iconX + iconSize + 9;
+    const nameY = safeSubtitle ? height / 2 - 6 : height / 2;
+    const subtitleY = height / 2 + 11;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="${radius}" ry="${radius}" fill="#17191f" stroke="#2b303b" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <g transform="translate(${iconX}, ${iconY}) scale(${iconSize / 24})" fill="none" stroke="#b0b6c2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${getIspIconSvgContent(technology)}</g>
+    <text x="${textX}" y="${nameY}" fill="#f4f5f7" font-family="Lato, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" font-weight="700" dominant-baseline="central">${safeName}</text>
+    ${safeSubtitle ? `<text x="${textX}" y="${subtitleY}" fill="#7e8595" font-family="Lato, 'Helvetica Neue', Arial, sans-serif" font-size="10" dominant-baseline="central">${safeSubtitle}</text>` : ''}
+</svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function buildIspDiagramElements(devicesList) {
+    const ispElements = [];
+    if (!Array.isArray(isps) || !isps.length) return ispElements;
+    isps.forEach((isp) => {
+        if (!isp || !isp.id) return;
+        const { device: gateway, auto } = resolveIspGatewayDevice(isp, devicesList);
+        if (!gateway) return;
+        const name = String(isp.name || 'Internet').trim() || 'Internet';
+        const displayName = name.length > 22 ? `${name.slice(0, 21)}…` : name;
+        let subtitle = buildIspSubtitle(isp);
+        if (subtitle.length > 30) subtitle = `${subtitle.slice(0, 29)}…`;
+        const textUnits = Math.max(displayName.length * 7, subtitle.length * 5.4);
+        const width = Math.round(clampNumber(62 + textUnits, 132, 250));
+        const nodeId = `${ISP_NODE_ID_PREFIX}${isp.id}`;
+        ispElements.push({
+            group: 'nodes',
+            data: {
+                id: nodeId,
+                type: 'internet',
+                label: name,
+                ispId: isp.id,
+                gatewayId: gateway.id,
+                gatewayAuto: auto ? 'true' : 'false',
+                width: width,
+                height: ISP_NODE_HEIGHT,
+                cardSvg: buildIspCardSvg({
+                    name: displayName,
+                    subtitle,
+                    technology: isp.technology,
+                    width,
+                    height: ISP_NODE_HEIGHT
+                })
+            },
+            selectable: false,
+            grabbable: false
+        });
+        ispElements.push({
+            group: 'edges',
+            data: {
+                id: `wan-${isp.id}`,
+                source: nodeId,
+                target: gateway.id,
+                connectionType: 'wan',
+                label: 'WAN'
+            }
+        });
+    });
+    return ispElements;
+}
+
+// Keep each cloud floating above its gateway; clouds sharing a gateway spread
+// out. Clouds the user positioned by hand (saved or dragged) are left alone.
+function positionIspNodes() {
+    if (!cy) return;
+    const ispNodes = cy.nodes('node[type="internet"]').filter((node) => node.data('hasSavedPosition') !== 'true');
+    if (!ispNodes.length) return;
+    const groups = new Map();
+    ispNodes.forEach((node) => {
+        const gatewayId = String(node.data('gatewayId') || '');
+        if (!groups.has(gatewayId)) groups.set(gatewayId, []);
+        groups.get(gatewayId).push(node);
+    });
+    groups.forEach((nodes, gatewayId) => {
+        const gateway = cy.$id(gatewayId);
+        if (gateway.empty()) return;
+        const gatewayPosition = gateway.position();
+        const gatewayHeight = gateway.height() || 0;
+        let xCursor = 0;
+        const totalWidth = nodes.reduce((sum, node) => sum + (node.data('width') || 0), 0) + (nodes.length - 1) * 30;
+        nodes.forEach((node) => {
+            const nodeWidth = node.data('width') || 0;
+            const x = gatewayPosition.x - totalWidth / 2 + xCursor + nodeWidth / 2;
+            node.position({
+                x: x,
+                y: gatewayPosition.y - gatewayHeight / 2 - ISP_NODE_VERTICAL_GAP
+            });
+            xCursor += nodeWidth + 30;
+        });
+    });
+}
+
+function repositionIspNodesForGateway(gatewayId) {
+    if (!cy || !gatewayId) return;
+    const hasClouds = cy.nodes('node[type="internet"]').some((node) => String(node.data('gatewayId') || '') === gatewayId);
+    if (hasClouds) positionIspNodes();
+}
+
 // === Diagram analysis: trace path & failure simulation ===
 // Both features operate on the connections currently visible on the diagram
 // (hidden connection layers and filtered-out devices are not traversed).
 
-const NETWORK_ANALYSIS_CONNECTION_TYPES = new Set(['ethernet', 'usb', 'wifi', 'zigbee', 'zwave']);
+const NETWORK_ANALYSIS_CONNECTION_TYPES = new Set(['ethernet', 'usb', 'wifi', 'zigbee', 'zwave', 'wan']);
 const WIRELESS_CONNECTION_TYPES = new Set(['wifi', 'zigbee', 'zwave']);
 
 function isNetworkAnalysisEdge(edge) {
@@ -3593,11 +3966,13 @@ function isNetworkAnalysisEdge(edge) {
 // edges are ambiguous and treated as undirected unless includeBidirectional is false.
 function getUpstreamNetworkLinks(nodeId, options = {}) {
     const includeBidirectional = options.includeBidirectional !== false;
+    const includeWan = options.includeWan !== false;
     const links = [];
     if (!cy) return links;
     cy.$id(nodeId).connectedEdges().forEach((edge) => {
         if (!isNetworkAnalysisEdge(edge)) return;
         const type = String(edge.data('connectionType') || '');
+        if (!includeWan && type === 'wan') return;
         const source = edge.data('source');
         const target = edge.data('target');
         if (WIRELESS_CONNECTION_TYPES.has(type)) {
@@ -3609,6 +3984,37 @@ function getUpstreamNetworkLinks(nodeId, options = {}) {
         }
     });
     return links;
+}
+
+// Undirected BFS over the visible network edges from the given start nodes,
+// returning the set of reachable node ids. blockedIds are treated as removed.
+function collectReachableDeviceIds(startIds, options = {}) {
+    const includeWan = options.includeWan !== false;
+    const blockedIds = options.blockedIds || new Set();
+    const reachable = new Set();
+    const queue = [];
+    startIds.forEach((id) => {
+        if (blockedIds.has(id)) return;
+        reachable.add(id);
+        queue.push(id);
+    });
+    while (queue.length) {
+        const currentId = queue.shift();
+        cy.$id(currentId).connectedEdges().forEach((edge) => {
+            const type = String(edge.data('connectionType') || '');
+            if (!NETWORK_ANALYSIS_CONNECTION_TYPES.has(type)) return;
+            if (!includeWan && type === 'wan') return;
+            const otherId = edge.data('source') === currentId ? edge.data('target') : edge.data('source');
+            if (reachable.has(otherId) || blockedIds.has(otherId)) return;
+            const otherNode = cy.$id(otherId);
+            if (otherNode.empty()) return;
+            const otherType = otherNode.data('type');
+            if (otherType !== 'device' && otherType !== 'internet') return;
+            reachable.add(otherId);
+            queue.push(otherId);
+        });
+    }
+    return reachable;
 }
 
 // Highlight the full upstream chain from a device to its network root(s),
@@ -3631,7 +4037,7 @@ function traceDevicePath(deviceId) {
     }
     tracedDeviceId = deviceId;
     cy.batch(() => {
-        cy.nodes('node[type="device"]').forEach((node) => {
+        cy.nodes('node[type="device"], node[type="internet"]').forEach((node) => {
             const onPath = pathNodeIds.has(node.id());
             node.toggleClass('trace-path', onPath);
             node.toggleClass('trace-source', node.id() === deviceId);
@@ -3674,10 +4080,12 @@ function toggleSimulatedFailure(deviceId) {
     }
 }
 
-// Mark the simulated-failed devices and recompute reachability from the network
-// roots (devices with no unambiguous upstream link). Recomputing from the roots —
-// instead of propagating downstream from the failed node — keeps devices with a
-// redundant live path unaffected and handles cascading failures for free.
+// Mark the simulated-failed devices/providers and recompute reachability from
+// the network roots. Recomputing from the roots — instead of propagating
+// downstream from the failed node — keeps devices with a redundant live path
+// unaffected and handles cascading failures for free. Two tiers:
+// - offline (red): no LAN path to a root anymore
+// - no internet (orange): LAN still works, but no path to any live ISP cloud
 function applyFailureSimulation() {
     if (!cy) return;
     clearTracePath({ updateBanner: false });
@@ -3689,48 +4097,53 @@ function applyFailureSimulation() {
         return;
     }
 
-    const rootIds = [];
+    // LAN roots: devices with no unambiguous upstream link over LAN connections
+    // (WAN links to ISP clouds don't count — the LAN works without internet).
+    const lanRootIds = [];
     cy.nodes('node[type="device"]').forEach((node) => {
-        if (!getUpstreamNetworkLinks(node.id(), { includeBidirectional: false }).length) {
-            rootIds.push(node.id());
+        if (!getUpstreamNetworkLinks(node.id(), { includeBidirectional: false, includeWan: false }).length) {
+            lanRootIds.push(node.id());
         }
     });
 
-    // Network links carry traffic both ways regardless of the drawn arrow, so
-    // reachability traverses them undirected, skipping failed devices.
-    const reachable = new Set();
-    const queue = [];
-    rootIds.forEach((id) => {
-        if (simulatedFailedDeviceIds.has(id)) return;
-        reachable.add(id);
-        queue.push(id);
+    const lanReachable = collectReachableDeviceIds(lanRootIds, {
+        includeWan: false,
+        blockedIds: simulatedFailedDeviceIds
     });
-    while (queue.length) {
-        const currentId = queue.shift();
-        cy.$id(currentId).connectedEdges().forEach((edge) => {
-            if (!isNetworkAnalysisEdge(edge)) return;
-            const otherId = edge.data('source') === currentId ? edge.data('target') : edge.data('source');
-            if (reachable.has(otherId) || simulatedFailedDeviceIds.has(otherId)) return;
-            const otherNode = cy.$id(otherId);
-            if (otherNode.empty() || otherNode.data('type') !== 'device') return;
-            reachable.add(otherId);
-            queue.push(otherId);
+
+    const offlineIds = new Set();
+    cy.nodes('node[type="device"]').forEach((node) => {
+        const id = node.id();
+        if (!simulatedFailedDeviceIds.has(id) && !lanReachable.has(id)) {
+            offlineIds.add(id);
+        }
+    });
+
+    // Internet tier: a device "loses internet" when it had a path to an ISP
+    // cloud before the failures but not after. Devices that never had internet
+    // (standalone sensors, isolated meshes) are left untouched.
+    const ispNodes = cy.nodes('node[type="internet"]');
+    const noInternetIds = new Set();
+    if (ispNodes.length) {
+        const allIspIds = ispNodes.map((node) => node.id());
+        const liveIspIds = allIspIds.filter((id) => !simulatedFailedDeviceIds.has(id));
+        const baselineInternet = collectReachableDeviceIds(allIspIds, { blockedIds: new Set() });
+        const blocked = new Set([...simulatedFailedDeviceIds, ...offlineIds]);
+        const currentInternet = collectReachableDeviceIds(liveIspIds, { blockedIds: blocked });
+        baselineInternet.forEach((id) => {
+            if (simulatedFailedDeviceIds.has(id) || offlineIds.has(id)) return;
+            if (cy.$id(id).data('type') !== 'device') return;
+            if (!currentInternet.has(id)) noInternetIds.add(id);
         });
     }
 
-    const downIds = new Set(simulatedFailedDeviceIds);
-    let affectedCount = 0;
+    const downIds = new Set([...simulatedFailedDeviceIds, ...offlineIds]);
     cy.batch(() => {
-        cy.nodes('node[type="device"]').forEach((node) => {
+        cy.nodes('node[type="device"], node[type="internet"]').forEach((node) => {
             const id = node.id();
-            const failed = simulatedFailedDeviceIds.has(id);
-            const affected = !failed && !reachable.has(id);
-            if (affected) {
-                affectedCount += 1;
-                downIds.add(id);
-            }
-            node.toggleClass('sim-failed', failed);
-            node.toggleClass('sim-affected', affected);
+            node.toggleClass('sim-failed', simulatedFailedDeviceIds.has(id));
+            node.toggleClass('sim-affected', offlineIds.has(id));
+            node.toggleClass('sim-no-internet', noInternetIds.has(id));
         });
         cy.edges().forEach((edge) => {
             const dead = downIds.has(edge.data('source')) || downIds.has(edge.data('target'));
@@ -3741,21 +4154,25 @@ function applyFailureSimulation() {
     let subject;
     if (simulatedFailedDeviceIds.size === 1) {
         const failedId = simulatedFailedDeviceIds.values().next().value;
-        const device = devices.find(d => d.id === failedId);
-        subject = device ? (device.name || device.model || 'Unnamed Device') : 'device';
+        subject = `Simulating failure of ${String(cy.$id(failedId).data('label') || 'device')}`;
     } else {
-        subject = `${simulatedFailedDeviceIds.size} devices`;
+        subject = `Simulating ${simulatedFailedDeviceIds.size} failures`;
     }
-    const impact = affectedCount > 0
-        ? `${affectedCount} device${affectedCount === 1 ? '' : 's'} affected`
-        : 'no other devices affected';
-    showAnalysisBanner('failure', `Simulating failure of ${subject} — ${impact}`);
+    const impactParts = [];
+    if (offlineIds.size) {
+        impactParts.push(`${offlineIds.size} device${offlineIds.size === 1 ? '' : 's'} offline`);
+    }
+    if (noInternetIds.size) {
+        impactParts.push(`${noInternetIds.size} without internet`);
+    }
+    const impact = impactParts.length ? impactParts.join(' · ') : 'no other devices affected';
+    showAnalysisBanner('failure', `${subject} — ${impact}`);
 }
 
 function clearFailureSimulation(options = {}) {
     simulatedFailedDeviceIds.clear();
     if (cy) {
-        cy.elements().removeClass('sim-failed sim-affected sim-dead');
+        cy.elements().removeClass('sim-failed sim-affected sim-no-internet sim-dead');
     }
     if (options.updateBanner !== false) {
         hideAnalysisBanner('failure');
@@ -4304,7 +4721,18 @@ async function savePositions() {
         if (!serialized) return;
         positions[node.id()] = serialized;
     });
-    
+    // Persist only user-positioned ISP clouds; auto-positioned ones keep
+    // following their gateway on every render.
+    cy.nodes('[type="internet"]').forEach(node => {
+        if (node.data('hasSavedPosition') !== 'true') {
+            delete positions[node.id()];
+            return;
+        }
+        const serialized = serializeDevicePosition(node);
+        if (!serialized) return;
+        positions[node.id()] = serialized;
+    });
+
     await savePositionsToStore(positions, useBackground);
     hasUnsavedLayoutChanges = false;
     cachedPositions = null;

@@ -106,6 +106,20 @@
                                 </span>
                                 <span class="settings-menu-indicator" aria-hidden="true"></span>
                             </button>
+                            <button class="settings-menu-btn" id="settings-tab-isps" role="tab" aria-controls="settings-panel-isps" type="button" data-settings-panel-target="isps" aria-selected="false">
+                                <span class="settings-menu-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <path d="M3 12h18"></path>
+                                        <path d="M12 3a13.5 13.5 0 0 1 0 18"></path>
+                                        <path d="M12 3a13.5 13.5 0 0 0 0 18"></path>
+                                    </svg>
+                                </span>
+                                <span class="settings-menu-label">
+                                    <span class="settings-menu-title">Internet Providers</span>
+                                </span>
+                                <span class="settings-menu-indicator" aria-hidden="true"></span>
+                            </button>
                             <button class="settings-menu-btn" id="settings-tab-device-options" role="tab" aria-controls="settings-panel-device-options" type="button" data-settings-panel-target="device-options" aria-selected="false">
                                 <span class="settings-menu-icon" aria-hidden="true">
                                     <svg viewBox="0 0 24 24">
@@ -244,6 +258,21 @@
                                 </div>
 
                                 <div class="networks-list" id="networks-list"></div>
+                            </div>
+                        </div>
+
+                        <div class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-isps" data-settings-panel="isps" id="settings-panel-isps" hidden>
+                            <div class="settings-section">
+                                <h3 class="settings-section-title">Internet Providers</h3>
+                                <p class="settings-description">Manage your internet service providers. Each provider appears as a cloud on the Diagram view, attached to its gateway device.</p>
+
+                                <div class="networks-grid">
+                                    <div class="form-group networks-actions">
+                                        <button class="btn btn-primary" id="isp-add-btn">Add Provider</button>
+                                    </div>
+                                </div>
+
+                                <div class="networks-list" id="isps-list"></div>
                             </div>
                         </div>
 
@@ -573,6 +602,56 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" type="button" id="network-modal-cancel">Cancel</button>
                 <button class="btn btn-primary" type="button" id="network-modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal is-hidden" id="isp-modal" aria-hidden="true">
+        <div class="modal-overlay" id="isp-modal-overlay"></div>
+        <div class="modal-content isp-modal-content" role="dialog" aria-modal="true" aria-labelledby="isp-modal-title">
+            <div class="modal-header">
+                <div class="modal-title" id="isp-modal-title">Add Provider</div>
+            </div>
+            <div class="form-group">
+                <label for="isp-name-input">Provider Name</label>
+                <input type="text" id="isp-name-input" maxlength="80" placeholder="e.g., Fibertel">
+            </div>
+            <div class="isp-modal-grid">
+                <div class="form-group">
+                    <label for="isp-technology-select">Technology</label>
+                    <select id="isp-technology-select">
+                        <option value="">Select technology</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="isp-role-select">Role</label>
+                    <select id="isp-role-select">
+                        <option value="primary">Primary</option>
+                        <option value="backup">Backup</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="isp-download-input">Download (Mbps)</label>
+                    <input type="number" id="isp-download-input" min="0" step="1" placeholder="e.g., 300">
+                </div>
+                <div class="form-group">
+                    <label for="isp-upload-input">Upload (Mbps)</label>
+                    <input type="number" id="isp-upload-input" min="0" step="1" placeholder="e.g., 50">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="isp-gateway-select">Gateway Device</label>
+                <select id="isp-gateway-select">
+                    <option value="">Auto-detect (router/modem)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="isp-notes-input">Notes</label>
+                <textarea id="isp-notes-input" rows="2" placeholder="Optional notes"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" type="button" id="isp-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" type="button" id="isp-modal-save">Save</button>
             </div>
         </div>
     </div>

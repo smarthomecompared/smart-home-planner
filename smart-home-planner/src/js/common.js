@@ -63,12 +63,44 @@ function buildNetwork(name) {
     };
 }
 
+const ISP_TECHNOLOGY_OPTIONS = [
+    { value: 'fiber', label: 'Fiber' },
+    { value: 'cable', label: 'Cable' },
+    { value: 'dsl', label: 'DSL' },
+    { value: '4g-5g', label: 'Cellular (4G/5G)' },
+    { value: 'satellite', label: 'Satellite' },
+    { value: 'fixed-wireless', label: 'Fixed Wireless' },
+    { value: 'other', label: 'Other' }
+];
+
+function getIspTechnologyLabel(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const option = ISP_TECHNOLOGY_OPTIONS.find(item => item.value === normalized);
+    return option ? option.label : '';
+}
+
+function buildIsp(name, overrides = {}) {
+    return {
+        id: `isp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: name,
+        technology: '',
+        downloadSpeed: null,
+        uploadSpeed: null,
+        gatewayDeviceId: '',
+        role: 'primary',
+        notes: '',
+        createdAt: new Date().toISOString(),
+        ...overrides
+    };
+}
+
 function buildDefaultStorage() {
     return {
         devices: [],
         testCases: [],
         testCaseRuns: [],
         networks: [],
+        isps: [],
         excluded_devices: [],
         settings: null,
         mapPositions: null,
@@ -88,6 +120,7 @@ function mergeStorage(raw) {
         testCases: Array.isArray(source.testCases) ? source.testCases : base.testCases,
         testCaseRuns: Array.isArray(source.testCaseRuns) ? source.testCaseRuns : base.testCaseRuns,
         networks: Array.isArray(source.networks) ? source.networks : base.networks,
+        isps: Array.isArray(source.isps) ? source.isps : base.isps,
         excluded_devices: excludedDevices
             .map((value) => String(value || '').trim())
             .filter(Boolean),
@@ -439,6 +472,7 @@ async function loadData() {
     const testCases = Array.isArray(storage.testCases) ? storage.testCases : [];
     const testCaseRuns = Array.isArray(storage.testCaseRuns) ? storage.testCaseRuns : [];
     let networks = Array.isArray(storage.networks) ? storage.networks : [];
+    let isps = Array.isArray(storage.isps) ? storage.isps : [];
     const rawAreas = await loadHaRegistry(HA_AREAS_API_URL);
     const rawFloors = await loadHaRegistry(HA_FLOORS_API_URL);
     const rawLabels = await loadHaRegistry(HA_LABELS_API_URL);
@@ -449,6 +483,11 @@ async function loadData() {
 
     if (!Array.isArray(networks) || networks.length === 0) {
         networks = [buildNetwork('vlan0')];
+        didUpdate = true;
+    }
+
+    if (!Array.isArray(isps) || isps.length === 0) {
+        isps = [buildIsp('Internet')];
         didUpdate = true;
     }
 
@@ -476,7 +515,8 @@ async function loadData() {
     if (didUpdate) {
         await patchStorage({
             devices,
-            networks
+            networks,
+            isps
         });
     }
 
@@ -487,6 +527,7 @@ async function loadData() {
         areas: areas,
         floors: floors,
         networks: networks,
+        isps: isps,
         labels: labels
     };
 }

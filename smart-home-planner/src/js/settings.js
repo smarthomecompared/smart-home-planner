@@ -5,6 +5,10 @@ let settings = {};
 let networks = [];
 let networkModalMode = 'add';
 let networkModalTargetId = '';
+let isps = [];
+let ispDevices = [];
+let ispModalMode = 'add';
+let ispModalTargetId = '';
 let optionAddModalGroupKey = '';
 let activeSettingsPanel = 'general';
 let excludedDevicesRows = [];
@@ -34,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderNotificationSettings();
     await renderExcludedDevicesManagement();
     await renderNetworksManagement();
+    await renderIspsManagement();
     renderOptionsManagement();
     renderTestCaseCategoriesManagement();
 });
@@ -196,6 +201,10 @@ function initializeEventListeners() {
     document.getElementById('network-modal-cancel').addEventListener('click', closeNetworkModal);
     document.getElementById('network-modal-save').addEventListener('click', handleNetworkModalSave);
     document.getElementById('network-modal-overlay').addEventListener('click', closeNetworkModal);
+    document.getElementById('isp-add-btn').addEventListener('click', () => openIspModal('add'));
+    document.getElementById('isp-modal-cancel').addEventListener('click', closeIspModal);
+    document.getElementById('isp-modal-save').addEventListener('click', handleIspModalSave);
+    document.getElementById('isp-modal-overlay').addEventListener('click', closeIspModal);
     document.getElementById('option-add-modal-cancel').addEventListener('click', closeOptionAddModal);
     document.getElementById('option-add-modal-save').addEventListener('click', () => {
         void handleOptionAddModalSave();
@@ -1035,6 +1044,238 @@ async function handleDeleteNetwork(networkId) {
 
     await renderNetworksManagement();
     showMessage('Network deleted successfully!', 'success');
+}
+
+// Internet Providers Management
+function formatIspSpeedSummary(isp) {
+    const download = Number(isp.downloadSpeed);
+    const upload = Number(isp.uploadSpeed);
+    const hasDownload = Number.isFinite(download) && download > 0;
+    const hasUpload = Number.isFinite(upload) && upload > 0;
+    if (hasDownload && hasUpload) return `${download} / ${upload} Mbps`;
+    if (hasDownload) return `${download} Mbps`;
+    if (hasUpload) return `${upload} Mbps up`;
+    return '';
+}
+
+function getIspGatewayName(isp) {
+    const gatewayId = String(isp.gatewayDeviceId || '').trim();
+    if (!gatewayId) return '';
+    const device = ispDevices.find(d => d.id === gatewayId);
+    return device ? (device.name || device.model || 'Unnamed Device') : '';
+}
+
+async function renderIspsManagement() {
+    const data = await loadData();
+    isps = data.isps || [];
+    ispDevices = data.devices || [];
+
+    const list = document.getElementById('isps-list');
+    if (!list) return;
+
+    const canDelete = isps.length > 1;
+    list.innerHTML = isps.map(isp => {
+        const technologyLabel = getIspTechnologyLabel(isp.technology);
+        const speedSummary = formatIspSpeedSummary(isp);
+        const gatewayName = getIspGatewayName(isp);
+        const metaParts = [
+            technologyLabel,
+            speedSummary,
+            gatewayName ? `Gateway: ${gatewayName}` : 'Gateway: auto-detect'
+        ].filter(Boolean);
+        return `
+        <div class="networks-item">
+            <div class="networks-item-info isp-item-info">
+                <span class="isp-item-name">${escapeHtml(isp.name)}</span>
+                ${isp.role === 'backup' ? '<span class="isp-role-badge">Backup</span>' : ''}
+                <span class="isp-item-meta">${escapeHtml(metaParts.join(' · '))}</span>
+            </div>
+            <div class="networks-item-actions">
+                <button class="btn btn-secondary btn-sm btn-icon" data-isp-edit="${isp.id}" aria-label="Edit provider" title="Edit provider">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                        <path d="M13.5 6.5l4 4"></path>
+                    </svg>
+                </button>
+                ${canDelete ? `<button class="btn btn-danger btn-sm btn-icon" data-isp-delete="${isp.id}" aria-label="Delete provider" title="Delete provider">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M8 6V4h8v2"></path>
+                        <path d="M6 6l1 14h10l1-14"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
+                    </svg>
+                </button>` : ''}
+            </div>
+        </div>
+    `;
+    }).join('');
+
+    list.querySelectorAll('button[data-isp-edit]').forEach(button => {
+        button.addEventListener('click', () => {
+            openIspModal('edit', button.getAttribute('data-isp-edit'));
+        });
+    });
+
+    list.querySelectorAll('button[data-isp-delete]').forEach(button => {
+        button.addEventListener('click', () => {
+            handleDeleteIsp(button.getAttribute('data-isp-delete'));
+        });
+    });
+}
+
+function populateIspModalSelects() {
+    const technologySelect = document.getElementById('isp-technology-select');
+    if (technologySelect && technologySelect.options.length <= 1) {
+        ISP_TECHNOLOGY_OPTIONS.forEach(option => {
+            const optionEl = document.createElement('option');
+            optionEl.value = option.value;
+            optionEl.textContent = option.label;
+            technologySelect.appendChild(optionEl);
+        });
+    }
+
+    const gatewaySelect = document.getElementById('isp-gateway-select');
+    if (gatewaySelect) {
+        const currentValue = gatewaySelect.value;
+        while (gatewaySelect.options.length > 1) {
+            gatewaySelect.remove(1);
+        }
+        const sortedDevices = [...ispDevices]
+            .filter(device => device && device.id)
+            .sort((a, b) => String(a.name || a.model || '').localeCompare(String(b.name || b.model || '')));
+        sortedDevices.forEach(device => {
+            const optionEl = document.createElement('option');
+            optionEl.value = device.id;
+            optionEl.textContent = device.name || device.model || 'Unnamed Device';
+            gatewaySelect.appendChild(optionEl);
+        });
+        gatewaySelect.value = currentValue;
+    }
+}
+
+function openIspModal(mode, ispId = '') {
+    const modal = document.getElementById('isp-modal');
+    const title = document.getElementById('isp-modal-title');
+    if (!modal || !title) return;
+
+    populateIspModalSelects();
+
+    ispModalMode = mode;
+    ispModalTargetId = ispId;
+    const currentIsp = isps.find(isp => isp.id === ispId);
+
+    title.textContent = mode === 'edit' ? 'Edit Provider' : 'Add Provider';
+    const nameInput = document.getElementById('isp-name-input');
+    nameInput.value = mode === 'edit' && currentIsp ? currentIsp.name : '';
+    document.getElementById('isp-technology-select').value = currentIsp ? (currentIsp.technology || '') : '';
+    document.getElementById('isp-role-select').value = currentIsp && currentIsp.role === 'backup' ? 'backup' : 'primary';
+    document.getElementById('isp-download-input').value = currentIsp && currentIsp.downloadSpeed != null ? currentIsp.downloadSpeed : '';
+    document.getElementById('isp-upload-input').value = currentIsp && currentIsp.uploadSpeed != null ? currentIsp.uploadSpeed : '';
+    document.getElementById('isp-gateway-select').value = currentIsp ? (currentIsp.gatewayDeviceId || '') : '';
+    document.getElementById('isp-notes-input').value = currentIsp ? (currentIsp.notes || '') : '';
+
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    nameInput.focus();
+    nameInput.select();
+}
+
+function closeIspModal() {
+    const modal = document.getElementById('isp-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function parseIspSpeedInput(rawValue, label) {
+    const raw = String(rawValue || '').trim();
+    if (!raw) return { value: null };
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+        return { error: `${label} must be a non-negative number.` };
+    }
+    return { value: parsed };
+}
+
+async function handleIspModalSave() {
+    const name = String(document.getElementById('isp-name-input').value || '').trim();
+    if (!name) {
+        showMessage('Provider name cannot be empty.', 'error');
+        return;
+    }
+    if (isps.some(isp => isp.name.toLowerCase() === name.toLowerCase() && isp.id !== ispModalTargetId)) {
+        showMessage('A provider with this name already exists.', 'error');
+        return;
+    }
+    const download = parseIspSpeedInput(document.getElementById('isp-download-input').value, 'Download speed');
+    if (download.error) {
+        showMessage(download.error, 'error');
+        return;
+    }
+    const upload = parseIspSpeedInput(document.getElementById('isp-upload-input').value, 'Upload speed');
+    if (upload.error) {
+        showMessage(upload.error, 'error');
+        return;
+    }
+
+    const fields = {
+        name: name,
+        technology: document.getElementById('isp-technology-select').value || '',
+        role: document.getElementById('isp-role-select').value === 'backup' ? 'backup' : 'primary',
+        downloadSpeed: download.value,
+        uploadSpeed: upload.value,
+        gatewayDeviceId: document.getElementById('isp-gateway-select').value || '',
+        notes: String(document.getElementById('isp-notes-input').value || '').trim()
+    };
+
+    const data = await loadData();
+    if (ispModalMode === 'edit') {
+        const updatedIsps = (data.isps || []).map(isp => (
+            isp.id === ispModalTargetId ? { ...isp, ...fields } : isp
+        ));
+        await saveData({
+            ...data,
+            isps: updatedIsps
+        });
+        showMessage('Provider updated successfully!', 'success');
+    } else {
+        const newIsp = buildIsp(name, fields);
+        await saveData({
+            ...data,
+            isps: [...(data.isps || []), newIsp]
+        });
+        showMessage('Provider created successfully!', 'success');
+    }
+
+    closeIspModal();
+    await renderIspsManagement();
+}
+
+async function handleDeleteIsp(ispId) {
+    if (!ispId) return;
+    if (isps.length <= 1) {
+        showMessage('You must keep at least one internet provider.', 'error');
+        return;
+    }
+    const targetIsp = isps.find(isp => isp.id === ispId);
+    const name = targetIsp ? targetIsp.name : 'this provider';
+    const confirmed = await showConfirm(`Delete "${name}"? It will disappear from the Diagram view.`, {
+        title: 'Delete provider',
+        confirmText: 'Delete'
+    });
+    if (!confirmed) {
+        return;
+    }
+
+    const data = await loadData();
+    await saveData({
+        ...data,
+        isps: (data.isps || []).filter(isp => isp.id !== ispId)
+    });
+
+    await renderIspsManagement();
+    showMessage('Provider deleted successfully!', 'success');
 }
 
 

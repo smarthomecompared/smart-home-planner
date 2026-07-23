@@ -490,6 +490,57 @@
     flex-wrap: wrap;
 }
 
+/* Internet Providers list */
+.isp-item-info {
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.networks-item .isp-item-name {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.networks-item .isp-item-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.networks-item .isp-role-badge {
+    padding: 0.1rem 0.45rem;
+    background: rgba(245, 165, 36, 0.16);
+    border-radius: 4px;
+    color: var(--warning-color);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.isp-modal-content {
+    width: min(520px, 92vw);
+}
+
+.isp-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 1rem;
+}
+
+.isp-modal-content textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+@media (max-width: 520px) {
+    .isp-modal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .settings-action-group {
     padding: 1.5rem;
     background: var(--bg-secondary);

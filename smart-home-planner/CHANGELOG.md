@@ -7,6 +7,7 @@
 - Filtered-out devices on the Diagram view are now dimmed in place instead of removed, keeping them visible in context (configurable via the new "Dim filtered-out devices" toggle in Diagram Settings)
 - Trace path on the Diagram view: a new "Trace path" action in the device tooltip highlights the device's full upstream connection chain to its network root (router/coordinator), dimming everything else
 - Failure simulation on the Diagram view: a new "Simulate failure" action in the device tooltip marks a device as down and highlights in red every device that would lose connectivity, honoring redundant paths and cascading failures (multiple simultaneous failures supported; restore from the same tooltip, the floating banner or Esc)
+- Internet Providers: manage your ISPs (name, technology, speeds, gateway device, role, notes) from the new "Internet Providers" section in Settings. Each provider appears on the Diagram view as a cloud attached to its gateway (explicitly assigned or auto-detected router/modem) with a WAN link — toggleable from Diagram Settings, draggable in Edit Layout with its position saved. Simulate an ISP outage from the cloud's tooltip: devices that lose their path to every live provider are highlighted in orange ("no internet") while LAN-only outages stay red, so multi-WAN setups can verify their failover visually; trace path now follows the chain all the way to the Internet cloud
 
 ### Changed
 - Complete app redesign

@@ -1063,6 +1063,22 @@ body.map-fullscreen .map-legend {
     object-fit: contain;
 }
 
+/* ISP cloud tooltip icon (inline SVG on a dark well, unlike device photos) */
+.tooltip-isp-icon {
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border-color);
+}
+
+.tooltip-isp-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: var(--text-secondary);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .tooltip-title {
     flex: 1 1 auto;
     min-width: 0;
