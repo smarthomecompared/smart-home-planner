@@ -53,6 +53,9 @@ window.DeviceDiagram = (() => {
     let deviceFilters = null;
     let isLayoutEditable = false;
     let hasUnsavedLayoutChanges = false;
+    // Diagram analysis state (trace path / failure simulation)
+    let tracedDeviceId = null;
+    const simulatedFailedDeviceIds = new Set();
 
     // Icon SVG cache: url -> inner SVG string (or null if failed)
     const _deviceIconCache = {};
@@ -1801,6 +1804,11 @@ window.DeviceDiagram = (() => {
         document.addEventListener('keydown', handleFullscreenEscape);
         document.addEventListener('keydown', handlePowerDialogEscape);
         document.addEventListener('keydown', handleDiagramHelpEscape);
+        document.addEventListener('keydown', handleAnalysisEscape);
+        const analysisClearBtn = document.getElementById('map-analysis-clear');
+        if (analysisClearBtn) {
+            analysisClearBtn.addEventListener('click', clearDiagramAnalysis);
+        }
     }
 
 async function toggleLayoutEdit() {
@@ -2356,6 +2364,77 @@ function initializeCytoscape() {
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
                 }
+            },
+            // Trace path highlight (kept after the per-type edge styles so the
+            // accent color wins over the connection-type line colors)
+            {
+                selector: 'node.trace-path',
+                style: {
+                    'underlay-color': '#006fff',
+                    'underlay-opacity': 0.15,
+                    'underlay-padding': 4,
+                    'underlay-shape': 'roundrectangle'
+                }
+            },
+            {
+                selector: 'node.trace-source',
+                style: {
+                    'underlay-opacity': 0.3
+                }
+            },
+            {
+                selector: 'edge.trace-path',
+                style: {
+                    'width': 3.5,
+                    'line-color': '#006fff',
+                    'line-style': 'solid',
+                    'target-arrow-color': '#006fff',
+                    'source-arrow-color': '#006fff',
+                    'z-index': 9999
+                }
+            },
+            {
+                selector: 'node.trace-dimmed',
+                style: {
+                    'opacity': 0.14
+                }
+            },
+            {
+                selector: 'edge.trace-dimmed',
+                style: {
+                    'opacity': 0.08,
+                    'text-opacity': 0
+                }
+            },
+            // Failure simulation
+            {
+                selector: 'node.sim-failed',
+                style: {
+                    'underlay-color': '#f0383b',
+                    'underlay-opacity': 0.4,
+                    'underlay-padding': 6,
+                    'underlay-shape': 'roundrectangle'
+                }
+            },
+            {
+                selector: 'node.sim-affected',
+                style: {
+                    'underlay-color': '#f0383b',
+                    'underlay-opacity': 0.16,
+                    'underlay-padding': 4,
+                    'underlay-shape': 'roundrectangle'
+                }
+            },
+            {
+                selector: 'edge.sim-dead',
+                style: {
+                    'line-color': '#f0383b',
+                    'target-arrow-color': '#f0383b',
+                    'source-arrow-color': '#f0383b',
+                    'opacity': 0.4,
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [6, 5]
+                }
             }
         ],
         
@@ -2710,6 +2789,8 @@ function showDeviceTooltip(node) {
         if (!other || other.empty() || other.data('type') !== 'device') return;
         connectionItems.push({ type: connectionType, name: String(other.data('label') || '') });
     });
+    connectionItems.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        || a.type.localeCompare(b.type));
     const visibleConnections = connectionItems.slice(0, 6);
     const extraConnections = connectionItems.length - visibleConnections.length;
 
@@ -2731,6 +2812,8 @@ function showDeviceTooltip(node) {
                 ${extraConnections > 0 ? `<span class="tooltip-conn-more">+${extraConnections} more</span>` : ''}
             </div>` : '';
 
+    const isSimulatedFailed = simulatedFailedDeviceIds.has(device.id);
+
     tooltip.innerHTML = `
         <div class="tooltip-header">
             <span class="tooltip-device-icon" aria-hidden="true"><img src="${iconUrl}" alt=""></span>
@@ -2742,6 +2825,23 @@ function showDeviceTooltip(node) {
             ${detailsHtml}
             ${connectionsHtml}
         </div>
+        <div class="tooltip-actions">
+            <button class="tooltip-action-btn tooltip-trace-btn" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="19" r="2.5"></circle>
+                    <circle cx="19" cy="5" r="2.5"></circle>
+                    <path d="M7 17c3-3 2 2 5-1s2 2 5-1"></path>
+                </svg>
+                Trace path
+            </button>
+            <button class="tooltip-action-btn tooltip-action-danger tooltip-simulate-btn" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 4v7"></path>
+                    <path d="M7.5 6.5a7 7 0 1 0 9 0"></path>
+                </svg>
+                ${isSimulatedFailed ? 'Restore device' : 'Simulate failure'}
+            </button>
+        </div>
         <div class="tooltip-footer">
             <button class="tooltip-edit-btn" data-device-id="${escapeHtml(device.id)}">
                 Edit Device
@@ -2749,7 +2849,7 @@ function showDeviceTooltip(node) {
             <span class="tooltip-hint">Double-click to edit</span>
         </div>
     `;
-    
+
     const tooltipRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
     tooltipRoot.appendChild(tooltip);
     const editButton = tooltip.querySelector('.tooltip-edit-btn');
@@ -2757,6 +2857,20 @@ function showDeviceTooltip(node) {
         editButton.addEventListener('click', () => {
             const targetDeviceId = editButton.getAttribute('data-device-id') || device.id;
             void navigateToDeviceEdit(targetDeviceId);
+        });
+    }
+    const traceButton = tooltip.querySelector('.tooltip-trace-btn');
+    if (traceButton) {
+        traceButton.addEventListener('click', () => {
+            hideDeviceTooltip();
+            traceDevicePath(device.id);
+        });
+    }
+    const simulateButton = tooltip.querySelector('.tooltip-simulate-btn');
+    if (simulateButton) {
+        simulateButton.addEventListener('click', () => {
+            hideDeviceTooltip();
+            toggleSimulatedFailure(device.id);
         });
     }
 
@@ -2771,8 +2885,26 @@ function showDeviceTooltip(node) {
     } else {
         tooltip.classList.remove('is-centered');
         tooltip.style.transform = '';
-        tooltip.style.left = (renderedPosition.x + 20) + 'px';
-        tooltip.style.top = (renderedPosition.y + 20) + 'px';
+        // renderedPosition is relative to the cytoscape container; convert to
+        // viewport coordinates (the tooltip is position: fixed) and keep the
+        // tooltip on screen, flipping to the other side of the node if needed
+        const containerRect = cy.container().getBoundingClientRect();
+        const anchorX = containerRect.left + renderedPosition.x;
+        const anchorY = containerRect.top + renderedPosition.y;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const margin = 12;
+        let left = anchorX + 20;
+        let top = anchorY + 20;
+        if (left + tooltipRect.width > window.innerWidth - margin) {
+            left = anchorX - tooltipRect.width - 20;
+        }
+        if (top + tooltipRect.height > window.innerHeight - margin) {
+            top = anchorY - tooltipRect.height - 20;
+        }
+        left = Math.max(margin, Math.min(left, window.innerWidth - tooltipRect.width - margin));
+        top = Math.max(margin, Math.min(top, window.innerHeight - tooltipRect.height - margin));
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
     }
 }
 
@@ -3424,6 +3556,7 @@ async function renderNetwork(options = {}) {
     lockBackgroundNode();
     updateAreaFloorSelectability();
     applyFilterDimming(matchedDeviceIds);
+    reapplyDiagramAnalysis();
     if (hasLegacyAbsoluteBackgroundPositions && diagramBackgroundImageSize) {
         void migratePositionsToBackgroundNormalized(savedPositions);
     }
@@ -3441,6 +3574,242 @@ function applyFilterDimming(matchedIds) {
             edge.toggleClass('filter-dimmed', dimmed);
         });
     });
+}
+
+// === Diagram analysis: trace path & failure simulation ===
+// Both features operate on the connections currently visible on the diagram
+// (hidden connection layers and filtered-out devices are not traversed).
+
+const NETWORK_ANALYSIS_CONNECTION_TYPES = new Set(['ethernet', 'usb', 'wifi', 'zigbee', 'zwave']);
+const WIRELESS_CONNECTION_TYPES = new Set(['wifi', 'zigbee', 'zwave']);
+
+function isNetworkAnalysisEdge(edge) {
+    return NETWORK_ANALYSIS_CONNECTION_TYPES.has(String(edge.data('connectionType') || ''));
+}
+
+// Upstream = toward the network root (router/coordinator). Wireless edges point
+// device -> parent, while wired edges point provider -> consumer, so the upstream
+// neighbor is the source of an incoming wired edge. Bidirectional "-io" wired
+// edges are ambiguous and treated as undirected unless includeBidirectional is false.
+function getUpstreamNetworkLinks(nodeId, options = {}) {
+    const includeBidirectional = options.includeBidirectional !== false;
+    const links = [];
+    if (!cy) return links;
+    cy.$id(nodeId).connectedEdges().forEach((edge) => {
+        if (!isNetworkAnalysisEdge(edge)) return;
+        const type = String(edge.data('connectionType') || '');
+        const source = edge.data('source');
+        const target = edge.data('target');
+        if (WIRELESS_CONNECTION_TYPES.has(type)) {
+            if (source === nodeId) links.push({ id: target, edge });
+        } else if (edge.data('bidirectional')) {
+            if (includeBidirectional) links.push({ id: source === nodeId ? target : source, edge });
+        } else if (target === nodeId) {
+            links.push({ id: source, edge });
+        }
+    });
+    return links;
+}
+
+// Highlight the full upstream chain from a device to its network root(s),
+// dimming everything else. BFS with a visited set guards against cycles.
+function traceDevicePath(deviceId) {
+    if (!cy || cy.$id(deviceId).empty()) return;
+    clearFailureSimulation({ updateBanner: false });
+    const pathNodeIds = new Set([deviceId]);
+    const pathEdgeIds = new Set();
+    const queue = [deviceId];
+    while (queue.length) {
+        const currentId = queue.shift();
+        getUpstreamNetworkLinks(currentId).forEach((link) => {
+            pathEdgeIds.add(link.edge.id());
+            if (!pathNodeIds.has(link.id)) {
+                pathNodeIds.add(link.id);
+                queue.push(link.id);
+            }
+        });
+    }
+    tracedDeviceId = deviceId;
+    cy.batch(() => {
+        cy.nodes('node[type="device"]').forEach((node) => {
+            const onPath = pathNodeIds.has(node.id());
+            node.toggleClass('trace-path', onPath);
+            node.toggleClass('trace-source', node.id() === deviceId);
+            node.toggleClass('trace-dimmed', !onPath);
+        });
+        cy.edges().forEach((edge) => {
+            const onPath = pathEdgeIds.has(edge.id());
+            edge.toggleClass('trace-path', onPath);
+            edge.toggleClass('trace-dimmed', !onPath);
+        });
+    });
+    const device = devices.find(d => d.id === deviceId);
+    const name = device ? (device.name || device.model || 'Unnamed Device') : 'device';
+    const upstreamCount = pathNodeIds.size - 1;
+    showAnalysisBanner('trace', upstreamCount > 0
+        ? `Tracing path for ${name} — ${upstreamCount} upstream device${upstreamCount === 1 ? '' : 's'}`
+        : `${name} has no visible upstream connections`);
+}
+
+function clearTracePath(options = {}) {
+    tracedDeviceId = null;
+    if (cy) {
+        cy.elements().removeClass('trace-path trace-source trace-dimmed');
+    }
+    if (options.updateBanner !== false) {
+        hideAnalysisBanner('trace');
+    }
+}
+
+function toggleSimulatedFailure(deviceId) {
+    if (simulatedFailedDeviceIds.has(deviceId)) {
+        simulatedFailedDeviceIds.delete(deviceId);
+    } else {
+        simulatedFailedDeviceIds.add(deviceId);
+    }
+    if (simulatedFailedDeviceIds.size) {
+        applyFailureSimulation();
+    } else {
+        clearFailureSimulation();
+    }
+}
+
+// Mark the simulated-failed devices and recompute reachability from the network
+// roots (devices with no unambiguous upstream link). Recomputing from the roots —
+// instead of propagating downstream from the failed node — keeps devices with a
+// redundant live path unaffected and handles cascading failures for free.
+function applyFailureSimulation() {
+    if (!cy) return;
+    clearTracePath({ updateBanner: false });
+    Array.from(simulatedFailedDeviceIds).forEach((id) => {
+        if (cy.$id(id).empty()) simulatedFailedDeviceIds.delete(id);
+    });
+    if (!simulatedFailedDeviceIds.size) {
+        clearFailureSimulation();
+        return;
+    }
+
+    const rootIds = [];
+    cy.nodes('node[type="device"]').forEach((node) => {
+        if (!getUpstreamNetworkLinks(node.id(), { includeBidirectional: false }).length) {
+            rootIds.push(node.id());
+        }
+    });
+
+    // Network links carry traffic both ways regardless of the drawn arrow, so
+    // reachability traverses them undirected, skipping failed devices.
+    const reachable = new Set();
+    const queue = [];
+    rootIds.forEach((id) => {
+        if (simulatedFailedDeviceIds.has(id)) return;
+        reachable.add(id);
+        queue.push(id);
+    });
+    while (queue.length) {
+        const currentId = queue.shift();
+        cy.$id(currentId).connectedEdges().forEach((edge) => {
+            if (!isNetworkAnalysisEdge(edge)) return;
+            const otherId = edge.data('source') === currentId ? edge.data('target') : edge.data('source');
+            if (reachable.has(otherId) || simulatedFailedDeviceIds.has(otherId)) return;
+            const otherNode = cy.$id(otherId);
+            if (otherNode.empty() || otherNode.data('type') !== 'device') return;
+            reachable.add(otherId);
+            queue.push(otherId);
+        });
+    }
+
+    const downIds = new Set(simulatedFailedDeviceIds);
+    let affectedCount = 0;
+    cy.batch(() => {
+        cy.nodes('node[type="device"]').forEach((node) => {
+            const id = node.id();
+            const failed = simulatedFailedDeviceIds.has(id);
+            const affected = !failed && !reachable.has(id);
+            if (affected) {
+                affectedCount += 1;
+                downIds.add(id);
+            }
+            node.toggleClass('sim-failed', failed);
+            node.toggleClass('sim-affected', affected);
+        });
+        cy.edges().forEach((edge) => {
+            const dead = downIds.has(edge.data('source')) || downIds.has(edge.data('target'));
+            edge.toggleClass('sim-dead', dead);
+        });
+    });
+
+    let subject;
+    if (simulatedFailedDeviceIds.size === 1) {
+        const failedId = simulatedFailedDeviceIds.values().next().value;
+        const device = devices.find(d => d.id === failedId);
+        subject = device ? (device.name || device.model || 'Unnamed Device') : 'device';
+    } else {
+        subject = `${simulatedFailedDeviceIds.size} devices`;
+    }
+    const impact = affectedCount > 0
+        ? `${affectedCount} device${affectedCount === 1 ? '' : 's'} affected`
+        : 'no other devices affected';
+    showAnalysisBanner('failure', `Simulating failure of ${subject} — ${impact}`);
+}
+
+function clearFailureSimulation(options = {}) {
+    simulatedFailedDeviceIds.clear();
+    if (cy) {
+        cy.elements().removeClass('sim-failed sim-affected sim-dead');
+    }
+    if (options.updateBanner !== false) {
+        hideAnalysisBanner('failure');
+    }
+}
+
+function clearDiagramAnalysis() {
+    clearTracePath({ updateBanner: false });
+    clearFailureSimulation({ updateBanner: false });
+    hideAnalysisBanner();
+}
+
+// Re-render rebuilds all elements, dropping analysis classes; re-run any active
+// analysis against the fresh graph (or drop it if its device disappeared).
+function reapplyDiagramAnalysis() {
+    if (!cy) return;
+    if (tracedDeviceId) {
+        const previousId = tracedDeviceId;
+        if (cy.$id(previousId).empty()) {
+            clearTracePath();
+        } else {
+            traceDevicePath(previousId);
+        }
+        return;
+    }
+    if (simulatedFailedDeviceIds.size) {
+        applyFailureSimulation();
+    }
+}
+
+function showAnalysisBanner(mode, text) {
+    const banner = document.getElementById('map-analysis-banner');
+    if (!banner) return;
+    banner.hidden = false;
+    banner.classList.toggle('is-trace', mode === 'trace');
+    banner.classList.toggle('is-failure', mode === 'failure');
+    const textEl = document.getElementById('map-analysis-text');
+    if (textEl) textEl.textContent = text;
+}
+
+function hideAnalysisBanner(mode) {
+    const banner = document.getElementById('map-analysis-banner');
+    if (!banner || banner.hidden) return;
+    if (mode && !banner.classList.contains(`is-${mode}`)) return;
+    banner.hidden = true;
+    banner.classList.remove('is-trace', 'is-failure');
+}
+
+function handleAnalysisEscape(event) {
+    if (event.key !== 'Escape') return;
+    // In fullscreen, Esc exits fullscreen first; the banner ✕ still works there.
+    if (document.fullscreenElement || document.body.classList.contains('map-fullscreen')) return;
+    if (!tracedDeviceId && !simulatedFailedDeviceIds.size) return;
+    clearDiagramAnalysis();
 }
 
 function getEthernetConnectionMeta(device, port, devicesList) {

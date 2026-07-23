@@ -5,6 +5,8 @@
 - Floating connection legend on the Diagram view; each chip also toggles its connection layer on and off
 - Floor plan suggestion banner on the Diagram view when no background image is set, with a one-click upload button (dismissible)
 - Filtered-out devices on the Diagram view are now dimmed in place instead of removed, keeping them visible in context (configurable via the new "Dim filtered-out devices" toggle in Diagram Settings)
+- Trace path on the Diagram view: a new "Trace path" action in the device tooltip highlights the device's full upstream connection chain to its network root (router/coordinator), dimming everything else
+- Failure simulation on the Diagram view: a new "Simulate failure" action in the device tooltip marks a device as down and highlights in red every device that would lose connectivity, honoring redundant paths and cascading failures (multiple simultaneous failures supported; restore from the same tooltip, the floating banner or Esc)
 
 ### Changed
 - Complete app redesign
@@ -13,6 +15,7 @@
 ### Fixed
 - Fix the diagram background image being shifted towards the top-left corner in fullscreen mode
 - Fix "Clear Filters" not resetting the Model and Network filters
+- Fix the device tooltip on the Diagram view opening misaligned from its node and overflowing off screen for devices near the viewport edges; it now anchors to the node and flips/clamps to stay fully visible
 
 ## 1.7.0 - 2026-07-07
 

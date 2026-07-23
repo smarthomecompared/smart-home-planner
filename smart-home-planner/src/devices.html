@@ -494,6 +494,16 @@
                 <div class="map-stage">
                     <div id="network-map-background" aria-hidden="true"></div>
                     <div id="network-map"></div>
+                    <div class="map-analysis-banner" id="map-analysis-banner" hidden>
+                        <span class="map-analysis-dot" aria-hidden="true"></span>
+                        <span class="map-analysis-text" id="map-analysis-text" role="status"></span>
+                        <button class="btn btn-secondary btn-sm btn-icon" type="button" id="map-analysis-clear" aria-label="Clear analysis" title="Clear (Esc)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 6l12 12"></path>
+                                <path d="M18 6l-12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="map-legend" id="map-legend" role="group" aria-label="Connection layers">
                         <button type="button" class="map-legend-chip" data-connection="show-ethernet-connections" aria-pressed="true">
                             <span class="legend-line ethernet" aria-hidden="true"></span>Ethernet
