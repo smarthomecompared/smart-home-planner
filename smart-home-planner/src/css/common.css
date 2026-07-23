@@ -907,14 +907,16 @@ nav.site-nav a:focus-visible .site-nav-label {
 }
 
 .btn-icon.btn-danger,
-.btn-sm.btn-danger {
+.btn-sm.btn-danger,
+.btn-ghost.btn-danger {
     background: transparent;
     border-color: var(--border-color);
     color: #f4595c;
 }
 
 .btn-icon.btn-danger:hover,
-.btn-sm.btn-danger:hover {
+.btn-sm.btn-danger:hover,
+.btn-ghost.btn-danger:hover {
     background: rgba(240, 56, 59, 0.14);
     border-color: rgba(240, 56, 59, 0.5);
 }
@@ -1415,19 +1417,17 @@ nav.site-nav a:focus-visible .site-nav-label {
     flex-shrink: 0;
     cursor: pointer;
     box-shadow: none;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .device-photo-preview:hover {
     border-color: var(--primary-color);
-    box-shadow: 0 14px 28px rgba(6, 7, 10, 0.45);
-    transform: translateY(-1px);
 }
 
 .device-photo-preview:focus-visible {
     outline: none;
-    border-color: rgba(51, 139, 255, 0.95);
-    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.28), 0 14px 28px rgba(6, 7, 10, 0.45);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.28);
 }
 
 .device-photo-preview::after {
@@ -1440,7 +1440,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     font-size: 0.63rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: rgba(223, 226, 232, 0.9);
+    color: rgba(244, 245, 247, 0.9);
     text-align: center;
     background: linear-gradient(180deg, transparent, rgba(6, 7, 10, 0.72));
     pointer-events: none;
@@ -1460,11 +1460,6 @@ nav.site-nav a:focus-visible .site-nav-label {
     object-position: center;
     padding: 0.9rem;
     flex-shrink: 0;
-    transition: transform var(--transition-base);
-}
-
-.device-photo-preview:hover .device-photo-img {
-    transform: scale(1.02);
 }
 
 .device-photo-img--custom {
@@ -1578,7 +1573,7 @@ nav.site-nav a:focus-visible .site-nav-label {
 .form-page .form-group select:focus,
 .form-page .form-group textarea:focus {
     background-color: rgba(16, 18, 22, 0.98);
-    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.2), inset 0 1px 0 rgba(126, 133, 149, 0.1);
+    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.2);
 }
 
 .form-page .form-group input::placeholder,
@@ -1650,8 +1645,8 @@ nav.site-nav a:focus-visible .site-nav-label {
     align-items: start;
     padding: 1rem;
     border-radius: 8px;
-    border: 1px solid rgba(61, 68, 83, 0.62);
-    background: linear-gradient(180deg, rgba(16, 18, 22, 0.52), rgba(16, 18, 22, 0.34));
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
 }
 
 .device-link-item .form-group {
@@ -1676,7 +1671,7 @@ nav.site-nav a:focus-visible .site-nav-label {
 
 .device-link-actions .btn-icon:hover:not(:disabled),
 .device-link-actions .btn-icon:focus-visible:not(:disabled) {
-    border-color: rgba(51, 139, 255, 0.7);
+    border-color: rgba(0, 111, 255, 0.7);
     background: rgba(16, 18, 22, 0.98);
 }
 
@@ -1713,13 +1708,14 @@ nav.site-nav a:focus-visible .site-nav-label {
     flex-shrink: 0;
     min-height: 42px;
     padding: 0.5rem 1.05rem;
-    border-radius: 4px;
-    background: linear-gradient(135deg, rgba(28, 31, 38, 0.92), rgba(16, 18, 22, 0.95));
+    border-radius: 6px;
+    background: var(--bg-secondary);
     border: 1px solid rgba(245, 165, 36, 0.45);
-    color: #fdeecd;
+    color: var(--warning-color);
     font-weight: 700;
     letter-spacing: 0.02em;
-    box-shadow: 0 12px 18px rgba(16, 18, 22, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+    transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .battery-buy-btn::before {
@@ -1728,13 +1724,11 @@ nav.site-nav a:focus-visible .site-nav-label {
     height: 8px;
     border-radius: 4px;
     background: var(--warning-color);
-    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.2);
 }
 
 .battery-buy-btn:hover {
-    transform: translateY(-1px);
     border-color: rgba(245, 165, 36, 0.65);
-    box-shadow: 0 16px 24px rgba(16, 18, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(245, 165, 36, 0.12);
 }
 
 .battery-buy-btn:focus-visible {
@@ -1752,7 +1746,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, rgba(61, 68, 83, 0.7), transparent);
+    background: var(--border-color);
 }
 
 .form-page #power-ports-section.is-collapsed {
@@ -1778,9 +1772,9 @@ nav.site-nav a:focus-visible .site-nav-label {
 .device-files-count {
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
-    border: 1px solid rgba(0, 111, 255, 0.45);
-    background: rgba(0, 75, 172, 0.22);
-    color: #99c5ff;
+    border: 1px solid rgba(0, 111, 255, 0.35);
+    background: var(--primary-light);
+    color: var(--primary-text);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -1795,8 +1789,8 @@ nav.site-nav a:focus-visible .site-nav-label {
 }
 
 .device-files-dropzone {
-    border: 1px dashed rgba(51, 139, 255, 0.6);
-    background: linear-gradient(180deg, rgba(16, 18, 22, 0.65), rgba(28, 31, 38, 0.55));
+    border: 1px dashed rgba(0, 111, 255, 0.5);
+    background: var(--bg-color);
     border-radius: 8px;
     padding: 1.25rem;
     text-align: center;
@@ -1804,25 +1798,24 @@ nav.site-nav a:focus-visible .site-nav-label {
     justify-items: center;
     gap: 0.6rem;
     cursor: pointer;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+    transition: background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .device-files-dropzone:hover {
-    border-color: rgba(102, 168, 255, 0.9);
-    box-shadow: 0 10px 25px rgba(0, 75, 172, 0.2);
-    transform: translateY(-1px);
+    border-color: rgba(0, 111, 255, 0.8);
+    background: rgba(0, 111, 255, 0.06);
 }
 
 .device-files-dropzone:focus-visible {
     outline: none;
-    border-color: rgba(102, 168, 255, 0.95);
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.25);
 }
 
 .device-files-dropzone.is-dragover {
     border-style: solid;
-    border-color: rgba(102, 168, 255, 0.95);
-    background: linear-gradient(180deg, rgba(0, 75, 172, 0.35), rgba(16, 18, 22, 0.75));
+    border-color: var(--primary-color);
+    background: var(--primary-light);
 }
 
 .device-files-dropzone-icon {
@@ -1834,7 +1827,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     justify-content: center;
     background: rgba(16, 18, 22, 0.75);
     border: 1px solid rgba(126, 133, 149, 0.45);
-    color: #66a8ff;
+    color: var(--primary-text);
 }
 
 .device-files-dropzone-icon svg {
@@ -1921,7 +1914,7 @@ nav.site-nav a:focus-visible .site-nav-label {
 }
 
 .device-file-icon {
-    color: #66a8ff;
+    color: var(--primary-text);
 }
 
 .device-file-icon svg {
@@ -1964,7 +1957,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     border: 1px solid rgba(126, 133, 149, 0.4);
     background: rgba(28, 31, 38, 0.82);
     color: var(--text-color);
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 0.35rem 0.55rem;
     font-size: 0.73rem;
     font-family: inherit;
@@ -1981,12 +1974,12 @@ nav.site-nav a:focus-visible .site-nav-label {
 
 .device-file-action-danger {
     border-color: rgba(240, 56, 59, 0.5);
-    color: #fbc2c3;
+    color: #f4595c;
 }
 
 .device-file-action-danger:hover {
-    border-color: rgba(244, 89, 92, 0.75);
-    background: rgba(96, 22, 24, 0.45);
+    border-color: rgba(240, 56, 59, 0.75);
+    background: rgba(240, 56, 59, 0.14);
 }
 
 .device-file-preview-modal-content {
@@ -2426,11 +2419,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
 }
 
 .form-page .port-item {
-    background: rgba(16, 18, 22, 0.65);
     border-radius: 8px;
-    border-color: rgba(61, 68, 83, 0.6);
     padding: 1rem 1.25rem;
-    box-shadow: inset 0 1px 0 rgba(126, 133, 149, 0.05);
 }
 
 .port-item:hover {
@@ -2528,7 +2518,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     background: var(--bg-secondary);
     color: var(--text-color);
     transition: all var(--transition-base);
@@ -2563,7 +2553,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 6px;
     background-color: var(--bg-secondary);
     color: var(--text-color);
     transition: all var(--transition-base);
@@ -2617,7 +2607,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     margin-top: 0.25rem;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 8px;
     box-shadow: var(--shadow-lg);
     max-height: 250px;
     overflow-y: auto;
