@@ -66,6 +66,7 @@ const _C = {
     wishlist:     [124,  58, 237],
     connEthernet: [ 59, 130, 246],  // #006fff — matches Cytoscape ethernet edge
     connUsb:      [ 20, 184, 166],  // #00a0e0 — matches Cytoscape usb edge (teal)
+    connHdmi:     [168,  85, 247],  // #a855f7 — matches Cytoscape hdmi edge (purple)
     connPower:    [245, 158,  11],  // #f5a524 — matches Cytoscape power edge (amber)
     connWifi:     [ 56, 189, 248],  // #339fff — matches Cytoscape wifi edge (sky, dashed)
     connZigbee:   [250, 204,  21],  // #f7c948 — matches Cytoscape zigbee edge (yellow, dashed)
@@ -86,17 +87,58 @@ const _PORT_LABELS = {
     'ethernet-input':  'Ethernet In',
     'ethernet-output': 'Ethernet Out',
     'ethernet-io':     'Ethernet In/Out',
-    'usb-input':       'USB In',
-    'usb-output':      'USB Out',
+    'sfp-input':       'SFP In',
+    'sfp-output':      'SFP Out',
+    'sfp-io':          'SFP In/Out',
+    'sfpplus-input':   'SFP+ In',
+    'sfpplus-output':  'SFP+ Out',
+    'sfpplus-io':      'SFP+ In/Out',
+    'hdmi-input':      'HDMI In',
+    'hdmi-output':     'HDMI Out',
+    'usb-input':       'USB Host',
+    'usb-output':      'USB Device',
     'power-input':     'Power In',
     'power-output':    'Power Out',
 };
 
 const _PORT_SHORT = {
     'ethernet': 'ETH',
+    'sfp':      'SFP',
+    'sfpplus':  'SFP+',
+    'hdmi':     'HDMI',
     'usb':      'USB',
     'power':    'PWR',
 };
+
+const _USB_TYPE_LABELS = {
+    'usb-a':     'USB-A',
+    'usb-b':     'USB-B',
+    'usb-c':     'USB-C',
+    'micro-usb': 'Micro-USB',
+    'mini-usb':  'Mini-USB',
+};
+
+const _USB_VERSION_LABELS = {
+    'usb2':   'USB 2.0',
+    'usb3':   'USB 3.0',
+    'usb3.1': 'USB 3.1',
+    'usb3.2': 'USB 3.2',
+    'usb4':   'USB4',
+};
+
+const _POE_SHORT = {
+    'poe':       'PoE',
+    'poe-plus':  'PoE+',
+    'poe-pp-60': 'PoE++',
+    'poe-pp-90': 'PoE++',
+    'passive':   'Passive PoE',
+};
+
+// Diagram layer for a raw port kind: SFP/SFP+ are wired network links,
+// so they share the Ethernet layer (matches the Cytoscape map)
+function _pdfConnKind(kind) {
+    return kind === 'sfp' || kind === 'sfpplus' ? 'ethernet' : kind;
+}
 
 function _drawPageCanvas(doc) {
     doc.setFillColor(..._C.pageBg);
@@ -778,6 +820,9 @@ function _pdfConnectionsPage(doc, data) {
             const cable      = [
                 port.cableType ? String(port.cableType).toUpperCase() : '',
                 port.speed     ? String(port.speed) : '',
+                port.usbType   ? (_USB_TYPE_LABELS[port.usbType] || port.usbType) : '',
+                port.usbVersion ? (_USB_VERSION_LABELS[port.usbVersion] || port.usbVersion) : '',
+                port.poeStandard ? (_POE_SHORT[port.poeStandard] || 'PoE') : '',
             ].filter(Boolean).join(' ');
             rows.push([device.name || 'Unnamed', targetName, portLabel, cable || '-']);
         });
@@ -823,6 +868,7 @@ function _pdfConnectionsPage(doc, data) {
 const _CONN_TYPE_LABELS = {
     ethernet: 'Ethernet',
     usb:      'USB',
+    hdmi:     'HDMI',
     power:    'Power',
     wifi:     'Wi-Fi',
     zigbee:   'Zigbee',
@@ -949,7 +995,7 @@ async function _pdfDiagramPage(doc, data) {
         if (Array.isArray(device.ports)) {
             device.ports.forEach(port => {
                 if (!port.connectedTo || !posSet.has(String(port.connectedTo))) return;
-                const kind = (port.type || '').split('-')[0];
+                const kind = _pdfConnKind((port.type || '').split('-')[0]);
                 if (kind) activeTypes.add(kind);
             });
         }
@@ -959,7 +1005,7 @@ async function _pdfDiagramPage(doc, data) {
     });
 
     // Order connection types: wired first, wireless last
-    const typeOrder = ['ethernet', 'usb', 'power', 'wifi', 'zigbee', 'zwave'];
+    const typeOrder = ['ethernet', 'usb', 'hdmi', 'power', 'wifi', 'zigbee', 'zwave'];
     const connTypesToDraw = typeOrder.filter(t => activeTypes.has(t));
 
     // ── Render one page per diagram ───────────────────────────────────────────
@@ -1122,8 +1168,9 @@ function _renderDiagramOverlay(
                     const tid = String(port.connectedTo);
                     if (!posSet.has(tid)) return;
 
-                    const kind = String(port.type || '').split('-')[0];
-                    if (!kind) return;
+                    const rawKind = String(port.type || '').split('-')[0];
+                    if (!rawKind) return;
+                    const kind = _pdfConnKind(rawKind);
                     if (filterType && kind !== filterType) return;
 
                     const isOutput = String(port.type || '').includes('-output');
@@ -1134,15 +1181,21 @@ function _renderDiagramOverlay(
                     seenConnections.add(dedupe);
 
                     let label = '';
-                    if (kind === 'ethernet') {
+                    if (rawKind === 'sfp' || rawKind === 'sfpplus') {
+                        const base = rawKind === 'sfp' ? 'SFP' : 'SFP+';
+                        label = port.speed ? `${base} (${port.speed})` : base;
+                    } else if (kind === 'ethernet') {
                         const cable = port.cableType ? String(port.cableType).replace(/^cat/i, 'Cat') : '';
                         const speed = port.speed ? String(port.speed) : '';
                         if (cable && speed) label = `${cable} (${speed})`;
                         else if (cable) label = cable;
                         else if (speed) label = `Ethernet (${speed})`;
                         else label = 'Ethernet';
+                        if (port.poeStandard) label += ` · ${_POE_SHORT[port.poeStandard] || 'PoE'}`;
                     } else if (kind === 'usb') {
                         label = 'USB';
+                    } else if (kind === 'hdmi') {
+                        label = 'HDMI';
                     } else if (kind === 'power') {
                         const consumerId = String(port.type || '').includes('power-input') ? sid : tid;
                         const consumer = deviceMap.get(consumerId);
@@ -1553,6 +1606,7 @@ function _renderDiagramOverlay(
     const connColor = {
         ethernet: _C.connEthernet,
         usb:      _C.connUsb,
+        hdmi:     _C.connHdmi,
         power:    _C.connPower,
         wifi:     _C.connWifi,
         zigbee:   _C.connZigbee,
@@ -1695,6 +1749,7 @@ function _drawDiagramLegend(doc, y, activeTypes, connectionStyle = null, layout 
     const allLineItems = [
         { color: _C.connEthernet, label: 'Ethernet', type: 'ethernet', dashed: false },
         { color: _C.connUsb,      label: 'USB',       type: 'usb',      dashed: false },
+        { color: _C.connHdmi,     label: 'HDMI',      type: 'hdmi',     dashed: false },
         { color: _C.connPower,    label: 'Power',     type: 'power',    dashed: false },
         { color: _C.connWifi,     label: 'Wi-Fi',     type: 'wifi',     dashed: true  },
         { color: _C.connZigbee,   label: 'Zigbee',    type: 'zigbee',   dashed: true  },
@@ -2279,9 +2334,9 @@ function _pdfDeviceDetailPages(doc, data, _config) {
         }
 
         // ── Storage ───────────────────────────────────────────────────────────
-        if (device.storageSize !== undefined && device.storageSize !== null && String(device.storageSize).trim()) {
-            const unit = device.storageUnit ? String(device.storageUnit).trim() : '';
-            add('Storage', unit ? `${device.storageSize} ${unit}` : String(device.storageSize));
+        const storageSummary = formatDeviceStorageSummary(device, ', ');
+        if (storageSummary) {
+            add('Storage', storageSummary);
         }
 
         // ── Power ─────────────────────────────────────────────────────────────
@@ -2360,6 +2415,9 @@ function _pdfDeviceDetailPages(doc, data, _config) {
                     const details   = [];
                     if (p.cableType) details.push(String(p.cableType).replace(/^cat/i, 'Cat'));
                     if (p.speed)     details.push(String(p.speed));
+                    if (p.usbType)   details.push(_USB_TYPE_LABELS[p.usbType] || p.usbType);
+                    if (p.usbVersion) details.push(_USB_VERSION_LABELS[p.usbVersion] || p.usbVersion);
+                    if (p.poeStandard) details.push(_POE_SHORT[p.poeStandard] || 'PoE');
                     rows.push([portLabel, details.length ? `${tName}  (${details.join(', ')})` : tName]);
                 });
         }
@@ -2736,10 +2794,10 @@ function _mdDevicesSection(lines, data, maps) {
         } else { skip('zwaveControllerId'); }
 
         // ── Storage ───────────────────────────────────────────────────────────
-        if (device.storageSize !== null && device.storageSize !== undefined && String(device.storageSize).trim()) {
-            const unit = device.storageUnit ? String(device.storageUnit).trim() : '';
-            add('Storage', unit ? `${device.storageSize} ${unit}` : String(device.storageSize), 'storageSize', 'storageUnit');
-        } else { skip('storageSize', 'storageUnit'); }
+        const storageSummary = formatDeviceStorageSummary(device, ', ');
+        if (storageSummary) {
+            add('Storage', storageSummary, 'storageSize', 'storageUnit', 'storages');
+        } else { skip('storageSize', 'storageUnit', 'storages'); }
 
         // ── Power ─────────────────────────────────────────────────────────────
         add('Power Source', device.power ? _fmtPower(device.power) : '', 'power');
@@ -2840,6 +2898,9 @@ function _mdDevicesSection(lines, data, maps) {
                 const details   = [];
                 if (p.cableType) details.push(String(p.cableType).replace(/^cat/i, 'Cat'));
                 if (p.speed)     details.push(String(p.speed));
+                if (p.usbType)   details.push(_USB_TYPE_LABELS[p.usbType] || p.usbType);
+                if (p.usbVersion) details.push(_USB_VERSION_LABELS[p.usbVersion] || p.usbVersion);
+                if (p.poeStandard) details.push(_POE_SHORT[p.poeStandard] || 'PoE');
                 lines.push(`- ${portLabel} → ${_mdInline(tName)}${details.length ? ` (${details.join(', ')})` : ''}`);
             });
             lines.push('');

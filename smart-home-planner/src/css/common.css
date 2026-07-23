@@ -1164,6 +1164,12 @@ nav.site-nav a:focus-visible .site-nav-label {
     margin-bottom: 1rem;
 }
 
+/* Hide rows whose fields are all collapsed so they don't leave empty gaps
+   (e.g. the Power section before a power type is selected) */
+.form-row:not(:has(> :not(.is-collapsed):not(.is-hidden):not([hidden]))) {
+    display: none;
+}
+
 .form-page .form-row {
     gap: 1.25rem;
 }
@@ -1186,6 +1192,18 @@ nav.site-nav a:focus-visible .site-nav-label {
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
+}
+
+/* Keep field captions the same height whether or not they include a help
+   button, so inputs on the same row stay vertically aligned */
+.form-page .form-group > label:not(.checkbox-label) {
+    display: flex;
+    align-items: center;
+    min-height: 26px;
+}
+
+.form-page .form-label-row {
+    min-height: 26px;
 }
 
 .form-field-note {
@@ -1397,10 +1415,9 @@ nav.site-nav a:focus-visible .site-nav-label {
 /* Device photo preview (add/edit forms) */
 .device-photo-wrap {
     display: grid;
-    grid-template-columns: minmax(148px, 168px) minmax(170px, 220px);
-    align-items: stretch;
+    grid-template-columns: 1fr;
     gap: 0.85rem;
-    max-width: 430px;
+    max-width: 210px;
 }
 
 .device-photo-preview {
@@ -1415,39 +1432,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     justify-content: center;
     background: var(--bg-secondary);
     flex-shrink: 0;
-    cursor: pointer;
     box-shadow: none;
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
-}
-
-.device-photo-preview:hover {
-    border-color: var(--primary-color);
-}
-
-.device-photo-preview:focus-visible {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.28);
-}
-
-.device-photo-preview::after {
-    content: 'Click to upload';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding: 0.3rem 0.45rem;
-    font-size: 0.63rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(244, 245, 247, 0.9);
-    text-align: center;
-    background: linear-gradient(180deg, transparent, rgba(6, 7, 10, 0.72));
-    pointer-events: none;
-}
-
-.device-photo-preview--custom::after {
-    content: 'Photo uploaded';
 }
 
 .device-photo-img {
@@ -1493,7 +1478,7 @@ nav.site-nav a:focus-visible .site-nav-label {
 .device-photo-actions {
     display: grid;
     gap: 0.55rem;
-    align-content: center;
+    align-content: start;
 }
 
 .device-photo-actions .btn {
@@ -1502,25 +1487,26 @@ nav.site-nav a:focus-visible .site-nav-label {
     width: 100%;
 }
 
-@media (max-width: 700px) {
-    .device-photo-wrap {
+/* Basic Information layout: photo column on the left of the other fields on
+   large screens, with the upload actions stacked below the preview. */
+.basic-info-layout {
+    display: grid;
+    grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+    gap: 1rem 1.75rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .basic-info-layout {
         grid-template-columns: 1fr;
-        max-width: 300px;
     }
 
-    .device-photo-actions {
-        grid-template-columns: 1fr;
-    }
-
-    .device-photo-preview {
-        max-width: 196px;
-    }
-
-    .device-photo-preview::after,
-    .device-photo-preview--custom::after {
-        font-size: 0.6rem;
+    /* Keep the photo below the fields on small screens, as before */
+    .basic-info-layout .device-photo-group {
+        order: 2;
     }
 }
+
 
 .form-label-row-compact {
     justify-content: flex-start;
@@ -1561,7 +1547,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     z-index: -1;
 }
 
-.form-page .form-group input,
+.form-page .form-group input:not([type="checkbox"]),
 .form-page .form-group select,
 .form-page .form-group textarea {
     background-color: var(--bg-color);
@@ -1569,7 +1555,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     box-shadow: none;
 }
 
-.form-page .form-group input:focus,
+.form-page .form-group input:not([type="checkbox"]):focus,
 .form-page .form-group select:focus,
 .form-page .form-group textarea:focus {
     background-color: rgba(16, 18, 22, 0.98);
@@ -1592,6 +1578,24 @@ nav.site-nav a:focus-visible .site-nav-label {
 
 .form-section:last-of-type {
     margin-bottom: 0;
+}
+
+/* Two form sections sharing a row on large screens */
+.form-section-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-section-row .form-section {
+    margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .form-section-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .form-section-title {
@@ -1690,6 +1694,116 @@ nav.site-nav a:focus-visible .site-nav-label {
     }
 
     .device-link-actions {
+        justify-content: flex-end;
+        padding-top: 0;
+    }
+}
+
+.device-storages-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.device-storages-list {
+    display: grid;
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.device-storages-empty {
+    padding: 1rem 1.1rem;
+    border: 1px dashed rgba(61, 68, 83, 0.7);
+    border-radius: 8px;
+    color: var(--text-muted);
+    background: rgba(16, 18, 22, 0.32);
+}
+
+.device-storages-empty[hidden] {
+    display: none !important;
+}
+
+.device-ports-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.device-ports-section-head .form-section-title,
+.device-ports-section-head .form-subsection-title {
+    margin-bottom: 0;
+    margin-top: 0;
+}
+
+.device-ports-section-head .form-subsection-title {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.device-ports-empty {
+    padding: 1rem 1.1rem;
+    border: 1px dashed rgba(61, 68, 83, 0.7);
+    border-radius: 8px;
+    color: var(--text-muted);
+    background: rgba(16, 18, 22, 0.32);
+}
+
+.device-ports-empty[hidden] {
+    display: none !important;
+}
+
+.device-storage-item {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 0.8fr) minmax(140px, 1fr) auto;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+}
+
+.device-storage-item .form-group {
+    margin-bottom: 0;
+}
+
+.device-storage-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    align-self: start;
+    padding-top: 1.55rem;
+}
+
+.device-storage-actions .btn-icon {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border-color: rgba(61, 68, 83, 0.8);
+    background: rgba(16, 18, 22, 0.9);
+}
+
+.device-storage-actions .btn-icon:hover:not(:disabled),
+.device-storage-actions .btn-icon:focus-visible:not(:disabled) {
+    border-color: rgba(0, 111, 255, 0.7);
+    background: rgba(16, 18, 22, 0.98);
+}
+
+@media (max-width: 900px) {
+    .device-storages-section-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .device-storage-item {
+        grid-template-columns: 1fr;
+    }
+
+    .device-storage-actions {
         justify-content: flex-end;
         padding-top: 0;
     }
@@ -2205,7 +2319,7 @@ nav.site-nav a:focus-visible .site-nav-label {
     color: var(--text-color);
 }
 
-.form-group input,
+.form-group input:not([type="checkbox"]),
 .form-group select,
 .form-group textarea {
     width: 100%;
@@ -2228,17 +2342,39 @@ input[type="month"] {
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(2) saturate(0);
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-left: 0.35rem;
+    cursor: pointer;
     opacity: 1;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b0b6c2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 2v4'/%3E%3Cpath d='M16 2v4'/%3E%3Crect width='18' height='18' x='3' y='4' rx='2'/%3E%3Cpath d='M3 10h18'/%3E%3C/svg%3E") center / contain no-repeat;
+    transition: filter var(--transition-base);
 }
 
-.form-group input:hover,
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator,
+input[type="month"]:hover::-webkit-calendar-picker-indicator,
+input[type="date"]:focus::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]:focus::-webkit-calendar-picker-indicator,
+input[type="month"]:focus::-webkit-calendar-picker-indicator {
+    filter: brightness(1.6);
+}
+
+/* Empty date inputs show their dd/mm/yyyy hint dimmed, like a placeholder */
+input[type="date"]:not(.has-value):not(:focus)::-webkit-datetime-edit,
+input[type="datetime-local"]:not(.has-value):not(:focus)::-webkit-datetime-edit,
+input[type="month"]:not(.has-value):not(:focus)::-webkit-datetime-edit {
+    color: var(--text-muted);
+}
+
+.form-group input:not([type="checkbox"]):hover,
 .form-group select:hover,
 .form-group textarea:hover {
     border-color: var(--border-hover);
 }
 
-.form-group input:focus,
+.form-group input:not([type="checkbox"]):focus,
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
@@ -2455,23 +2591,32 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     gap: 0.5rem;
 }
 
-.port-main-row,
-.port-extra-row {
+.port-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.port-section + .port-section {
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.port-section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted, var(--text-secondary));
+}
+
+.port-config-row,
+.port-connection-row {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
-}
-
-.port-main-row {
     align-items: flex-end;
-}
-
-.port-extra-row {
-    align-items: center;
-}
-
-.port-extra-row.is-hidden {
-    display: none;
 }
 
 .port-field {
@@ -2482,7 +2627,19 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     flex: 0 0 180px;
 }
 
-.port-field label {
+/* Per-kind fields (Direction, Speed, USB type) toggle visibility by kind */
+.port-field.is-hidden {
+    display: none;
+}
+
+/* Wider so full option labels fit (e.g. "Ethernet 1 · Input/Output · 1Gbps") */
+.port-field.port-remote-port-field {
+    min-width: 240px;
+    flex: 0 0 300px;
+}
+
+.port-field label,
+.port-connection-row .port-search-wrapper label {
     font-size: 0.75rem;
     letter-spacing: 0.02em;
     text-transform: uppercase;
@@ -2509,8 +2666,12 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     display: none;
 }
 
-.port-main-row .port-search-wrapper {
+.port-connection-row .port-search-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
     flex: 1;
+    min-width: 200px;
 }
 
 .port-device-search {
@@ -2559,13 +2720,14 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     transition: all var(--transition-base);
 }
 
-.port-connection-row .port-select {
-    flex: 0 0 200px;
+.port-select.port-search-invalid {
+    border-color: var(--danger-color);
+    background-color: rgba(240, 56, 59, 0.05);
 }
 
 @media (max-width: 768px) {
-    .port-main-row,
-    .port-extra-row {
+    .port-config-row,
+    .port-connection-row {
         flex-direction: column;
         align-items: stretch;
     }
@@ -2581,8 +2743,8 @@ input[type="month"]::-webkit-calendar-picker-indicator {
         width: 100%;
     }
 
-    .port-main-row .port-search-wrapper,
-    .port-main-row .port-select {
+    .port-connection-row .port-search-wrapper,
+    .port-connection-row .port-select {
         width: 100%;
         flex: 1 1 auto;
     }
@@ -3413,26 +3575,95 @@ select.is-open {
     position: fixed;
     z-index: 1200;
     display: none;
-    padding: 0.3rem;
+    flex-direction: column;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.ui-select-menu.is-open {
+    display: flex;
+}
+
+.ui-select-search {
+    position: relative;
+    flex: 0 0 auto;
+    padding: 0.45rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ui-select-search-input {
+    width: 100%;
+    padding: 0.45rem 2rem 0.45rem 0.65rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    color: var(--text-color);
+    transition: border-color var(--transition-fast);
+}
+
+.ui-select-search-clear {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.ui-select-search-clear:hover {
+    background: var(--card-hover);
+    color: var(--text-color);
+}
+
+.ui-select-search-clear svg {
+    width: 0.7rem;
+    height: 0.7rem;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    fill: none;
+}
+
+.ui-select-search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.ui-select-search-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.ui-select-options {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0.3rem;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: thin;
     scrollbar-color: rgba(126, 133, 149, 0.4) transparent;
 }
 
-.ui-select-menu.is-open {
-    display: block;
-}
-
-.ui-select-menu::-webkit-scrollbar {
+.ui-select-options::-webkit-scrollbar {
     width: 8px;
 }
 
-.ui-select-menu::-webkit-scrollbar-thumb {
+.ui-select-options::-webkit-scrollbar-thumb {
     background: rgba(126, 133, 149, 0.4);
     border-radius: 4px;
 }
@@ -3470,6 +3701,11 @@ select.is-open {
     color: var(--text-muted);
     opacity: 0.55;
     cursor: default;
+}
+
+.ui-select-option.is-hidden,
+.ui-select-group-label.is-hidden {
+    display: none;
 }
 
 .ui-select-check {

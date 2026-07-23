@@ -161,6 +161,23 @@ function normalizeDeviceLinks(links) {
     return normalized;
 }
 
+const DEVICE_STORAGE_TYPE_OPTIONS = ['SSD', 'HDD', 'NVMe', 'eMMC', 'SD Card', 'USB Drive'];
+
+function normalizeDeviceStorages(storages) {
+    const normalized = [];
+    (Array.isArray(storages) ? storages : []).forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const size = Number(item.size);
+        if (!Number.isFinite(size) || size <= 0) return;
+        normalized.push({
+            size,
+            unit: String(item.unit || '').trim(),
+            type: String(item.type || '').trim()
+        });
+    });
+    return normalized;
+}
+
 function getLegacyWebsiteLink(device) {
     const url = normalizeExternalUrl(device && device.website);
     if (!url) return [];
@@ -296,7 +313,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateZigbeeClientsManagerVisibility();
     updateZwaveClientsManagerVisibility();
     initializeDeviceLinksSupport();
-    
+    initializeDeviceStoragesSupport();
+
     if (editingDeviceId) {
         loadDeviceForEdit(editingDeviceId);
     } else {
@@ -349,13 +367,13 @@ function initializeEventListeners() {
     // Port buttons
     const addPortBtn = document.getElementById('add-port-btn');
     if (addPortBtn) {
-        addPortBtn.addEventListener('click', () => addPort('ethernet-input', '', 'ports-container'));
+        addPortBtn.addEventListener('click', () => addPort('ethernet-io', {}, 'ports-container'));
     }
-    
+
     // Power port button
     const addPowerPortBtn = document.getElementById('add-power-port-btn');
     if (addPowerPortBtn) {
-        addPowerPortBtn.addEventListener('click', () => addPort('power-input', '', 'power-ports-container'));
+        addPowerPortBtn.addEventListener('click', () => addPort('power-input', {}, 'power-ports-container'));
     }
 
     document.getElementById('brand-modal-close').addEventListener('click', closeBrandModal);
@@ -958,24 +976,11 @@ async function uploadDeviceFile(file) {
 function initDevicePhotoUpload() {
     const selectBtn = document.getElementById('device-photo-select-btn');
     const removeBtn = document.getElementById('device-photo-remove-btn');
-    const preview = document.getElementById('device-photo-preview');
     const input = document.getElementById('device-photo-input');
     if (!selectBtn || !input) return;
 
     const trigger = () => input.click();
     selectBtn.addEventListener('click', trigger);
-    if (preview) {
-        preview.addEventListener('click', trigger);
-        preview.setAttribute('role', 'button');
-        preview.setAttribute('tabindex', '0');
-        preview.setAttribute('aria-label', 'Upload device photo');
-        preview.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                trigger();
-            }
-        });
-    }
 
     input.addEventListener('change', () => {
         if (input.files.length) {
@@ -1081,6 +1086,7 @@ function setDevicePhotoPreview(src, isApiPath, options = {}) {
     const img = document.getElementById('device-photo-img');
     const placeholder = document.getElementById('device-photo-placeholder');
     const removeBtn = document.getElementById('device-photo-remove-btn');
+    const selectBtn = document.getElementById('device-photo-select-btn');
     const preview = document.getElementById('device-photo-preview');
     if (!img) return;
 
@@ -1112,6 +1118,7 @@ function setDevicePhotoPreview(src, isApiPath, options = {}) {
         }
         if (placeholder) placeholder.hidden = true;
         if (removeBtn) removeBtn.hidden = sourceKind === 'type';
+        if (selectBtn) selectBtn.textContent = sourceKind === 'type' ? 'Upload Photo' : 'Replace Photo';
         if (preview) {
             preview.classList.add('device-photo-preview--has-image');
             preview.classList.toggle('device-photo-preview--type', sourceKind === 'type');
@@ -1127,6 +1134,7 @@ function setDevicePhotoPreview(src, isApiPath, options = {}) {
         img.onerror = null;
         if (placeholder) placeholder.hidden = false;
         if (removeBtn) removeBtn.hidden = true;
+        if (selectBtn) selectBtn.textContent = 'Upload Photo';
         if (preview) {
             preview.classList.remove('device-photo-preview--has-image', 'device-photo-preview--type', 'device-photo-preview--custom');
         }
@@ -1456,6 +1464,7 @@ function populateBrands() {
     const newOption = document.createElement('option');
     newOption.value = '__new__';
     newOption.textContent = '+ Add new brand';
+    newOption.dataset.uiSelectPinned = 'true';
     brandSelect.appendChild(newOption);
     
     if (currentValue) {
@@ -1478,6 +1487,7 @@ function populateTypes() {
     const newOption = document.createElement('option');
     newOption.value = '__new__';
     newOption.textContent = '+ Add new type';
+    newOption.dataset.uiSelectPinned = 'true';
     typeSelect.appendChild(newOption);
     
     if (currentValue) {
@@ -1698,7 +1708,7 @@ function populateLabels() {
     if (labelSelect) {
         labelSelect.disabled = options.length === 0;
         if (options.length === 0) {
-            labelSelect.innerHTML = '<option value="" disabled>No labels available</option>';
+            labelSelect.innerHTML = '<option value="" disabled>No labels defined in Home Assistant</option>';
         } else {
             labelSelect.innerHTML = options
                 .map(option => `<option value="${option.id}">${escapeHtml(option.name)}</option>`)
@@ -2025,6 +2035,147 @@ function collectDeviceLinks() {
     };
 }
 
+function initializeDeviceStoragesSupport() {
+    const addStorageButton = document.getElementById('add-device-storage-btn');
+    const storagesList = document.getElementById('device-storages-list');
+    if (addStorageButton) {
+        addStorageButton.addEventListener('click', () => {
+            const row = appendDeviceStorageRow();
+            updateDeviceStoragesEmptyState();
+            row?.querySelector('[data-storage-size]')?.focus();
+        });
+    }
+    if (!storagesList) return;
+
+    storagesList.addEventListener('click', (event) => {
+        const removeButton = event.target?.closest('[data-storage-remove]');
+        if (removeButton) {
+            const row = removeButton.closest('.device-storage-item');
+            if (row) {
+                row.remove();
+                updateDeviceStoragesEmptyState();
+            }
+        }
+    });
+
+    renderDeviceStorages([]);
+}
+
+function renderDeviceStorages(storages) {
+    const storagesList = document.getElementById('device-storages-list');
+    if (!storagesList) return;
+    storagesList.innerHTML = '';
+    normalizeDeviceStorages(storages).forEach((storage) => appendDeviceStorageRow(storage));
+    updateDeviceStoragesEmptyState();
+}
+
+function appendDeviceStorageRow(storage = {}) {
+    const storagesList = document.getElementById('device-storages-list');
+    if (!storagesList) return null;
+
+    const item = document.createElement('div');
+    item.className = 'device-storage-item';
+    item.innerHTML = `
+        <div class="form-group">
+            <label>Disk Space</label>
+            <input type="number" data-storage-size min="0" step="1" placeholder="e.g., 128">
+        </div>
+        <div class="form-group">
+            <label>Unit</label>
+            <select data-storage-unit>
+                <option value="">Select unit</option>
+                <option value="MB">MB</option>
+                <option value="GB">GB</option>
+                <option value="TB">TB</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Type</label>
+            <select data-storage-type>
+                <option value="">Select type</option>
+                ${DEVICE_STORAGE_TYPE_OPTIONS.map((option) => `<option value="${option}">${option}</option>`).join('')}
+            </select>
+        </div>
+        <div class="device-storage-actions">
+            <button class="btn btn-secondary btn-sm btn-icon device-storage-remove" type="button" data-storage-remove aria-label="Remove storage" data-tooltip="Remove storage">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M8 6V4h8v2"></path>
+                    <path d="M6 6l1 14h10l1-14"></path>
+                    <path d="M10 11v6"></path>
+                    <path d="M14 11v6"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+
+    const sizeInput = item.querySelector('[data-storage-size]');
+    const unitSelect = item.querySelector('[data-storage-unit]');
+    const typeSelect = item.querySelector('[data-storage-type]');
+    if (sizeInput && storage.size !== undefined && storage.size !== null && storage.size !== '') {
+        sizeInput.value = storage.size;
+    }
+    if (unitSelect) {
+        unitSelect.value = String(storage.unit || '').trim();
+    }
+    if (typeSelect) {
+        const type = String(storage.type || '').trim();
+        typeSelect.value = type;
+        // Keep unknown legacy/custom values visible instead of silently dropping them
+        if (type && typeSelect.value !== type) {
+            const customOption = document.createElement('option');
+            customOption.value = type;
+            customOption.textContent = type;
+            typeSelect.appendChild(customOption);
+            typeSelect.value = type;
+        }
+    }
+
+    storagesList.appendChild(item);
+    return item;
+}
+
+function updateDeviceStoragesEmptyState() {
+    const storagesList = document.getElementById('device-storages-list');
+    const emptyState = document.getElementById('device-storages-empty');
+    if (!storagesList || !emptyState) return;
+    emptyState.hidden = storagesList.children.length > 0;
+}
+
+function collectDeviceStorages() {
+    const storagesList = document.getElementById('device-storages-list');
+    if (!storagesList) {
+        return { storages: [], error: null };
+    }
+
+    const storages = [];
+    let error = null;
+    storagesList.querySelectorAll('.device-storage-item').forEach((row) => {
+        if (error) return;
+        const sizeInput = row.querySelector('[data-storage-size]');
+        const unitSelect = row.querySelector('[data-storage-unit]');
+        const typeSelect = row.querySelector('[data-storage-type]');
+        const rawSize = String(sizeInput?.value || '').trim();
+        const unit = String(unitSelect?.value || '').trim();
+        const type = String(typeSelect?.value || '').trim();
+        if (!rawSize && !unit && !type) return;
+
+        const size = Number(rawSize);
+        if (!rawSize || !Number.isFinite(size) || size <= 0) {
+            error = 'Storage disk space must be a number greater than 0.';
+            sizeInput?.focus();
+            return;
+        }
+
+        storages.push({ size, unit, type });
+    });
+
+    return {
+        storages: normalizeDeviceStorages(storages),
+        error
+    };
+}
+
 function updateAreaAutoSyncState() {
     const installed = document.getElementById('device-area')?.value || '';
     const controlled = document.getElementById('device-controlled-area')?.value || '';
@@ -2231,8 +2382,7 @@ function loadDeviceData(device) {
     if (warrantyExpirationInput) {
         warrantyExpirationInput.value = device.warrantyExpiration || '';
     }
-    document.getElementById('device-storage-size').value = device.storageSize || '';
-    document.getElementById('device-storage-unit').value = device.storageUnit || '';
+    renderDeviceStorages(getDeviceStorages(device));
     document.getElementById('device-notes').value = device.notes || '';
     document.getElementById('device-connectivity').value = device.connectivity ? normalizeOptionValue(device.connectivity) : '';
     const networkSelect = document.getElementById('device-network');
@@ -2300,6 +2450,8 @@ function loadDeviceData(device) {
     if (device.ports) {
         loadPorts(device.ports);
     }
+
+    syncDateInputs();
 }
 
 // Form Handlers
@@ -2409,24 +2561,61 @@ async function handleDeviceSubmit(e) {
     // Validate ports from both containers
     const containers = ['ports-container', 'power-ports-container'];
     let hasInvalidPorts = false;
-    
+    let hasMissingRemotePorts = false;
+    let hasDuplicateRemotePorts = false;
+    const usedRemotePorts = new Set();
+
     containers.forEach(containerId => {
         const container = document.getElementById(containerId);
         if (!container) return;
-        
-        const portSearchInputs = container.querySelectorAll('.port-device-search');
-        portSearchInputs.forEach(input => {
+
+        container.querySelectorAll('.port-item').forEach(portEl => {
+            const rowId = portEl.dataset.portId;
+            const input = document.getElementById(`${rowId}-search`);
+            const remoteSelect = document.getElementById(`${rowId}-remote-port`);
+            if (!input) return;
+
             if (input.value.trim() && !input.dataset.deviceId) {
                 hasInvalidPorts = true;
                 input.classList.add('port-search-invalid');
             } else {
                 input.classList.remove('port-search-invalid');
             }
+
+            const deviceId = String(input.dataset.deviceId || '').trim();
+            const remotePortId = remoteSelect ? String(remoteSelect.value || '') : '';
+            if (remoteSelect) {
+                remoteSelect.classList.remove('port-search-invalid');
+            }
+            if (deviceId && !remotePortId) {
+                hasMissingRemotePorts = true;
+                if (remoteSelect) {
+                    remoteSelect.classList.add('port-search-invalid');
+                }
+            }
+            if (deviceId && remotePortId) {
+                const key = `${deviceId}::${remotePortId}`;
+                if (usedRemotePorts.has(key)) {
+                    hasDuplicateRemotePorts = true;
+                    if (remoteSelect) {
+                        remoteSelect.classList.add('port-search-invalid');
+                    }
+                }
+                usedRemotePorts.add(key);
+            }
         });
     });
-    
+
     if (hasInvalidPorts) {
         showAlert('Please select valid devices from the search results for all ports, or clear the invalid entries.');
+        return;
+    }
+    if (hasMissingRemotePorts) {
+        showAlert('Please select a remote port for each connected port. If the remote device has no free compatible ports, define them on that device first.');
+        return;
+    }
+    if (hasDuplicateRemotePorts) {
+        showAlert('Two ports are connected to the same remote port. Each remote port can only be used once.');
         return;
     }
     const linksResult = collectDeviceLinks();
@@ -2460,6 +2649,11 @@ async function handleDeviceSubmit(e) {
         showAlert(maxConsumptionResult.error);
         return;
     }
+    const storagesResult = collectDeviceStorages();
+    if (storagesResult.error) {
+        showAlert(storagesResult.error);
+        return;
+    }
     const purchasePriceRaw = document.getElementById('device-purchase-price')?.value || '';
     const purchaseCurrencyValue = document.getElementById('device-purchase-currency')?.value || 'USD';
     const hasPurchasePrice = purchasePriceRaw.trim() !== '';
@@ -2489,8 +2683,7 @@ async function handleDeviceSubmit(e) {
         purchasePrice,
         purchaseCurrency: hasPurchasePrice ? purchaseCurrencyValue : '',
         warrantyExpiration: document.getElementById('device-warranty-expiration')?.value || '',
-        storageSize: document.getElementById('device-storage-size').value,
-        storageUnit: document.getElementById('device-storage-unit').value,
+        storages: storagesResult.storages,
         notes: document.getElementById('device-notes').value,
         links: linksResult.links,
         connectivity: connectivity,
@@ -4036,40 +4229,66 @@ const ETHERNET_CABLE_OPTIONS = [
         text: 'Cat8'
     }
 ];
-const ETHERNET_SPEED_OPTIONS = [
-    {
-        value: '10Mbps',
-        text: '10Mbps'
-    },
-    {
-        value: '100Mbps',
-        text: '100Mbps'
-    },
-    {
-        value: '1Gbps',
-        text: '1Gbps'
-    },
-    {
-        value: '2.5Gbps',
-        text: '2.5Gbps'
-    },
-    {
-        value: '5Gbps',
-        text: '5Gbps'
-    },
-    {
-        value: '10Gbps',
-        text: '10Gbps'
-    },
-    {
-        value: '25Gbps',
-        text: '25Gbps'
-    },
-    {
-        value: '40Gbps',
-        text: '40Gbps'
-    }
+// Valid link speeds per network port kind: copper Ethernet (BASE-T) tops out at
+// 10G, SFP is the 1G generation, SFP+ is the 10G generation (backward compatible with 1G)
+const NETWORK_SPEED_OPTIONS = {
+    ethernet: ['10Mbps', '100Mbps', '1Gbps', '2.5Gbps', '5Gbps', '10Gbps'],
+    sfp:      ['100Mbps', '1Gbps'],
+    sfpplus:  ['1Gbps', '10Gbps']
+};
+
+function getNetworkSpeedOptions(kind) {
+    return NETWORK_SPEED_OPTIONS[kind] || NETWORK_SPEED_OPTIONS.ethernet;
+}
+
+// Build the Speed <option> list for a port kind. A stored value that isn't a
+// standard option for the kind is appended so legacy data is never lost.
+function buildSpeedOptionsHtml(kind, selected) {
+    const opts = getNetworkSpeedOptions(kind).slice();
+    if (selected && !opts.includes(selected)) opts.push(selected);
+    return '<option value="">Select speed</option>' + opts.map(v =>
+        `<option value="${escapeHtml(v)}"${v === selected ? ' selected' : ''}>${escapeHtml(v)}</option>`
+    ).join('');
+}
+const USB_CONNECTOR_OPTIONS = [
+    { value: 'usb-a', text: 'USB-A' },
+    { value: 'usb-b', text: 'USB-B' },
+    { value: 'usb-c', text: 'USB-C' },
+    { value: 'micro-usb', text: 'Micro-USB' },
+    { value: 'mini-usb', text: 'Mini-USB' }
 ];
+// USB generation (speed capability), independent of the connector shape
+const USB_VERSION_OPTIONS = [
+    { value: 'usb2',   text: 'USB 2.0 (480 Mbps)' },
+    { value: 'usb3',   text: 'USB 3.0 (5 Gbps)' },
+    { value: 'usb3.1', text: 'USB 3.1 (10 Gbps)' },
+    { value: 'usb3.2', text: 'USB 3.2 (20 Gbps)' },
+    { value: 'usb4',   text: 'USB4 (40 Gbps)' }
+];
+// PoE (Power over Ethernet) is only meaningful on copper Ethernet ports.
+// The role says whether the port sources (PSE) or draws (PD) power; the
+// standard says how much (802.3af/at/bt or Ubiquiti-style passive PoE).
+const POE_ROLE_OPTIONS = [
+    { value: '',    text: 'None' },
+    { value: 'pse', text: 'Provides (PSE)' },
+    { value: 'pd',  text: 'Powered (PD)' }
+];
+const POE_STANDARD_OPTIONS = [
+    { value: 'poe',       text: 'PoE (802.3af · 15 W)' },
+    { value: 'poe-plus',  text: 'PoE+ (802.3at · 30 W)' },
+    { value: 'poe-pp-60', text: 'PoE++ (802.3bt Type 3 · 60 W)' },
+    { value: 'poe-pp-90', text: 'PoE++ (802.3bt Type 4 · 90 W)' },
+    { value: 'passive',   text: 'Passive PoE (24V)' }
+];
+
+// Selectable kinds for the Data Ports section
+const DATA_PORT_KINDS = ['ethernet', 'sfp', 'sfpplus', 'hdmi', 'usb'];
+// Network kinds carry a speed and are always bidirectional (no Direction choice)
+const NETWORK_PORT_KINDS = ['ethernet', 'sfp', 'sfpplus'];
+
+function isNetworkPortKind(kind) {
+    return NETWORK_PORT_KINDS.includes(kind);
+}
 
 function parsePortType(portType) {
     if (!portType || typeof portType !== 'string') {
@@ -4088,12 +4307,13 @@ function buildPortType(kind, direction) {
 
 function normalizePortKind(kind, isPower) {
     if (isPower) return 'power';
-    if (kind === 'usb' || kind === 'ethernet') return kind;
+    if (DATA_PORT_KINDS.includes(kind)) return kind;
     return 'ethernet';
 }
 
 function normalizePortDirection(direction, kind) {
-    if (direction === 'io' && kind === 'ethernet') return 'io';
+    // Network links are always bidirectional; the user cannot pick a direction
+    if (isNetworkPortKind(kind)) return 'io';
     return direction === 'output' ? 'output' : 'input';
 }
 
@@ -4102,33 +4322,65 @@ function getPortLabel(portType) {
         'ethernet-input': 'Ethernet Input',
         'ethernet-output': 'Ethernet Output',
         'ethernet-io': 'Ethernet Input/Output',
-        'usb-input': 'USB Input',
-        'usb-output': 'USB Output',
+        'sfp-input': 'SFP Input',
+        'sfp-output': 'SFP Output',
+        'sfp-io': 'SFP Input/Output',
+        'sfpplus-input': 'SFP+ Input',
+        'sfpplus-output': 'SFP+ Output',
+        'sfpplus-io': 'SFP+ Input/Output',
+        'hdmi-input': 'HDMI Input',
+        'hdmi-output': 'HDMI Output',
+        // USB is a host/peripheral bus, not a directional signal, so it reads
+        // Host/Device instead of Input/Output
+        'usb-input': 'USB Host',
+        'usb-output': 'USB Device',
         'power-input': 'Power Input',
         'power-output': 'Power Output'
     };
     return labels[portType] || portType;
 }
 
-function addPort(portType, connectedTo = '', containerId = 'ports-container', cableType = '', speed = '') {
+// Direction option labels differ by kind: USB uses Host/Device (host vs
+// peripheral), everything else uses Input/Output
+function getDirectionOptionLabel(kind, direction) {
+    if (kind === 'usb') {
+        return direction === 'output' ? 'Device' : 'Host';
+    }
+    return direction === 'output' ? 'Output' : 'Input';
+}
+
+// The field is a "Role" for USB (Host/Device) and a "Direction" for the
+// directional kinds (HDMI/Power, which are Input/Output)
+function getDirectionFieldLabel(kind) {
+    return kind === 'usb' ? 'Role' : 'Direction';
+}
+
+function addPort(portType, portData = {}, containerId = 'ports-container') {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
-    const portId = `port-${Date.now()}-${portCounter++}`;
+
+    const port = (portData && typeof portData === 'object') ? portData : {};
+    const connectedTo = String(port.connectedTo || '');
+    const connectedToPort = String(port.connectedToPort || '');
+    const cableType = port.cableType || '';
+    const speed = port.speed || '';
+
+    const portId = `port-row-${Date.now()}-${portCounter++}`;
     const isPowerContainer = containerId === 'power-ports-container';
     const parsed = parsePortType(portType);
     const portKind = normalizePortKind(parsed.kind, isPowerContainer);
     const portDirection = normalizePortDirection(parsed.direction, portKind);
-    
+
     const portEl = document.createElement('div');
     portEl.className = 'port-item';
     portEl.dataset.portId = portId;
+    portEl.dataset.recordId = String(port.id || '') || generatePortId();
     portEl.dataset.portKind = portKind;
     portEl.dataset.portDirection = portDirection;
     portEl.dataset.portType = buildPortType(portKind, portDirection);
-    
+
     const portLabel = getPortLabel(portEl.dataset.portType);
-    
+
     // Get connected device name if exists
     let connectedDeviceName = '';
     if (connectedTo) {
@@ -4137,8 +4389,11 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             connectedDeviceName = connectedDevice.name || connectedDevice.model || 'Unnamed Device';
         }
     }
-    
+
     const isEthernetPort = portKind === 'ethernet';
+    const isNetworkPort = isNetworkPortKind(portKind);
+    const isUsbPort = portKind === 'usb';
+    const usbType = port.usbType || '';
     const cableTypeMarkup = `
         <div class="port-field">
             <label for="${portId}-cable-type">Cable type</label>
@@ -4152,26 +4407,83 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             </select>
         </div>
     `;
-    const speedMarkup = `
-        <div class="port-field">
+    // Speed is a capability of the port itself (unlike the cable, which
+    // belongs to the connection), so it lives in the "Port" section
+    const speedMarkup = isPowerContainer ? '' : `
+        <div class="port-field${isNetworkPort ? '' : ' is-hidden'}" data-speed-field>
             <label for="${portId}-speed">Speed</label>
-            <select id="${portId}-speed" class="port-select"${isEthernetPort ? '' : ' disabled'}>
-                <option value="">Select speed</option>
-                ${ETHERNET_SPEED_OPTIONS.map(option => `
-                    <option value="${option.value}"${option.value === speed ? ' selected' : ''}>
+            <select id="${portId}-speed" class="port-select"${isNetworkPort ? '' : ' disabled'}>
+                ${buildSpeedOptionsHtml(portKind, speed)}
+            </select>
+        </div>
+    `;
+    // USB connector type (USB-A/-B/-C, Micro, Mini) — only relevant for USB ports
+    const usbTypeMarkup = isPowerContainer ? '' : `
+        <div class="port-field${isUsbPort ? '' : ' is-hidden'}" data-usb-type-field>
+            <label for="${portId}-usb-type">USB type</label>
+            <select id="${portId}-usb-type" class="port-select"${isUsbPort ? '' : ' disabled'}>
+                <option value="">Select USB type</option>
+                ${USB_CONNECTOR_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === usbType ? ' selected' : ''}>
                         ${escapeHtml(option.text)}
                     </option>
                 `).join('')}
             </select>
         </div>
     `;
+    // USB generation/speed (USB 2.0, 3.x, USB4) — independent of the connector
+    const usbVersion = port.usbVersion || '';
+    const usbVersionMarkup = isPowerContainer ? '' : `
+        <div class="port-field${isUsbPort ? '' : ' is-hidden'}" data-usb-version-field>
+            <label for="${portId}-usb-version">USB version</label>
+            <select id="${portId}-usb-version" class="port-select"${isUsbPort ? '' : ' disabled'}>
+                <option value="">Select USB version</option>
+                ${USB_VERSION_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === usbVersion ? ' selected' : ''}>
+                        ${escapeHtml(option.text)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    // PoE (Power over Ethernet) — only for Ethernet ports. The standard select
+    // only appears once a role (Provides/Powered) is chosen.
+    const poeRole = port.poeRole || '';
+    const poeStandard = port.poeStandard || '';
+    const poeStandardVisible = isEthernetPort && poeRole !== '';
+    const poeRoleMarkup = isPowerContainer ? '' : `
+        <div class="port-field${isEthernetPort ? '' : ' is-hidden'}" data-poe-role-field>
+            <label for="${portId}-poe-role">PoE</label>
+            <select id="${portId}-poe-role" class="port-select port-poe-role-select"${isEthernetPort ? '' : ' disabled'}>
+                ${POE_ROLE_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === poeRole ? ' selected' : ''}>
+                        ${escapeHtml(option.text)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    const poeStandardMarkup = isPowerContainer ? '' : `
+        <div class="port-field${poeStandardVisible ? '' : ' is-hidden'}" data-poe-standard-field>
+            <label for="${portId}-poe-standard">PoE standard</label>
+            <select id="${portId}-poe-standard" class="port-select"${poeStandardVisible ? '' : ' disabled'}>
+                <option value="">Select standard</option>
+                ${POE_STANDARD_OPTIONS.map(option => `
+                    <option value="${option.value}"${option.value === poeStandard ? ' selected' : ''}>
+                        ${escapeHtml(option.text)}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+    `;
+    // Direction only makes sense for non-network ports (HDMI, USB, Power);
+    // network links are always bidirectional, so the field is hidden for them
     const directionSelectMarkup = `
-        <div class="port-field">
-            <label for="${portId}-direction">Direction</label>
-            <select id="${portId}-direction" class="port-select port-direction-select">
-                <option value="input"${portDirection === 'input' ? ' selected' : ''}>Input</option>
-                <option value="output"${portDirection === 'output' ? ' selected' : ''}>Output</option>
-                ${isPowerContainer ? '' : `<option value="io"${portDirection === 'io' ? ' selected' : ''}${isEthernetPort ? '' : ' disabled hidden'}>Input/Output</option>`}
+        <div class="port-field${isNetworkPort ? ' is-hidden' : ''}" data-direction-field>
+            <label for="${portId}-direction">${escapeHtml(getDirectionFieldLabel(portKind))}</label>
+            <select id="${portId}-direction" class="port-select port-direction-select"${isNetworkPort ? ' disabled' : ''}>
+                <option value="input"${portDirection === 'input' ? ' selected' : ''}>${escapeHtml(getDirectionOptionLabel(portKind, 'input'))}</option>
+                <option value="output"${portDirection === 'output' ? ' selected' : ''}>${escapeHtml(getDirectionOptionLabel(portKind, 'output'))}</option>
             </select>
         </div>
     `;
@@ -4180,12 +4492,13 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             <label for="${portId}-type">Type</label>
             <select id="${portId}-type" class="port-select port-type-select">
                 <option value="ethernet"${portKind === 'ethernet' ? ' selected' : ''}>Ethernet</option>
+                <option value="sfp"${portKind === 'sfp' ? ' selected' : ''}>SFP</option>
+                <option value="sfpplus"${portKind === 'sfpplus' ? ' selected' : ''}>SFP+</option>
+                <option value="hdmi"${portKind === 'hdmi' ? ' selected' : ''}>HDMI</option>
                 <option value="usb"${portKind === 'usb' ? ' selected' : ''}>USB</option>
             </select>
         </div>
     `;
-    const showExtraRow = Boolean(typeSelectMarkup) || isEthernetPort;
-
     portEl.innerHTML = `
         <div class="port-header">
             <span class="port-label">${escapeHtml(portLabel)}</span>
@@ -4200,54 +4513,110 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
             </button>
         </div>
         <div class="port-body">
-            <div class="port-main-row">
-                ${directionSelectMarkup}
-                <div class="port-search-wrapper">
-                    <label for="${portId}-search">Connected to</label>
-                    <input 
-                        type="text" 
-                        id="${portId}-search" 
-                        class="port-device-search" 
-                        placeholder="Search device..."
-                        autocomplete="off"
-                        value="${escapeHtml(connectedDeviceName)}"
-                        data-device-id="${connectedTo}"
-                    />
-                    <div id="${portId}-results" class="port-search-results is-hidden"></div>
+            <div class="port-section">
+                <span class="port-section-label">Port</span>
+                <div class="port-config-row">
+                    ${typeSelectMarkup}
+                    ${directionSelectMarkup}
+                    ${usbTypeMarkup}
+                    ${usbVersionMarkup}
+                    ${speedMarkup}
+                    ${poeRoleMarkup}
+                    ${poeStandardMarkup}
                 </div>
             </div>
-            <div class="port-extra-row${showExtraRow ? '' : ' is-hidden'}">
-                ${typeSelectMarkup}
-                <div class="port-ethernet-fields${isEthernetPort ? '' : ' is-hidden'}" data-ethernet-fields>
-                    ${cableTypeMarkup}
-                    ${speedMarkup}
+            <div class="port-section">
+                <span class="port-section-label">Connection</span>
+                <div class="port-connection-row">
+                    <div class="port-search-wrapper">
+                        <label for="${portId}-search">Connected to</label>
+                        <input
+                            type="text"
+                            id="${portId}-search"
+                            class="port-device-search"
+                            placeholder="Search device..."
+                            autocomplete="off"
+                            value="${escapeHtml(connectedDeviceName)}"
+                            data-device-id="${connectedTo}"
+                        />
+                        <div id="${portId}-results" class="port-search-results is-hidden"></div>
+                    </div>
+                    <div class="port-field port-remote-port-field">
+                        <label for="${portId}-remote-port">Remote port</label>
+                        <select id="${portId}-remote-port" class="port-select port-remote-port-select"${connectedTo ? '' : ' disabled'}>
+                            <option value="">Select port</option>
+                        </select>
+                    </div>
+                    <div class="port-ethernet-fields${isEthernetPort ? '' : ' is-hidden'}" data-ethernet-fields>
+                        ${cableTypeMarkup}
+                    </div>
                 </div>
             </div>
         </div>
     `;
-    
+
     container.appendChild(portEl);
 
     const typeSelect = document.getElementById(`${portId}-type`);
     const directionSelect = document.getElementById(`${portId}-direction`);
+    const directionField = portEl.querySelector('[data-direction-field]');
     const labelEl = portEl.querySelector('.port-label');
     const ethernetFields = portEl.querySelector('[data-ethernet-fields]');
-    const extraRow = portEl.querySelector('.port-extra-row');
+    const speedField = portEl.querySelector('[data-speed-field]');
+    const usbTypeField = portEl.querySelector('[data-usb-type-field]');
+    const usbVersionField = portEl.querySelector('[data-usb-version-field]');
     const cableSelect = document.getElementById(`${portId}-cable-type`);
     const speedSelect = document.getElementById(`${portId}-speed`);
+    const usbTypeSelect = document.getElementById(`${portId}-usb-type`);
+    const usbVersionSelect = document.getElementById(`${portId}-usb-version`);
+    const poeRoleField = portEl.querySelector('[data-poe-role-field]');
+    const poeStandardField = portEl.querySelector('[data-poe-standard-field]');
+    const poeRoleSelect = document.getElementById(`${portId}-poe-role`);
+    const poeStandardSelect = document.getElementById(`${portId}-poe-standard`);
+    const remoteSelect = document.getElementById(`${portId}-remote-port`);
+
+    // The PoE standard field is shown only for an Ethernet port whose role is set
+    const updatePoeStandardVisibility = () => {
+        const showStd = (typeSelect ? typeSelect.value === 'ethernet' : false) &&
+            poeRoleSelect && poeRoleSelect.value !== '';
+        if (poeStandardField) {
+            poeStandardField.classList.toggle('is-hidden', !showStd);
+        }
+        if (poeStandardSelect) {
+            poeStandardSelect.disabled = !showStd;
+            if (!showStd) poeStandardSelect.value = '';
+        }
+    };
+
+    // Tracks which kind the Speed <option>s were built for. The initial markup
+    // is rendered for portKind, so the first updatePortType() call is a no-op
+    // for the speed list and the stored value is preserved. A later change to a
+    // different kind rebuilds the list with that kind's valid speeds.
+    let speedKindApplied = portKind;
 
     const updatePortType = () => {
         const kind = typeSelect ? typeSelect.value : portEl.dataset.portKind;
         const isEthernet = kind === 'ethernet';
-        const ioOption = directionSelect ? directionSelect.querySelector('option[value="io"]') : null;
-        if (ioOption) {
-            ioOption.disabled = !isEthernet;
-            ioOption.hidden = !isEthernet;
-            if (!isEthernet && directionSelect.value === 'io') {
-                directionSelect.value = 'input';
-            }
+        const isNetwork = isNetworkPortKind(kind);
+        const isUsb = kind === 'usb';
+        // Network links are always bidirectional: hide Direction and force "io"
+        if (directionField) {
+            directionField.classList.toggle('is-hidden', isNetwork);
+            // "Role" for USB (Host/Device), "Direction" otherwise (Input/Output)
+            const dirLabelEl = directionField.querySelector('label');
+            if (dirLabelEl) dirLabelEl.textContent = getDirectionFieldLabel(kind);
         }
-        const direction = directionSelect ? directionSelect.value : portEl.dataset.portDirection;
+        if (directionSelect) {
+            directionSelect.disabled = isNetwork;
+            // USB relabels Input/Output as Host/Device
+            const inOpt = directionSelect.querySelector('option[value="input"]');
+            const outOpt = directionSelect.querySelector('option[value="output"]');
+            if (inOpt) inOpt.textContent = getDirectionOptionLabel(kind, 'input');
+            if (outOpt) outOpt.textContent = getDirectionOptionLabel(kind, 'output');
+        }
+        const direction = isNetwork
+            ? 'io'
+            : (directionSelect ? directionSelect.value : portEl.dataset.portDirection);
         portEl.dataset.portKind = kind;
         portEl.dataset.portDirection = direction;
         const newPortType = buildPortType(kind, direction);
@@ -4258,16 +4627,47 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
         if (ethernetFields) {
             ethernetFields.classList.toggle('is-hidden', !isEthernet);
         }
-        if (extraRow) {
-            const showExtra = Boolean(typeSelect) || isEthernet;
-            extraRow.classList.toggle('is-hidden', !showExtra);
+        if (speedField) {
+            speedField.classList.toggle('is-hidden', !isNetwork);
+        }
+        if (usbTypeField) {
+            usbTypeField.classList.toggle('is-hidden', !isUsb);
+        }
+        if (usbVersionField) {
+            usbVersionField.classList.toggle('is-hidden', !isUsb);
         }
         if (cableSelect) {
             cableSelect.disabled = !isEthernet;
         }
         if (speedSelect) {
-            speedSelect.disabled = !isEthernet;
+            // Rebuild the speed options for the new kind, dropping a selection
+            // that isn't valid for it (e.g. 10Gbps when switching to SFP)
+            if (kind !== speedKindApplied) {
+                const optionKind = isNetwork ? kind : 'ethernet';
+                const validSpeeds = getNetworkSpeedOptions(optionKind);
+                const keep = validSpeeds.includes(speedSelect.value) ? speedSelect.value : '';
+                speedSelect.innerHTML = buildSpeedOptionsHtml(optionKind, keep);
+                speedKindApplied = kind;
+            }
+            speedSelect.disabled = !isNetwork;
         }
+        if (usbTypeSelect) {
+            usbTypeSelect.disabled = !isUsb;
+        }
+        if (usbVersionSelect) {
+            usbVersionSelect.disabled = !isUsb;
+        }
+        // PoE only applies to Ethernet ports
+        if (poeRoleField) {
+            poeRoleField.classList.toggle('is-hidden', !isEthernet);
+        }
+        if (poeRoleSelect) {
+            poeRoleSelect.disabled = !isEthernet;
+            if (!isEthernet) poeRoleSelect.value = '';
+        }
+        updatePoeStandardVisibility();
+        // Kind/direction changed: recompute which remote ports are compatible
+        populateRemotePortOptions(portId, remoteSelect ? remoteSelect.value : '');
     };
 
     if (typeSelect) {
@@ -4276,10 +4676,115 @@ function addPort(portType, connectedTo = '', containerId = 'ports-container', ca
     if (directionSelect) {
         directionSelect.addEventListener('change', updatePortType);
     }
+    if (poeRoleSelect) {
+        poeRoleSelect.addEventListener('change', updatePoeStandardVisibility);
+    }
+    if (remoteSelect) {
+        // Refresh availability right before the dropdown opens
+        remoteSelect.addEventListener('focus', () => populateRemotePortOptions(portId, remoteSelect.value));
+    }
     updatePortType();
-    
+
     // Setup search functionality
     setupPortSearch(portId);
+
+    // Preselect the stored remote port, if any
+    if (connectedTo) {
+        populateRemotePortOptions(portId, connectedToPort);
+    }
+
+    updatePortsEmptyState();
+}
+
+function updatePortsEmptyState() {
+    [
+        { containerId: 'ports-container', emptyId: 'device-ports-empty' },
+        { containerId: 'power-ports-container', emptyId: 'power-ports-empty' }
+    ].forEach(({ containerId, emptyId }) => {
+        const container = document.getElementById(containerId);
+        const emptyState = document.getElementById(emptyId);
+        if (!container || !emptyState) return;
+        emptyState.hidden = container.querySelectorAll('.port-item').length > 0;
+    });
+}
+
+// Option label for a remote port: position-derived number plus the port's
+// direction and speed (e.g. "Ethernet 2 · Input/Output · 1Gbps")
+function formatRemotePortOptionLabel(device, port) {
+    const parts = [getPortDisplayLabel(device, port)];
+    const kind = getPortKindFromType(port.type);
+    if (kind !== 'power') {
+        // Power labels already encode the direction ("Power Out 2")
+        const direction = getPortDirectionFromType(port.type);
+        if (direction === 'io') {
+            parts.push('Input/Output');
+        } else {
+            // USB reads Host/Device instead of Input/Output
+            parts.push(getDirectionOptionLabel(kind, direction));
+        }
+    }
+    if (isNetworkPortKind(kind) && port.speed) {
+        parts.push(String(port.speed));
+    }
+    return parts.join(' · ');
+}
+
+// Fill the "Remote port" select with the connected device's free, compatible ports
+function populateRemotePortOptions(portId, preferredPortId = '') {
+    const portEl = document.querySelector(`[data-port-id="${portId}"]`);
+    const searchInput = document.getElementById(`${portId}-search`);
+    const select = document.getElementById(`${portId}-remote-port`);
+    if (!portEl || !searchInput || !select) return;
+
+    const remoteDeviceId = String(searchInput.dataset.deviceId || '').trim();
+    const previousValue = String(preferredPortId || '');
+
+    if (!remoteDeviceId) {
+        select.innerHTML = '<option value="">Select port</option>';
+        select.value = '';
+        select.disabled = true;
+        return;
+    }
+
+    const remoteDevice = devices.find(d => String(d.id || '') === remoteDeviceId);
+    const remotePorts = (remoteDevice && Array.isArray(remoteDevice.ports)) ? remoteDevice.ports : [];
+    const kind = portEl.dataset.portKind;
+    const wantedDirection = getOppositePortDirection(portEl.dataset.portDirection);
+    const currentFormDeviceId = String(editingDeviceId || activeDeviceId || '').trim();
+
+    // Remote ports already claimed by other rows of this form
+    const claimedByOtherRows = new Set();
+    document.querySelectorAll('.port-item').forEach(otherEl => {
+        if (otherEl === portEl) return;
+        const otherRowId = otherEl.dataset.portId;
+        const otherSearch = document.getElementById(`${otherRowId}-search`);
+        const otherSelect = document.getElementById(`${otherRowId}-remote-port`);
+        if (!otherSearch || !otherSelect) return;
+        if (String(otherSearch.dataset.deviceId || '').trim() !== remoteDeviceId) return;
+        if (otherSelect.value) claimedByOtherRows.add(otherSelect.value);
+    });
+
+    const options = remotePorts.filter(p => {
+        if (!p || typeof p !== 'object' || !p.id) return false;
+        if (getPortKindFromType(p.type) !== kind) return false;
+        if (getPortDirectionFromType(p.type) !== wantedDirection) return false;
+        if (claimedByOtherRows.has(String(p.id))) return false;
+        const owner = String(p.connectedTo || '').trim();
+        return !owner || owner === currentFormDeviceId;
+    });
+
+    if (!options.length) {
+        select.innerHTML = '<option value="">No free compatible ports</option>';
+        select.value = '';
+        select.disabled = false;
+        return;
+    }
+
+    select.innerHTML = '<option value="">Select port</option>' + options.map(p =>
+        `<option value="${escapeHtml(String(p.id))}">${escapeHtml(formatRemotePortOptionLabel(remoteDevice, p))}</option>`
+    ).join('');
+    select.disabled = false;
+    select.value = (previousValue && options.some(p => String(p.id) === previousValue)) ? previousValue : '';
 }
 
 function setupPortSearch(portId) {
@@ -4302,14 +4807,16 @@ function setupPortSearch(portId) {
             if (this.value !== currentDeviceName) {
                 this.dataset.deviceId = '';
                 this.classList.remove('port-search-valid');
+                populateRemotePortOptions(portId);
             }
         }
-        
+
         if (!query) {
             resultsDiv.classList.add('is-hidden');
             resultsDiv.innerHTML = '';
             this.dataset.deviceId = '';
             this.classList.remove('port-search-valid');
+            populateRemotePortOptions(portId);
             return;
         }
         
@@ -4361,10 +4868,11 @@ function setupPortSearch(portId) {
                 searchInput.classList.add('port-search-valid');
                 resultsDiv.classList.add('is-hidden');
                 resultsDiv.innerHTML = '';
+                populateRemotePortOptions(portId);
             });
         });
     });
-    
+
     // Validate on blur
     searchInput.addEventListener('blur', function() {
         setTimeout(() => {
@@ -4372,6 +4880,7 @@ function setupPortSearch(portId) {
             if (this.value.trim() && !this.dataset.deviceId) {
                 this.value = '';
                 this.classList.remove('port-search-valid');
+                populateRemotePortOptions(portId);
             }
         }, 200); // Small delay to allow clicking on results
     });
@@ -4397,73 +4906,92 @@ function removePort(portId) {
     if (portEl) {
         portEl.remove();
     }
+    updatePortsEmptyState();
 }
 
 function getPortsData() {
     const ports = [];
-    
-    // Get ports from both containers
+
+    // Get ports from both containers (every row is part of the port inventory,
+    // whether it is connected or not)
     const containers = ['ports-container', 'power-ports-container'];
-    
+
     containers.forEach(containerId => {
         const container = document.getElementById(containerId);
         if (!container) return;
-        
+
         const portEls = container.querySelectorAll('.port-item');
         portEls.forEach(portEl => {
             const portId = portEl.dataset.portId;
             const searchInput = document.getElementById(`${portId}-search`);
-            const connectedTo = searchInput ? searchInput.dataset.deviceId : '';
+            const remoteSelect = document.getElementById(`${portId}-remote-port`);
             const cableSelect = document.getElementById(`${portId}-cable-type`);
             const speedSelect = document.getElementById(`${portId}-speed`);
             const typeSelect = document.getElementById(`${portId}-type`);
             const directionSelect = document.getElementById(`${portId}-direction`);
+            const usbTypeSelect = document.getElementById(`${portId}-usb-type`);
+            const usbVersionSelect = document.getElementById(`${portId}-usb-version`);
+            const poeRoleSelect = document.getElementById(`${portId}-poe-role`);
+            const poeStandardSelect = document.getElementById(`${portId}-poe-standard`);
             const portKind = typeSelect ? typeSelect.value : (portEl.dataset.portKind || 'power');
-            const portDirection = directionSelect ? directionSelect.value : (portEl.dataset.portDirection || 'input');
+            // Network links are always bidirectional; the Direction select is hidden for them
+            const portDirection = isNetworkPortKind(portKind)
+                ? 'io'
+                : (directionSelect ? directionSelect.value : (portEl.dataset.portDirection || 'input'));
             const portType = buildPortType(portKind, portDirection);
-            
+            const connectedTo = searchInput ? String(searchInput.dataset.deviceId || '').trim() : '';
+            const connectedToPort = connectedTo && remoteSelect ? String(remoteSelect.value || '') : '';
+
+            const portData = {
+                id: portEl.dataset.recordId || generatePortId(),
+                type: portType
+            };
             if (connectedTo) {
-                const portData = {
-                    type: portType,
-                    connectedTo: connectedTo
-                };
-                if (portKind === 'ethernet' && cableSelect) {
-                    portData.cableType = cableSelect.value;
-                }
-                if (portKind === 'ethernet' && speedSelect) {
-                    portData.speed = speedSelect.value;
-                }
-                ports.push(portData);
+                portData.connectedTo = connectedTo;
+                portData.connectedToPort = connectedToPort;
             }
+            if (portKind === 'ethernet' && cableSelect && cableSelect.value) {
+                portData.cableType = cableSelect.value;
+            }
+            if (isNetworkPortKind(portKind) && speedSelect && speedSelect.value) {
+                portData.speed = speedSelect.value;
+            }
+            if (portKind === 'usb' && usbTypeSelect && usbTypeSelect.value) {
+                portData.usbType = usbTypeSelect.value;
+            }
+            if (portKind === 'usb' && usbVersionSelect && usbVersionSelect.value) {
+                portData.usbVersion = usbVersionSelect.value;
+            }
+            if (portKind === 'ethernet' && poeRoleSelect && poeRoleSelect.value) {
+                portData.poeRole = poeRoleSelect.value;
+                if (poeStandardSelect && poeStandardSelect.value) {
+                    portData.poeStandard = poeStandardSelect.value;
+                }
+            }
+            ports.push(portData);
         });
     });
-    
+
     return ports;
 }
 
 function loadPorts(ports) {
     if (!ports || !Array.isArray(ports)) return;
-    
+
     ports.forEach(port => {
+        if (!port || typeof port !== 'object') return;
         // Determine which container to use based on port type
-        const containerId = (port.type === 'power-input' || port.type === 'power-output') 
-            ? 'power-ports-container' 
+        const containerId = String(port.type || '').startsWith('power')
+            ? 'power-ports-container'
             : 'ports-container';
-        
-        addPort(port.type, port.connectedTo, containerId, port.cableType || '', port.speed || '');
+
+        addPort(port.type, port, containerId);
     });
 }
 
-// Get opposite port type
-function getOppositePortType(portType) {
-    const parsed = parsePortType(portType);
-    const oppositeDirection = parsed.direction === 'io'
-        ? 'io'
-        : (parsed.direction === 'output' ? 'input' : 'output');
-    return buildPortType(parsed.kind, oppositeDirection);
-}
-
-// Sync ports bidirectionally
+// Sync ports bidirectionally: occupy/release the referenced remote ports.
+// Remote ports are part of each device's inventory, so they are never created
+// or deleted here — only their connection fields are updated.
 async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
     const normalizedCurrentDeviceId = String(currentDeviceId || '').trim();
     if (!normalizedCurrentDeviceId) return;
@@ -4472,68 +5000,92 @@ async function syncDevicePorts(currentDeviceId, currentDevicePorts) {
     const allData = await loadData();
     const allDevices = allData.devices;
 
-    // Track which devices are connected in the current device's ports
-    const connectedDeviceIds = new Set();
-    currentDevicePorts.forEach(port => {
-        const connectedTo = String(port.connectedTo || '').trim();
-        if (connectedTo) {
-            connectedDeviceIds.add(connectedTo);
-        }
+    // Desired connections keyed by remote device/port
+    const desiredByRemotePort = new Map();
+    (currentDevicePorts || []).forEach(port => {
+        if (!port || typeof port !== 'object') return;
+        const targetDeviceId = String(port.connectedTo || '').trim();
+        const targetPortId = String(port.connectedToPort || '').trim();
+        if (!targetDeviceId || !targetPortId) return;
+        desiredByRemotePort.set(`${targetDeviceId}::${targetPortId}`, port);
     });
 
-    // Update each connected device
-    connectedDeviceIds.forEach(targetDeviceId => {
-        const targetDevice = allDevices.find(d => String(d.id || '').trim() === targetDeviceId);
-        if (!targetDevice) return;
+    const matchedKeys = new Set();
+    const stolenConnections = [];
 
-        // Get current device's ports that connect to this target device
-        const portsToTarget = currentDevicePorts.filter(p => String(p.connectedTo || '').trim() === targetDeviceId);
+    allDevices.forEach(device => {
+        const deviceId = String(device.id || '').trim();
+        if (!deviceId || deviceId === normalizedCurrentDeviceId) return;
+        if (!Array.isArray(device.ports)) return;
 
-        // Initialize target device ports if not exists
-        if (!targetDevice.ports) {
-            targetDevice.ports = [];
-        }
+        device.ports.forEach(remotePort => {
+            if (!remotePort || typeof remotePort !== 'object' || !remotePort.id) return;
+            const key = `${deviceId}::${String(remotePort.id)}`;
+            const localPort = desiredByRemotePort.get(key);
+            const remoteOwner = String(remotePort.connectedTo || '').trim();
 
-        // Remove old connections from target device to current device
-        targetDevice.ports = targetDevice.ports.filter(p => String(p.connectedTo || '').trim() !== normalizedCurrentDeviceId);
-
-        // Add reverse connections
-        portsToTarget.forEach(port => {
-            const oppositeType = getOppositePortType(port.type);
-            if (oppositeType) {
-                const reversePort = {
-                    type: oppositeType,
-                    connectedTo: normalizedCurrentDeviceId
-                };
-                if (oppositeType.startsWith('ethernet')) {
-                    if (port.cableType) {
-                        reversePort.cableType = port.cableType;
-                    }
-                    if (port.speed) {
-                        reversePort.speed = port.speed;
+            if (localPort) {
+                // If another device pointed at this port, clear its side too
+                if (remoteOwner && remoteOwner !== normalizedCurrentDeviceId) {
+                    stolenConnections.push({
+                        ownerId: remoteOwner,
+                        viaDeviceId: deviceId,
+                        viaPortId: String(remotePort.id)
+                    });
+                }
+                remotePort.connectedTo = normalizedCurrentDeviceId;
+                remotePort.connectedToPort = String(localPort.id || '');
+                // The cable belongs to the connection, so it is mirrored on both
+                // ports; speed is a capability of each port and is left untouched
+                if (String(remotePort.type || '').startsWith('ethernet')) {
+                    if (localPort.cableType) {
+                        remotePort.cableType = localPort.cableType;
+                    } else {
+                        delete remotePort.cableType;
                     }
                 }
-                targetDevice.ports.push(reversePort);
+                matchedKeys.add(key);
+            } else if (remoteOwner === normalizedCurrentDeviceId) {
+                // No longer connected here: release the port but keep it defined
+                remotePort.connectedTo = '';
+                remotePort.connectedToPort = '';
             }
         });
     });
 
-    // Clean up ports from devices that are no longer connected
-    allDevices.forEach(device => {
-        const deviceId = String(device.id || '').trim();
-        if (deviceId === normalizedCurrentDeviceId) return;
-        if (!device.ports) return;
-
-        // If this device has ports connecting to current device, but current device doesn't connect back, remove them
-        if (!connectedDeviceIds.has(deviceId)) {
-            device.ports = device.ports.filter(p => String(p.connectedTo || '').trim() !== normalizedCurrentDeviceId);
-        }
+    // Clear the other side of any connection whose remote port was taken over
+    stolenConnections.forEach(({ ownerId, viaDeviceId, viaPortId }) => {
+        const owner = allDevices.find(d => String(d.id || '').trim() === ownerId);
+        if (!owner || !Array.isArray(owner.ports)) return;
+        owner.ports.forEach(port => {
+            if (!port || typeof port !== 'object') return;
+            if (String(port.connectedTo || '').trim() === viaDeviceId &&
+                String(port.connectedToPort || '').trim() === viaPortId) {
+                port.connectedTo = '';
+                port.connectedToPort = '';
+            }
+        });
     });
-    
+
+    // Drop dangling references on the current device (target device or port gone)
+    const currentDevice = allDevices.find(d => String(d.id || '').trim() === normalizedCurrentDeviceId);
+    if (currentDevice && Array.isArray(currentDevice.ports)) {
+        currentDevice.ports.forEach(port => {
+            if (!port || typeof port !== 'object') return;
+            const targetDeviceId = String(port.connectedTo || '').trim();
+            const targetPortId = String(port.connectedToPort || '').trim();
+            if (!targetDeviceId || !targetPortId) return;
+            if (!matchedKeys.has(`${targetDeviceId}::${targetPortId}`)) {
+                port.connectedTo = '';
+                port.connectedToPort = '';
+            }
+        });
+    }
+
     // Save updated devices
     allData.devices = allDevices;
     await saveData(allData);
-    
+
     // Update local devices array
     devices = allDevices;
 }
@@ -4687,6 +5239,7 @@ async function createDevice(deviceData) {
     }
     activeDeviceId = nextDeviceId;
 
+    const normalizedStorages = normalizeDeviceStorages(deviceData.storages);
     const device = {
         id: nextDeviceId,
         name: name,
@@ -4713,8 +5266,10 @@ async function createDevice(deviceData) {
         purchasePrice: Number.isFinite(deviceData.purchasePrice) ? deviceData.purchasePrice : null,
         purchaseCurrency: deviceData.purchaseCurrency || '',
         warrantyExpiration: deviceData.warrantyExpiration || '',
-        storageSize: deviceData.storageSize ? parseFloat(deviceData.storageSize) : null,
-        storageUnit: deviceData.storageUnit || '',
+        storages: normalizedStorages,
+        // Legacy mirror of the first storage for backward compatibility
+        storageSize: normalizedStorages[0]?.size ?? null,
+        storageUnit: normalizedStorages[0]?.unit || '',
         notes: deviceData.notes ? deviceData.notes.trim() : '',
         links: normalizeDeviceLinks(deviceData.links),
         connectivity: normalizeOptionValue(deviceData.connectivity),
@@ -4813,8 +5368,11 @@ async function updateDevice(id, deviceData, options = {}) {
         device.purchasePrice = Number.isFinite(deviceData.purchasePrice) ? deviceData.purchasePrice : null;
         device.purchaseCurrency = deviceData.purchaseCurrency || '';
         device.warrantyExpiration = deviceData.warrantyExpiration || '';
-        device.storageSize = deviceData.storageSize ? parseFloat(deviceData.storageSize) : null;
-        device.storageUnit = deviceData.storageUnit || '';
+        const normalizedStorages = normalizeDeviceStorages(deviceData.storages);
+        device.storages = normalizedStorages;
+        // Legacy mirror of the first storage for backward compatibility
+        device.storageSize = normalizedStorages[0]?.size ?? null;
+        device.storageUnit = normalizedStorages[0]?.unit || '';
         device.notes = deviceData.notes ? deviceData.notes.trim() : '';
         device.links = normalizeDeviceLinks(deviceData.links);
         device.connectivity = normalizeOptionValue(deviceData.connectivity);
@@ -4935,7 +5493,13 @@ async function handleDeleteDevice() {
     allDevices = allDevices.filter(device => device.id !== editingDeviceId);
     allDevices.forEach(device => {
         if (device.ports && Array.isArray(device.ports)) {
-            device.ports = device.ports.filter(port => port.connectedTo !== editingDeviceId);
+            // Release connections pointing at the deleted device; keep the ports
+            device.ports.forEach(port => {
+                if (port && port.connectedTo === editingDeviceId) {
+                    port.connectedTo = '';
+                    port.connectedToPort = '';
+                }
+            });
         }
         if (String(device.wifiAccessPointId || '').trim() === String(editingDeviceId || '').trim()) {
             device.wifiAccessPointId = '';

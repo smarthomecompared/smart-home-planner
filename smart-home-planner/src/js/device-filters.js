@@ -444,7 +444,7 @@ class DeviceFilters {
         if (labelsFilter) {
             labelsFilter.disabled = labelOptions.length === 0;
             if (labelOptions.length === 0) {
-                labelsFilter.innerHTML = '<option value="" disabled>No labels available</option>';
+                labelsFilter.innerHTML = '<option value="" disabled>No labels defined in Home Assistant</option>';
             } else {
                 labelsFilter.innerHTML = labelOptions
                     .map(option => `<option value="${option.id}">${this.escapeHtml(option.name)}</option>`)

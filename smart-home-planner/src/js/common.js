@@ -465,6 +465,130 @@ async function patchStorage(patch) {
     });
 }
 
+// Port Helper Functions
+function generatePortId() {
+    return `port-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getPortKindFromType(portType) {
+    const kind = String(portType || '').split('-')[0];
+    const knownKinds = ['ethernet', 'sfp', 'sfpplus', 'hdmi', 'usb', 'power'];
+    return knownKinds.includes(kind) ? kind : 'ethernet';
+}
+
+function getPortDirectionFromType(portType) {
+    // Network links (Ethernet/SFP/SFP+) are always bidirectional
+    const kind = getPortKindFromType(portType);
+    if (kind === 'ethernet' || kind === 'sfp' || kind === 'sfpplus') return 'io';
+    const direction = String(portType || '').split('-')[1];
+    if (direction === 'output') return 'output';
+    if (direction === 'io') return 'io';
+    return 'input';
+}
+
+function getOppositePortDirection(direction) {
+    if (direction === 'io') return 'io';
+    return direction === 'output' ? 'input' : 'output';
+}
+
+function getPortNameGroup(portType) {
+    const kind = getPortKindFromType(portType);
+    if (kind === 'power') {
+        return `power-${getPortDirectionFromType(portType) === 'output' ? 'output' : 'input'}`;
+    }
+    return kind;
+}
+
+function defaultPortName(portType, index) {
+    const kind = getPortKindFromType(portType);
+    if (kind === 'usb') return `USB ${index}`;
+    if (kind === 'sfp') return `SFP ${index}`;
+    if (kind === 'sfpplus') return `SFP+ ${index}`;
+    if (kind === 'hdmi') return `HDMI ${index}`;
+    if (kind === 'power') {
+        return getPortDirectionFromType(portType) === 'output' ? `Power Out ${index}` : `Power In ${index}`;
+    }
+    return `Ethernet ${index}`;
+}
+
+// Display label for a port, derived from its position among the device's
+// ports of the same kind/direction group (e.g. "Ethernet 2", "Power Out 1")
+function getPortDisplayLabel(device, port) {
+    const ports = (device && Array.isArray(device.ports)) ? device.ports : [];
+    const group = getPortNameGroup(port && port.type);
+    let index = 0;
+    for (const p of ports) {
+        if (!p || typeof p !== 'object') continue;
+        if (getPortNameGroup(p.type) !== group) continue;
+        index++;
+        if (p === port || (port && port.id && String(p.id || '') === String(port.id))) {
+            return defaultPortName(port.type, index);
+        }
+    }
+    return defaultPortName(port && port.type, index + 1);
+}
+
+// Migrate legacy ports: ensure stable ids and pair up mirrored
+// connections that predate port identities (connectedToPort).
+function migrateDevicePorts(deviceList) {
+    let didUpdate = false;
+    const list = Array.isArray(deviceList) ? deviceList : [];
+
+    // 1) Ensure every port has a stable id (labels are derived from position,
+    //    so a previously stored name is dropped). Also normalize legacy network
+    //    ports (Ethernet/SFP/SFP+) to the bidirectional "-io" direction, since
+    //    Direction is no longer a user choice for network links.
+    list.forEach(device => {
+        if (!device || !Array.isArray(device.ports)) return;
+        device.ports.forEach(port => {
+            if (!port || typeof port !== 'object') return;
+            if (!port.id) {
+                port.id = generatePortId();
+                didUpdate = true;
+            }
+            if (port.name !== undefined) {
+                delete port.name;
+                didUpdate = true;
+            }
+            const kind = getPortKindFromType(port.type);
+            if ((kind === 'ethernet' || kind === 'sfp' || kind === 'sfpplus') &&
+                !String(port.type || '').endsWith('-io')) {
+                port.type = `${kind}-io`;
+                didUpdate = true;
+            }
+        });
+    });
+
+    // 2) Pair up mirrored legacy connections one-to-one
+    list.forEach(device => {
+        const deviceId = String(device && device.id || '').trim();
+        if (!deviceId || !Array.isArray(device.ports)) return;
+        device.ports.forEach(port => {
+            if (!port || typeof port !== 'object') return;
+            const targetId = String(port.connectedTo || '').trim();
+            if (!targetId || port.connectedToPort) return;
+            const target = list.find(d => d && String(d.id || '').trim() === targetId);
+            if (!target || !Array.isArray(target.ports)) return;
+            const kind = getPortKindFromType(port.type);
+            const wantedDirection = getOppositePortDirection(getPortDirectionFromType(port.type));
+            const mirror = target.ports.find(p =>
+                p && typeof p === 'object' &&
+                String(p.connectedTo || '').trim() === deviceId &&
+                !p.connectedToPort &&
+                getPortKindFromType(p.type) === kind &&
+                getPortDirectionFromType(p.type) === wantedDirection
+            );
+            if (mirror) {
+                port.connectedToPort = mirror.id;
+                mirror.connectedToPort = port.id;
+                didUpdate = true;
+            }
+        });
+    });
+
+    return didUpdate;
+}
+
 // Data Management Functions
 async function loadData() {
     const storage = await loadStorage();
@@ -511,6 +635,10 @@ async function loadData() {
             didUpdate = true;
         }
     });
+
+    if (migrateDevicePorts(devices)) {
+        didUpdate = true;
+    }
 
     if (didUpdate) {
         await patchStorage({
@@ -615,6 +743,38 @@ function normalizeOptionValue(value) {
         .replace(/^-|-$/g, '');
     if (normalized === 'wi-fi') return 'wifi';
     return normalized;
+}
+
+function getDeviceStorages(device) {
+    if (!device) return [];
+    const normalized = [];
+    (Array.isArray(device.storages) ? device.storages : []).forEach((item) => {
+        if (!item || typeof item !== 'object') return;
+        const size = Number(item.size);
+        if (!Number.isFinite(size) || size <= 0) return;
+        normalized.push({
+            size,
+            unit: String(item.unit || '').trim(),
+            type: String(item.type || '').trim()
+        });
+    });
+    if (normalized.length) return normalized;
+    // Legacy single-storage fields (storageSize/storageUnit)
+    const legacySize = Number(device.storageSize);
+    if (Number.isFinite(legacySize) && legacySize > 0) {
+        return [{
+            size: legacySize,
+            unit: String(device.storageUnit || '').trim(),
+            type: ''
+        }];
+    }
+    return [];
+}
+
+function formatDeviceStorageSummary(device, separator = ' + ') {
+    return getDeviceStorages(device)
+        .map((storage) => [storage.size, storage.unit, storage.type].filter(Boolean).join(' '))
+        .join(separator);
 }
 
 function ensureFriendlyList(values, formatter) {
@@ -953,6 +1113,22 @@ function initMobileNav() {
             closeNav();
         }
     });
+}
+
+const DATE_INPUT_SELECTOR = 'input[type="date"], input[type="datetime-local"], input[type="month"]';
+
+function syncDateInputs(root = document) {
+    root.querySelectorAll(DATE_INPUT_SELECTOR).forEach((input) => {
+        input.classList.toggle('has-value', Boolean(input.value));
+    });
+}
+
+function initDateInputs() {
+    syncDateInputs();
+    // Cheap full re-sync on any interaction so programmatic resets stay in sync too
+    document.addEventListener('input', () => syncDateInputs());
+    document.addEventListener('change', () => syncDateInputs());
+    document.addEventListener('click', () => syncDateInputs());
 }
 
 async function initDebugSettingsNav() {
@@ -1542,6 +1718,14 @@ let uiSelectActive = null;
 let uiSelectHighlight = -1;
 let uiSelectTypeahead = '';
 let uiSelectTypeaheadTimer = null;
+// Option indexes hidden by the search filter of the currently open menu
+const uiSelectFilterHidden = new Set();
+
+// Opt in per element with data-searchable="true" to show a search box
+// inside the menu that filters options as you type.
+function isUiSelectSearchable(select) {
+    return select instanceof HTMLSelectElement && select.dataset.searchable === 'true';
+}
 
 function isUiSelectCandidate(select) {
     if (!(select instanceof HTMLSelectElement)) return false;
@@ -1569,9 +1753,11 @@ function ensureUiSelectMenu() {
 
     // Keep focus on the select and stop outside-click handlers (filters
     // drawer, dialogs, popovers) from reacting to clicks inside the menu.
+    // The search input is the exception: it must be able to take focus.
     menu.addEventListener('mousedown', (event) => {
         event.stopPropagation();
-        if (event.target !== menu) {
+        const inSearch = event.target instanceof HTMLElement && event.target.closest('.ui-select-search');
+        if (event.target !== menu && !inSearch) {
             event.preventDefault();
         }
     });
@@ -1597,7 +1783,7 @@ function ensureUiSelectMenu() {
 
 function getUiSelectNavigableIndexes(select) {
     return Array.from(select.options)
-        .filter(option => !option.disabled && !option.hidden)
+        .filter(option => !option.disabled && !option.hidden && !uiSelectFilterHidden.has(option.index))
         .map(option => option.index);
 }
 
@@ -1613,8 +1799,10 @@ function renderUiSelectMenu(select) {
         if (option.disabled) classes.push('is-disabled');
         if (isSelected) classes.push('is-selected');
         const label = escapeHtml(String(option.textContent || '').trim());
+        // Pinned options (e.g. "+ Add new …") stay visible while searching
+        const pinned = option.dataset.uiSelectPinned === 'true' ? ' data-pinned="true"' : '';
         parts.push(`
-            <div class="${classes.join(' ')}" role="option" data-index="${option.index}" aria-selected="${isSelected ? 'true' : 'false'}"${option.disabled ? ' aria-disabled="true"' : ''}>
+            <div class="${classes.join(' ')}" role="option" data-index="${option.index}"${pinned} aria-selected="${isSelected ? 'true' : 'false'}"${option.disabled ? ' aria-disabled="true"' : ''}>
                 <span class="ui-select-option-label">${label || '&nbsp;'}</span>
                 <svg class="ui-select-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5"></path></svg>
             </div>
@@ -1630,8 +1818,61 @@ function renderUiSelectMenu(select) {
             renderOption(child);
         }
     });
-    menu.innerHTML = parts.join('') || '<div class="ui-select-empty">No options available</div>';
+    uiSelectFilterHidden.clear();
+    const searchable = isUiSelectSearchable(select);
+    const optionsHtml = parts.join('') || '<div class="ui-select-empty">No options available</div>';
+    menu.innerHTML =
+        (searchable
+            ? `<div class="ui-select-search">
+                <input type="text" class="ui-select-search-input" placeholder="Search…" autocomplete="off" spellcheck="false" aria-label="Filter options">
+                <button type="button" class="ui-select-search-clear" aria-label="Clear search" hidden>
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+                </button>
+            </div>`
+            : '') +
+        `<div class="ui-select-options">${optionsHtml}<div class="ui-select-empty ui-select-no-matches" hidden>No matches</div></div>`;
+    if (searchable) {
+        const searchInput = menu.querySelector('.ui-select-search-input');
+        searchInput.addEventListener('input', applyUiSelectSearchFilter);
+        menu.querySelector('.ui-select-search-clear').addEventListener('click', () => {
+            searchInput.value = '';
+            applyUiSelectSearchFilter();
+            searchInput.focus();
+        });
+    }
     return menu;
+}
+
+function applyUiSelectSearchFilter() {
+    const select = uiSelectActive;
+    const menu = getUiSelectMenu();
+    if (!select || !menu) return;
+    const input = menu.querySelector('.ui-select-search-input');
+    const query = String(input?.value || '').trim().toLowerCase();
+    const clearButton = menu.querySelector('.ui-select-search-clear');
+    if (clearButton) clearButton.hidden = !(input && input.value.length);
+    uiSelectFilterHidden.clear();
+    let visibleCount = 0;
+    menu.querySelectorAll('.ui-select-option').forEach((item) => {
+        const label = String(item.textContent || '').trim().toLowerCase();
+        const pinned = item.dataset.pinned === 'true';
+        const matches = !query || pinned || label.includes(query);
+        item.classList.toggle('is-hidden', !matches);
+        if (matches) {
+            visibleCount++;
+        } else {
+            uiSelectFilterHidden.add(Number(item.dataset.index));
+        }
+    });
+    menu.querySelectorAll('.ui-select-group-label').forEach((label) => {
+        label.classList.toggle('is-hidden', Boolean(query));
+    });
+    const noMatches = menu.querySelector('.ui-select-no-matches');
+    if (noMatches) noMatches.hidden = visibleCount > 0;
+    const nav = getUiSelectNavigableIndexes(select);
+    if (!nav.includes(uiSelectHighlight)) {
+        setUiSelectHighlight(nav.length ? nav[0] : -1);
+    }
 }
 
 function positionUiSelectMenu(menu, select) {
@@ -1671,14 +1912,15 @@ function setUiSelectHighlight(index, options = {}) {
         if (isActive) activeItem = item;
     });
     if (!activeItem || options.scroll === false) return;
+    const scroller = menu.querySelector('.ui-select-options') || menu;
     const itemTop = activeItem.offsetTop;
     const itemBottom = itemTop + activeItem.offsetHeight;
     if (options.block === 'center') {
-        menu.scrollTop = itemTop - (menu.clientHeight - activeItem.offsetHeight) / 2;
-    } else if (itemTop < menu.scrollTop) {
-        menu.scrollTop = itemTop;
-    } else if (itemBottom > menu.scrollTop + menu.clientHeight) {
-        menu.scrollTop = itemBottom - menu.clientHeight;
+        scroller.scrollTop = itemTop - (scroller.clientHeight - activeItem.offsetHeight) / 2;
+    } else if (itemTop < scroller.scrollTop) {
+        scroller.scrollTop = itemTop;
+    } else if (itemBottom > scroller.scrollTop + scroller.clientHeight) {
+        scroller.scrollTop = itemBottom - scroller.clientHeight;
     }
 }
 
@@ -1747,6 +1989,11 @@ function openUiSelectMenu(select) {
     if (initial >= 0) {
         setUiSelectHighlight(initial, { block: 'center' });
     }
+
+    if (isUiSelectSearchable(select)) {
+        const searchInput = menu.querySelector('.ui-select-search-input');
+        if (searchInput) searchInput.focus({ preventScroll: true });
+    }
 }
 
 function closeUiSelectMenu() {
@@ -1762,6 +2009,7 @@ function closeUiSelectMenu() {
     uiSelectActive = null;
     uiSelectHighlight = -1;
     uiSelectTypeahead = '';
+    uiSelectFilterHidden.clear();
 }
 
 function commitUiSelectOption(index) {
@@ -1808,7 +2056,12 @@ function handleUiSelectOpenKeydown(event) {
             moveUiSelectHighlight(Infinity);
             return;
         case 'Enter':
+            event.preventDefault();
+            commitUiSelectOption(uiSelectHighlight);
+            return;
         case ' ':
+            // With a search box open, space types into the query instead
+            if (isUiSelectSearchable(select)) return;
             event.preventDefault();
             commitUiSelectOption(uiSelectHighlight);
             return;
@@ -1821,8 +2074,16 @@ function handleUiSelectOpenKeydown(event) {
             return;
         case 'Tab':
             closeUiSelectMenu();
+            // The focused search input is destroyed on close, so restore
+            // focus to the select to keep the tab order predictable.
+            if (isUiSelectSearchable(select)) {
+                event.preventDefault();
+                select.focus();
+            }
             return;
         default:
+            // Searchable menus filter via the search input, not typeahead
+            if (isUiSelectSearchable(select)) return;
             if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
                 event.preventDefault();
                 applyUiSelectTypeahead(event.key);
@@ -1877,7 +2138,15 @@ function enhanceUiSelect(select) {
         event.preventDefault();
         openUiSelectMenu(select);
         if (event.key.length === 1 && event.key !== ' ') {
-            applyUiSelectTypeahead(event.key);
+            if (isUiSelectSearchable(select)) {
+                const searchInput = getUiSelectMenu()?.querySelector('.ui-select-search-input');
+                if (searchInput) {
+                    searchInput.value = event.key;
+                    applyUiSelectSearchFilter();
+                }
+            } else {
+                applyUiSelectTypeahead(event.key);
+            }
         }
     });
 }
@@ -1988,6 +2257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initDebugSettingsNav();
     initPrimaryNavIcons();
     initMobileNav();
+    initDateInputs();
     initIconTooltips();
     initGlobalSearch();
     initUiSelects();
@@ -2001,6 +2271,7 @@ window.clearMapImagePositions = clearMapImagePositions;
 window.getUiPreference = getUiPreference;
 window.setUiPreference = setUiPreference;
 window.isStorageConflictError = isStorageConflictError;
+window.syncDateInputs = syncDateInputs;
 window.APP_BASE_PATH = APP_BASE_PATH;
 window.buildAppUrl = buildAppUrl;
 window.isIngressRuntime = isIngressRuntime;

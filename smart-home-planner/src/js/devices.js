@@ -623,10 +623,16 @@ async function deleteDevice(id) {
     devices = allDevices;
     selectedDeviceIds.delete(id);
     
-    // Clean up port references in other devices
+    // Release port connections pointing at the deleted device (ports themselves
+    // are part of each device's inventory, so they are kept)
     allDevices.forEach(device => {
         if (device.ports && Array.isArray(device.ports)) {
-            device.ports = device.ports.filter(port => port.connectedTo !== id);
+            device.ports.forEach(port => {
+                if (port && port.connectedTo === id) {
+                    port.connectedTo = '';
+                    port.connectedToPort = '';
+                }
+            });
         }
     });
     
@@ -1266,10 +1272,17 @@ window.editDevice = function(id) {
 window.duplicateDevice = async function(id) {
     const device = devices.find(d => d.id === id);
     if (device) {
-        // Create a copy with modified name
+        // Create a copy with modified name. Ports keep the inventory (fresh ids)
+        // but drop connections — the originals stay wired to the source device.
         const duplicateData = {
             ...device,
-            name: `${device.name || 'Unnamed'} (Copy)`
+            name: `${device.name || 'Unnamed'} (Copy)`,
+            ports: Array.isArray(device.ports) ? device.ports.map(port => ({
+                ...port,
+                id: generatePortId(),
+                connectedTo: '',
+                connectedToPort: ''
+            })) : []
         };
         // Keep duplicate data only for the current tab session.
         if (!saveDuplicateDeviceDraftToSession(duplicateData)) {

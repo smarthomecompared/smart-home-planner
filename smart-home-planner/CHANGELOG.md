@@ -1,23 +1,35 @@
 ## 1.8.0
 
 ### Added
-- Device finder on the Diagram view: search from the map toolbar and the view zooms to and highlights the matching device
-- Floating connection legend on the Diagram view; each chip also toggles its connection layer on and off
-- Floor plan suggestion banner on the Diagram view when no background image is set, with a one-click upload button (dismissible)
-- Filtered-out devices on the Diagram view are now dimmed in place instead of removed, keeping them visible in context (configurable via the new "Dim filtered-out devices" toggle in Diagram Settings)
-- Trace path on the Diagram view: a new "Trace path" action in the device tooltip highlights the device's full upstream connection chain to its network root (router/coordinator), dimming everything else
-- Animated trace path flow: while a trace is active, the highlighted path animates with dashes flowing from the traced device toward its network root and Internet cloud, making the direction of the chain readable at a glance (pauses while the tab is hidden; disabled automatically for users with a reduced-motion preference)
-- Failure simulation on the Diagram view: a new "Simulate failure" action in the device tooltip marks a device as down and highlights in red every device that would lose connectivity, honoring redundant paths and cascading failures (multiple simultaneous failures supported; restore from the same tooltip, the floating banner or Esc)
-- Internet Providers: manage your ISPs (name, technology, speeds, gateway device, role, notes) from the new "Internet Providers" section in Settings. Each provider appears on the Diagram view as a cloud attached to its gateway (explicitly assigned or auto-detected router/modem) with a WAN link — toggleable from Diagram Settings, draggable in Edit Layout with its position saved. Simulate an ISP outage from the cloud's tooltip: devices that lose their path to every live provider are highlighted in orange ("no internet") while LAN-only outages stay red, so multi-WAN setups can verify their failover visually; trace path now follows the chain all the way to the Internet cloud
+- Device finder on the Diagram view with zoom-to and highlight
+- Floating connection legend on the Diagram view with per-layer toggles
+- Floor plan suggestion banner on the Diagram view when no background image is set
+- Filtered-out devices on the Diagram view are now dimmed instead of removed (configurable)
+- Trace path: highlight a device's full connection chain to its network root and the Internet, with animated flow
+- Failure simulation: mark devices as down and see everything that loses connectivity
+- Internet Providers: manage your ISPs and see them on the diagram as clouds, with ISP outage simulation
+- Multiple storages per device
+- Port inventory per device (Ethernet, SFP, SFP+, HDMI, USB and power)
+- HDMI connections are shown on the diagram as a new purple layer with its own toggle, and SFP/SFP+ links appear on the Ethernet layer
+- USB ports now have a connector type (USB-A, USB-B, USB-C, Micro-USB, Mini-USB) and a USB version (USB 2.0, 3.0, 3.1, 3.2, USB4)
+- USB port direction is labeled Host/Device (instead of Input/Output) to match the USB host/peripheral model
+- Network port speeds are now limited to the valid options for each type (Ethernet up to 10G, SFP 100M/1G, SFP+ 1G/10G)
+- PoE on Ethernet ports support
+- Port-to-port connections with both sides kept in sync
+- Brand and Type dropdowns on the device form now include a search box to filter options as you type
 
 ### Changed
 - Complete app redesign
-- Improved Diagram view accessibility: the Diagram Settings header is now a keyboard-focusable button and the device counter announces filter changes to screen readers
+- Improved Diagram view accessibility
+- Device form layout improvements
+- Clearer empty state for device labels
 
 ### Fixed
-- Fix the diagram background image being shifted towards the top-left corner in fullscreen mode
+- Fix the calendar icon on date inputs rendering black and barely visible on the dark theme.
+- Multiple device form layout and focus glitches
+- Fix the diagram background image being shifted in fullscreen mode
 - Fix "Clear Filters" not resetting the Model and Network filters
-- Fix the device tooltip on the Diagram view opening misaligned from its node and overflowing off screen for devices near the viewport edges; it now anchors to the node and flips/clamps to stay fully visible
+- Fix the device tooltip opening misaligned or overflowing off screen
 
 ## 1.7.0 - 2026-07-07
 

@@ -158,6 +158,10 @@
     background: #00a0e0;
 }
 
+.legend-line.hdmi {
+    background: #a855f7;
+}
+
 .legend-line.power {
     background: #f5a524;
 }

@@ -187,6 +187,7 @@ window.DeviceDiagram = (() => {
         return {
             showEthernetConnections: true,
             showUsbConnections: true,
+            showHdmiConnections: true,
             showPowerConnections: true,
             showWifiConnections: false,
             showZigbeeConnections: false,
@@ -207,6 +208,7 @@ window.DeviceDiagram = (() => {
         return {
             showEthernetConnections: value.showEthernetConnections !== undefined ? Boolean(value.showEthernetConnections) : defaults.showEthernetConnections,
             showUsbConnections: value.showUsbConnections !== undefined ? Boolean(value.showUsbConnections) : defaults.showUsbConnections,
+            showHdmiConnections: value.showHdmiConnections !== undefined ? Boolean(value.showHdmiConnections) : defaults.showHdmiConnections,
             showPowerConnections: value.showPowerConnections !== undefined ? Boolean(value.showPowerConnections) : defaults.showPowerConnections,
             showWifiConnections: value.showWifiConnections !== undefined ? Boolean(value.showWifiConnections) : defaults.showWifiConnections,
             showZigbeeConnections: value.showZigbeeConnections !== undefined ? Boolean(value.showZigbeeConnections) : defaults.showZigbeeConnections,
@@ -223,6 +225,7 @@ window.DeviceDiagram = (() => {
         return {
             showEthernetConnections: Boolean(document.getElementById('show-ethernet-connections')?.checked),
             showUsbConnections: Boolean(document.getElementById('show-usb-connections')?.checked),
+            showHdmiConnections: Boolean(document.getElementById('show-hdmi-connections')?.checked),
             showPowerConnections: Boolean(document.getElementById('show-power-connections')?.checked),
             showWifiConnections: Boolean(document.getElementById('show-wifi-connections')?.checked),
             showZigbeeConnections: Boolean(document.getElementById('show-zigbee-connections')?.checked),
@@ -239,6 +242,7 @@ window.DeviceDiagram = (() => {
         const settings = normalizeDiagramDisplaySettings(settingsPayload);
         const ethernetToggle = document.getElementById('show-ethernet-connections');
         const usbToggle = document.getElementById('show-usb-connections');
+        const hdmiToggle = document.getElementById('show-hdmi-connections');
         const powerToggle = document.getElementById('show-power-connections');
         const wifiToggle = document.getElementById('show-wifi-connections');
         const zigbeeToggle = document.getElementById('show-zigbee-connections');
@@ -248,6 +252,7 @@ window.DeviceDiagram = (() => {
 
         if (ethernetToggle) ethernetToggle.checked = settings.showEthernetConnections;
         if (usbToggle) usbToggle.checked = settings.showUsbConnections;
+        if (hdmiToggle) hdmiToggle.checked = settings.showHdmiConnections;
         if (powerToggle) powerToggle.checked = settings.showPowerConnections;
         if (wifiToggle) wifiToggle.checked = settings.showWifiConnections;
         if (zigbeeToggle) zigbeeToggle.checked = settings.showZigbeeConnections;
@@ -1673,6 +1678,10 @@ window.DeviceDiagram = (() => {
     if (usbToggle) {
         usbToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const hdmiToggle = document.getElementById('show-hdmi-connections');
+    if (hdmiToggle) {
+        hdmiToggle.addEventListener('change', handleDiagramConnectionToggleChange);
+    }
     const powerToggle = document.getElementById('show-power-connections');
     if (powerToggle) {
         powerToggle.addEventListener('change', handleDiagramConnectionToggleChange);
@@ -2322,6 +2331,25 @@ function initializeCytoscape() {
                 }
             },
             {
+                selector: 'edge[connectionType="hdmi"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#a855f7',
+                    'target-arrow-color': '#a855f7',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f7f8fa',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
+            },
+            {
                 selector: 'edge[connectionType="power"]',
                 style: {
                     'width': 2,
@@ -2415,7 +2443,13 @@ function initializeCytoscape() {
                     'width': 'data(width)',
                     'height': 'data(height)',
                     'label': '',
-                    'text-opacity': 0
+                    'text-opacity': 0,
+                    // Cloud cards are pill-shaped: make any highlight underlay
+                    // (failure simulation, trace path) follow that shape. The
+                    // radius is clamped to half the underlay height, so one
+                    // generous value covers every underlay padding.
+                    'underlay-shape': 'round-rectangle',
+                    'underlay-corner-radius': 32
                 }
             },
             {
@@ -2511,8 +2545,8 @@ function initializeCytoscape() {
                 selector: 'node.sim-no-internet',
                 style: {
                     'underlay-color': '#f5a524',
-                    'underlay-opacity': 0.22,
-                    'underlay-padding': 4,
+                    'underlay-opacity': 0.5,
+                    'underlay-padding': 5,
                     'underlay-shape': 'roundrectangle'
                 }
             },
@@ -2850,6 +2884,7 @@ function initDiagramLegend() {
 function formatConnectionTypeLabel(type) {
     if (type === 'wifi') return 'Wi-Fi';
     if (type === 'usb') return 'USB';
+    if (type === 'hdmi') return 'HDMI';
     if (type === 'zwave') return 'Z-Wave';
     return type.charAt(0).toUpperCase() + type.slice(1);
 }
@@ -3155,12 +3190,14 @@ async function renderNetwork(options = {}) {
     // Get display settings
     const ethernetToggle = document.getElementById('show-ethernet-connections');
     const usbToggle = document.getElementById('show-usb-connections');
+    const hdmiToggle = document.getElementById('show-hdmi-connections');
     const powerToggle = document.getElementById('show-power-connections');
     const wifiToggle = document.getElementById('show-wifi-connections');
     const zigbeeToggle = document.getElementById('show-zigbee-connections');
     const zwaveToggle = document.getElementById('show-zwave-connections');
     const showEthernet = ethernetToggle ? ethernetToggle.checked : true;
     const showUsb = usbToggle ? usbToggle.checked : true;
+    const showHdmi = hdmiToggle ? hdmiToggle.checked : true;
     const showPower = powerToggle ? powerToggle.checked : true;
     const showWifi = wifiToggle ? wifiToggle.checked : false;
     const showZigbee = zigbeeToggle ? zigbeeToggle.checked : false;
@@ -3374,9 +3411,11 @@ async function renderNetwork(options = {}) {
                 }
             });
             
-            // Sort devices: connected first, then unconnected
-            const devicesWithConnections = devicesInArea.filter(d => d.ports && d.ports.length > 0);
-            const devicesWithoutConnections = devicesInArea.filter(d => !d.ports || d.ports.length === 0);
+            // Sort devices: connected first, then unconnected (defined-but-free
+            // ports do not count as connections)
+            const hasPortConnections = d => Array.isArray(d.ports) && d.ports.some(p => p && p.connectedTo);
+            const devicesWithConnections = devicesInArea.filter(hasPortConnections);
+            const devicesWithoutConnections = devicesInArea.filter(d => !hasPortConnections(d));
             
             // Try to group connected devices together
             const sortedConnectedDevices = sortDevicesByConnections(devicesWithConnections);
@@ -3596,6 +3635,13 @@ async function renderNetwork(options = {}) {
             if (port.type.startsWith('ethernet')) {
                 connectionType = 'ethernet';
                 show = showEthernet;
+            } else if (port.type.startsWith('sfp')) {
+                // SFP/SFP+ are wired network links, so they share the Ethernet layer
+                connectionType = 'ethernet';
+                show = showEthernet;
+            } else if (port.type.startsWith('hdmi')) {
+                connectionType = 'hdmi';
+                show = showHdmi;
             } else if (port.type.startsWith('usb')) {
                 connectionType = 'usb';
                 show = showUsb;
@@ -3615,6 +3661,8 @@ async function renderNetwork(options = {}) {
                 if (connectionType === 'ethernet') {
                     const meta = getEthernetConnectionMeta(device, port, filteredDevicesList);
                     label = formatEthernetLabel(meta);
+                } else if (connectionType === 'hdmi') {
+                    label = 'HDMI';
                 } else if (connectionType === 'usb') {
                     label = 'USB';
                 } else if (connectionType === 'power') {
@@ -4340,19 +4388,34 @@ function handleAnalysisEscape(event) {
     clearDiagramAnalysis();
 }
 
+// Short PoE labels for connection edges (mirror device-form's POE_STANDARD_OPTIONS)
+const POE_SHORT = {
+    'poe':       'PoE',
+    'poe-plus':  'PoE+',
+    'poe-pp-60': 'PoE++',
+    'poe-pp-90': 'PoE++',
+    'passive':   'Passive PoE'
+};
+
 function getEthernetConnectionMeta(device, port, devicesList) {
+    const kind = String(port.type || '').split('-')[0];
     const meta = {
+        kind: kind === 'sfp' || kind === 'sfpplus' ? kind : 'ethernet',
         cableType: port.cableType || '',
-        speed: port.speed || ''
+        speed: port.speed || '',
+        poe: port.poeStandard || ''
     };
-    if (meta.cableType && meta.speed) {
+    if (meta.cableType && meta.speed && meta.poe) {
         return meta;
     }
     const connectedDevice = devicesList.find(d => d.id === port.connectedTo);
     if (!connectedDevice || !connectedDevice.ports) {
         return meta;
     }
-    const reversePort = connectedDevice.ports.find(p => p.connectedTo === device.id && p.type && p.type.startsWith('ethernet'));
+    const reversePort = (port.connectedToPort
+            ? connectedDevice.ports.find(p => p && String(p.id || '') === String(port.connectedToPort))
+            : null) ||
+        connectedDevice.ports.find(p => p.connectedTo === device.id && p.type && p.type.startsWith(meta.kind === 'ethernet' ? 'ethernet' : 'sfp'));
     if (!reversePort) {
         return meta;
     }
@@ -4361,6 +4424,11 @@ function getEthernetConnectionMeta(device, port, devicesList) {
     }
     if (!meta.speed && reversePort.speed) {
         meta.speed = reversePort.speed;
+    }
+    // PoE is declared on one end (usually the PSE/switch side); pick it up from
+    // whichever port carries it
+    if (!meta.poe && reversePort.poeStandard) {
+        meta.poe = reversePort.poeStandard;
     }
     return meta;
 }
@@ -4373,18 +4441,21 @@ function formatEthernetLabel(meta) {
     if (!meta) {
         return 'Ethernet';
     }
+    const baseName = meta.kind === 'sfp' ? 'SFP' : (meta.kind === 'sfpplus' ? 'SFP+' : 'Ethernet');
     const cableLabel = meta.cableType ? formatCableTypeLabel(meta.cableType) : '';
     const speedLabel = meta.speed || '';
+    const poeLabel = meta.poe ? (POE_SHORT[meta.poe] || 'PoE') : '';
+    let base;
     if (cableLabel && speedLabel) {
-        return `${cableLabel} (${speedLabel})`;
+        base = `${cableLabel} (${speedLabel})`;
+    } else if (cableLabel) {
+        base = cableLabel;
+    } else if (speedLabel) {
+        base = `${baseName} (${speedLabel})`;
+    } else {
+        base = baseName;
     }
-    if (cableLabel) {
-        return cableLabel;
-    }
-    if (speedLabel) {
-        return `Ethernet (${speedLabel})`;
-    }
-    return 'Ethernet';
+    return poeLabel ? `${base} · ${poeLabel}` : base;
 }
 
 function isWifiConnectionDevice(device) {
@@ -4445,6 +4516,9 @@ function formatWifiBandLabel(value) {
 function formatStorageLabel(device) {
     if (!device) {
         return '';
+    }
+    if (typeof formatDeviceStorageSummary === 'function') {
+        return formatDeviceStorageSummary(device);
     }
     const rawSize = device.storageSize;
     if (rawSize === undefined || rawSize === null) {
@@ -4561,14 +4635,28 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
 
     let storageMarkup = '';
     if (storageLabel) {
-        const badgeWidth = clampNumber(Math.round(safeWidth * 0.38), 56, Math.max(56, safeWidth - 16));
+        // Size the badge to its label so longer labels (multiple disks, types) stay
+        // readable, shrinking the font (and ellipsizing as a last resort) when the
+        // label cannot fit the card at full size.
+        let storageText = String(storageLabel);
+        let storageFontSize = Math.max(9, safeFontSize - 2);
+        const maxBadgeWidth = Math.max(56, safeWidth - 16);
+        const badgeWidthFor = (text, size) => Math.ceil(text.length * size * 0.55) + 16;
+        if (badgeWidthFor(storageText, storageFontSize) > maxBadgeWidth) {
+            storageFontSize = Math.max(8, Math.floor((maxBadgeWidth - 16) / (storageText.length * 0.55)));
+            if (badgeWidthFor(storageText, storageFontSize) > maxBadgeWidth) {
+                const maxChars = Math.max(4, Math.floor((maxBadgeWidth - 16) / (storageFontSize * 0.55)) - 1);
+                storageText = `${storageText.slice(0, maxChars)}…`;
+            }
+        }
+        const badgeWidth = clampNumber(badgeWidthFor(storageText, storageFontSize), 56, maxBadgeWidth);
         const badgeHeight = clampNumber(Math.round(safeHeight * 0.28), 18, 24);
         const badgeX = safeWidth - badgeWidth - 6;
         const badgeY = safeHeight - badgeHeight - 6;
-        const safeLabel = escapeSvgText(storageLabel);
+        const safeLabel = escapeSvgText(storageText);
         storageMarkup = [
             `<rect x="${badgeX}" y="${badgeY}" width="${badgeWidth}" height="${badgeHeight}" rx="${Math.min(6, Math.round(badgeHeight / 2))}" ry="${Math.min(6, Math.round(badgeHeight / 2))}" fill="rgba(255,255,255,0.08)"/>`,
-            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight / 2 + Math.max(9, safeFontSize - 2) * 0.36}" text-anchor="middle" font-size="${Math.max(9, safeFontSize - 2)}" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#b0b6c2">${safeLabel}</text>`
+            `<text x="${badgeX + badgeWidth / 2}" y="${badgeY + badgeHeight / 2 + storageFontSize * 0.36}" text-anchor="middle" font-size="${storageFontSize}" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#b0b6c2">${safeLabel}</text>`
         ].join('');
     }
 

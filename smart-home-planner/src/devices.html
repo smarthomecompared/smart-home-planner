@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/devices.css">
     <link rel="stylesheet" href="css/map.css">
-    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -191,7 +191,7 @@
                                     </div>
                                     <select id="filter-labels" class="visually-hidden" multiple></select>
                                     <div class="label-picker label-picker-compact" id="filter-labels-picker" role="listbox" aria-multiselectable="true"></div>
-                                    <div class="label-picker-empty" id="filter-labels-empty" hidden>No labels available yet.</div>
+                                    <div class="label-picker-empty" id="filter-labels-empty" hidden>No labels defined in Home Assistant yet.</div>
                                 </div>
                             </div>
                         </div>
@@ -416,6 +416,11 @@
                                 <input type="checkbox" id="show-usb-connections" class="ui-switch" checked>
                             </label>
                             <label class="connection-toggle">
+                                <span class="legend-line hdmi" aria-hidden="true"></span>
+                                <span class="connection-name">HDMI</span>
+                                <input type="checkbox" id="show-hdmi-connections" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
                                 <span class="legend-line power" aria-hidden="true"></span>
                                 <span class="connection-name">Power</span>
                                 <input type="checkbox" id="show-power-connections" class="ui-switch" checked>
@@ -514,6 +519,9 @@
                         </button>
                         <button type="button" class="map-legend-chip" data-connection="show-usb-connections" aria-pressed="true">
                             <span class="legend-line usb" aria-hidden="true"></span>USB
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-hdmi-connections" aria-pressed="true">
+                            <span class="legend-line hdmi" aria-hidden="true"></span>HDMI
                         </button>
                         <button type="button" class="map-legend-chip" data-connection="show-power-connections" aria-pressed="true">
                             <span class="legend-line power" aria-hidden="true"></span>Power

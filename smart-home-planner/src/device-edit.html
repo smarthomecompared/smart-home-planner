@@ -62,65 +62,11 @@
                     <!-- Basic Information -->
                     <div class="form-section">
                         <h3 class="form-section-title">Basic Information</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Device ID</label>
-                                <code id="device-id-readonly" class="form-field-code form-field-code-block">-</code>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <div class="form-label-row form-label-row-compact">
-                                    <label for="device-name">Name</label>
-                                    <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="name-help-btn" aria-label="Name guidance" title="More Info">
-                                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                                            <circle cx="12" cy="12" r="9"></circle>
-                                            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
-                                            <circle cx="12" cy="17" r="1"></circle>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <input type="text" id="device-name" required placeholder="Unique device name">
-                                <div id="device-name-ha-note" class="form-field-note" hidden>
-                                    This device is linked to Home Assistant. Renaming it here will also rename it in Home Assistant.
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="device-brand">Brand</label>
-                                <select id="device-brand">
-                                    <option value="">Select a brand</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="device-model">Model</label>
-                                <input type="text" id="device-model">
-                            </div>
-                            <div class="form-group">
-                                <label for="device-type">Type</label>
-                                <select id="device-type">
-                                    <option value="">Select a type</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group form-group-full">
-                                <div class="form-label-row">
-                                    <label for="device-labels">Labels</label>
-                                    <span class="label-picker-count" id="device-labels-count">0 selected</span>
-                                </div>
-                                <select id="device-labels" class="visually-hidden" multiple></select>
-                                <div class="label-picker" id="device-labels-picker" role="listbox" aria-multiselectable="true"></div>
-                                <div class="label-picker-empty" id="device-labels-empty" hidden>No labels available yet.</div>
-                                <div id="device-labels-ha-note" class="form-field-note" hidden>
-                                    This device is linked to Home Assistant. Changing labels here will also update them in Home Assistant.
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
+                        <div class="basic-info-layout">
+                            <div class="form-group device-photo-group">
                                 <label>Device Photo</label>
                                 <div class="device-photo-wrap">
-                                    <div class="device-photo-preview" id="device-photo-preview" title="Click to upload photo">
+                                    <div class="device-photo-preview" id="device-photo-preview">
                                         <img id="device-photo-img" class="device-photo-img" src="" alt="" hidden>
                                         <div id="device-photo-placeholder" class="device-photo-placeholder">
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -134,6 +80,62 @@
                                         <button type="button" class="btn btn-secondary btn-sm" id="device-photo-select-btn">Upload Photo</button>
                                         <button type="button" class="btn btn-secondary btn-sm" id="device-photo-remove-btn" hidden>Remove</button>
                                         <input type="file" id="device-photo-input" accept="image/*" hidden>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="basic-info-fields">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Device ID</label>
+                                        <code id="device-id-readonly" class="form-field-code form-field-code-block">-</code>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <div class="form-label-row form-label-row-compact">
+                                            <label for="device-name">Name</label>
+                                            <button class="btn btn-secondary btn-sm btn-icon form-help-btn" type="button" id="name-help-btn" aria-label="Name guidance" title="More Info">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <circle cx="12" cy="12" r="9"></circle>
+                                                    <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                                    <circle cx="12" cy="17" r="1"></circle>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="device-name" required placeholder="Unique device name">
+                                        <div id="device-name-ha-note" class="form-field-note" hidden>
+                                            This device is linked to Home Assistant. Renaming it here will also rename it in Home Assistant.
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="device-brand">Brand</label>
+                                        <select id="device-brand" data-searchable="true">
+                                            <option value="">Select a brand</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="device-model">Model</label>
+                                        <input type="text" id="device-model">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="device-type">Type</label>
+                                        <select id="device-type" data-searchable="true">
+                                            <option value="">Select a type</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group form-group-full">
+                                        <div class="form-label-row">
+                                            <label for="device-labels">Labels</label>
+                                            <span class="label-picker-count" id="device-labels-count">0 selected</span>
+                                        </div>
+                                        <select id="device-labels" class="visually-hidden" multiple></select>
+                                        <div class="label-picker" id="device-labels-picker" role="listbox" aria-multiselectable="true"></div>
+                                        <div class="label-picker-empty" id="device-labels-empty" hidden>No labels defined in Home Assistant yet.</div>
+                                        <div id="device-labels-ha-note" class="form-field-note" hidden>
+                                            This device is linked to Home Assistant. Changing labels here will also update them in Home Assistant.
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -333,33 +335,25 @@
                         
                         <!-- Power Ports (only for wired devices) -->
                         <div id="power-ports-section" class="is-hidden">
-                            <h4 class="form-subsection-title">Power Connections</h4>
+                            <div class="device-ports-section-head">
+                                <h4 class="form-subsection-title">Power Connections</h4>
+                                <button type="button" class="btn btn-secondary btn-sm" id="add-power-port-btn">+ Add Power Port</button>
+                            </div>
                             <div class="ports-container" id="power-ports-container">
                                 <!-- Power ports will be added dynamically -->
                             </div>
-                            <div class="form-row">
-                                <button type="button" class="btn btn-secondary btn-sm" id="add-power-port-btn">+ Add Power Port</button>
-                            </div>
+                            <div class="device-ports-empty" id="power-ports-empty">No power ports added yet.</div>
                         </div>
                     </div>
 
                     <!-- Storage -->
                     <div class="form-section">
-                        <h3 class="form-section-title">Storage</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="device-storage-size">Disk Space</label>
-                                <input type="number" id="device-storage-size" min="0" step="1" placeholder="e.g., 128">
-                            </div>
-                            <div class="form-group">
-                                <label for="device-storage-unit">Unit</label>
-                                <select id="device-storage-unit">
-                                    <option value="">Select unit</option>
-                                    <option value="GB">GB</option>
-                                    <option value="TB">TB</option>
-                                </select>
-                            </div>
+                        <div class="device-storages-section-head">
+                            <h3 class="form-section-title">Storage</h3>
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-device-storage-btn">+ Add Storage</button>
                         </div>
+                        <div class="device-storages-list" id="device-storages-list"></div>
+                        <div class="device-storages-empty" id="device-storages-empty">No storage added yet.</div>
                     </div>
 
                     <!-- Connectivity -->
@@ -477,22 +471,6 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-row is-hidden" id="zigbee-linked-devices-group">
-                            <div class="form-group">
-                                <label for="device-zigbee-client-search">Linked Zigbee Devices</label>
-                                <div id="zigbee-linked-devices-list" class="protocol-linked-devices-list"></div>
-                                <div id="zigbee-linked-devices-empty" class="protocol-linked-devices-empty">No Zigbee devices linked.</div>
-                                <div class="port-search-wrapper protocol-client-search-row">
-                                    <input
-                                        type="text"
-                                        id="device-zigbee-client-search"
-                                        class="port-device-search"
-                                        placeholder="Link a Zigbee device..."
-                                        autocomplete="off">
-                                    <div id="device-zigbee-client-results" class="port-search-results is-hidden"></div>
-                                </div>
-                            </div>
-                        </div>
                         <div class="form-row is-hidden" id="zwave-coordinator-group">
                             <div class="form-group">
                                 <label for="device-zwave-coordinator">Connected To (Z-Wave Coordinator)</label>
@@ -504,22 +482,6 @@
                                         placeholder="Search Z-Wave coordinator..."
                                         autocomplete="off">
                                     <div id="device-zwave-coordinator-results" class="port-search-results is-hidden"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row is-hidden" id="zwave-linked-devices-group">
-                            <div class="form-group">
-                                <label for="device-zwave-client-search">Linked Z-Wave Devices</label>
-                                <div id="zwave-linked-devices-list" class="protocol-linked-devices-list"></div>
-                                <div id="zwave-linked-devices-empty" class="protocol-linked-devices-empty">No Z-Wave devices linked.</div>
-                                <div class="port-search-wrapper protocol-client-search-row">
-                                    <input
-                                        type="text"
-                                        id="device-zwave-client-search"
-                                        class="port-device-search"
-                                        placeholder="Link a Z-Wave device..."
-                                        autocomplete="off">
-                                    <div id="device-zwave-client-results" class="port-search-results is-hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -600,17 +562,50 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-row is-hidden" id="zigbee-linked-devices-group">
+                            <div class="form-group">
+                                <label for="device-zigbee-client-search">Linked Zigbee Devices</label>
+                                <div id="zigbee-linked-devices-list" class="protocol-linked-devices-list"></div>
+                                <div id="zigbee-linked-devices-empty" class="protocol-linked-devices-empty">No Zigbee devices linked.</div>
+                                <div class="port-search-wrapper protocol-client-search-row">
+                                    <input
+                                        type="text"
+                                        id="device-zigbee-client-search"
+                                        class="port-device-search"
+                                        placeholder="Link a Zigbee device..."
+                                        autocomplete="off">
+                                    <div id="device-zigbee-client-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-row is-hidden" id="zwave-linked-devices-group">
+                            <div class="form-group">
+                                <label for="device-zwave-client-search">Linked Z-Wave Devices</label>
+                                <div id="zwave-linked-devices-list" class="protocol-linked-devices-list"></div>
+                                <div id="zwave-linked-devices-empty" class="protocol-linked-devices-empty">No Z-Wave devices linked.</div>
+                                <div class="port-search-wrapper protocol-client-search-row">
+                                    <input
+                                        type="text"
+                                        id="device-zwave-client-search"
+                                        class="port-device-search"
+                                        placeholder="Link a Z-Wave device..."
+                                        autocomplete="off">
+                                    <div id="device-zwave-client-results" class="port-search-results is-hidden"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Ports -->
+                    <!-- Data Ports -->
                     <div class="form-section">
-                        <h3 class="form-section-title">Ports</h3>
+                        <div class="device-ports-section-head">
+                            <h3 class="form-section-title">Data Ports</h3>
+                            <button type="button" class="btn btn-secondary btn-sm" id="add-port-btn">+ Add Data Port</button>
+                        </div>
                         <div class="ports-container" id="ports-container">
-                            <!-- Ports will be added dynamically -->
+                            <!-- Data ports will be added dynamically -->
                         </div>
-                        <div class="form-row">
-                            <button type="button" class="btn btn-secondary btn-sm" id="add-port-btn">+ Add Port</button>
-                        </div>
+                        <div class="device-ports-empty" id="device-ports-empty">No data ports added yet.</div>
                     </div>
 
                     <!-- Integrations -->
@@ -667,25 +662,26 @@
                         </div>
                     </div>
 
-                    <!-- Notes -->
-                    <div class="form-section">
-                        <h3 class="form-section-title">Notes</h3>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="device-notes">Notes</label>
-                                <textarea id="device-notes" rows="3" placeholder="Additional details..."></textarea>
+                    <!-- Notes & Links -->
+                    <div class="form-section-row">
+                        <div class="form-section">
+                            <h3 class="form-section-title">Notes</h3>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="device-notes">Notes</label>
+                                    <textarea id="device-notes" rows="3" placeholder="Additional details..."></textarea>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Links -->
-                    <div class="form-section">
-                        <div class="device-links-section-head">
-                            <h3 class="form-section-title">Links</h3>
-                            <button type="button" class="btn btn-secondary btn-sm" id="add-device-link-btn">+ Add Link</button>
+                        <div class="form-section">
+                            <div class="device-links-section-head">
+                                <h3 class="form-section-title">Links</h3>
+                                <button type="button" class="btn btn-secondary btn-sm" id="add-device-link-btn">+ Add Link</button>
+                            </div>
+                            <div class="device-links-list" id="device-links-list"></div>
+                            <div class="device-links-empty" id="device-links-empty">No links added yet.</div>
                         </div>
-                        <div class="device-links-list" id="device-links-list"></div>
-                        <div class="device-links-empty" id="device-links-empty">No links added yet.</div>
                     </div>
 
                     <!-- Files -->
