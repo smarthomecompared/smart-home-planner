@@ -57,6 +57,13 @@ window.DeviceDiagram = (() => {
     // Diagram analysis state (trace path / failure simulation)
     let tracedDeviceId = null;
     const simulatedFailedDeviceIds = new Set();
+    // Trace flow animation: edge id -> dash-offset step sign (+1/-1) orienting
+    // the marching-ants motion from the traced device toward the network root
+    const traceFlowDirections = new Map();
+    let traceFlowRaf = null;
+    let traceFlowOffset = 0;
+    let traceFlowLastStep = 0;
+    let isDiagramVisible = true;
 
     // Icon SVG cache: url -> inner SVG string (or null if failed)
     const _deviceIconCache = {};
@@ -390,6 +397,8 @@ window.DeviceDiagram = (() => {
     }
 
     function setVisible(isVisible) {
+        isDiagramVisible = Boolean(isVisible);
+        syncTraceFlowAnimation();
         if (!cy) return;
         if (!isVisible) return;
         resizeCytoscape();
@@ -1820,6 +1829,12 @@ window.DeviceDiagram = (() => {
         document.addEventListener('keydown', handlePowerDialogEscape);
         document.addEventListener('keydown', handleDiagramHelpEscape);
         document.addEventListener('keydown', handleAnalysisEscape);
+        // Pause the trace flow animation while the browser tab is hidden, and
+        // honor OS-level reduced-motion changes live.
+        document.addEventListener('visibilitychange', syncTraceFlowAnimation);
+        if (typeof TRACE_FLOW_REDUCED_MOTION_QUERY.addEventListener === 'function') {
+            TRACE_FLOW_REDUCED_MOTION_QUERY.addEventListener('change', syncTraceFlowAnimation);
+        }
         const analysisClearBtn = document.getElementById('map-analysis-clear');
         if (analysisClearBtn) {
             analysisClearBtn.addEventListener('click', clearDiagramAnalysis);
@@ -2447,6 +2462,16 @@ function initializeCytoscape() {
                     'target-arrow-color': '#006fff',
                     'source-arrow-color': '#006fff',
                     'z-index': 9999
+                }
+            },
+            {
+                // While the trace flow animation runs, the highlighted path
+                // switches to a dense dash so the marching motion reads clearly;
+                // without animation (reduced motion) it stays solid.
+                selector: 'edge.trace-path.trace-flow',
+                style: {
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [12, 6]
                 }
             },
             {
@@ -4022,6 +4047,7 @@ function collectReachableDeviceIds(startIds, options = {}) {
 function traceDevicePath(deviceId) {
     if (!cy || cy.$id(deviceId).empty()) return;
     clearFailureSimulation({ updateBanner: false });
+    traceFlowDirections.clear();
     const pathNodeIds = new Set([deviceId]);
     const pathEdgeIds = new Set();
     const queue = [deviceId];
@@ -4029,6 +4055,13 @@ function traceDevicePath(deviceId) {
         const currentId = queue.shift();
         getUpstreamNetworkLinks(currentId).forEach((link) => {
             pathEdgeIds.add(link.edge.id());
+            if (!traceFlowDirections.has(link.edge.id())) {
+                // Animation flow direction: currentId is the downstream end of
+                // this link, so edges whose source is downstream animate
+                // source -> target (negative dash-offset steps) and the rest
+                // animate target -> source — always toward the network root.
+                traceFlowDirections.set(link.edge.id(), link.edge.data('source') === currentId ? -1 : 1);
+            }
             if (!pathNodeIds.has(link.id)) {
                 pathNodeIds.add(link.id);
                 queue.push(link.id);
@@ -4055,15 +4088,93 @@ function traceDevicePath(deviceId) {
     showAnalysisBanner('trace', upstreamCount > 0
         ? `Tracing path for ${name} — ${upstreamCount} upstream device${upstreamCount === 1 ? '' : 's'}`
         : `${name} has no visible upstream connections`);
+    syncTraceFlowAnimation();
 }
 
 function clearTracePath(options = {}) {
     tracedDeviceId = null;
+    traceFlowDirections.clear();
+    syncTraceFlowAnimation();
     if (cy) {
         cy.elements().removeClass('trace-path trace-source trace-dimmed');
     }
     if (options.updateBanner !== false) {
         hideAnalysisBanner('trace');
+    }
+}
+
+// === Trace flow animation ===
+// While a trace is active, the highlighted edges switch to a dashed pattern
+// (edge.trace-path.trace-flow) and their line-dash-offset advances so the
+// dashes "flow" from the traced device toward the network root. Any style
+// change makes Cytoscape repaint the whole canvas, so instead of updating on
+// every animation frame the offset advances in discrete marching-ants steps
+// every TRACE_FLOW_STEP_MS — visually identical, a fraction of the repaints.
+
+const TRACE_FLOW_STEP_MS = 55;
+const TRACE_FLOW_STEP_PX = 3;
+const TRACE_FLOW_PERIOD_PX = 18; // dash 12 + gap 6, keeps the offset bounded
+const TRACE_FLOW_REDUCED_MOTION_QUERY = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function traceFlowFrame(timestamp) {
+    if (!cy || !traceFlowDirections.size) {
+        traceFlowRaf = null;
+        return;
+    }
+    traceFlowRaf = requestAnimationFrame(traceFlowFrame);
+    if (timestamp - traceFlowLastStep < TRACE_FLOW_STEP_MS) return;
+    traceFlowLastStep = timestamp;
+    traceFlowOffset = (traceFlowOffset + TRACE_FLOW_STEP_PX) % TRACE_FLOW_PERIOD_PX;
+    cy.batch(() => {
+        traceFlowDirections.forEach((sign, edgeId) => {
+            const edge = cy.$id(edgeId);
+            // Decreasing line-dash-offset moves dashes source -> target; each
+            // edge's sign (captured during the trace BFS) orients the flow.
+            if (edge.nonempty()) edge.style('line-dash-offset', sign * traceFlowOffset);
+        });
+    });
+}
+
+// Single source of truth for whether the flow animation should be running:
+// an active trace, the Diagram tab shown, the browser tab visible and no
+// reduced-motion preference. Starts or stops the loop to match; stopping
+// removes the dash overrides so the highlight falls back to the solid style.
+function syncTraceFlowAnimation() {
+    const shouldAnimate = Boolean(cy)
+        && traceFlowDirections.size > 0
+        && isDiagramVisible
+        && !document.hidden
+        && !TRACE_FLOW_REDUCED_MOTION_QUERY.matches;
+    if (shouldAnimate) {
+        cy.batch(() => {
+            // Drop leftovers from a previous trace (re-trace without clearing)
+            cy.edges('.trace-flow').forEach((edge) => {
+                if (!traceFlowDirections.has(edge.id())) {
+                    edge.removeClass('trace-flow');
+                    edge.removeStyle('line-dash-offset');
+                }
+            });
+            traceFlowDirections.forEach((_sign, edgeId) => {
+                cy.$id(edgeId).addClass('trace-flow');
+            });
+        });
+        if (traceFlowRaf === null) {
+            traceFlowLastStep = 0;
+            traceFlowRaf = requestAnimationFrame(traceFlowFrame);
+        }
+        return;
+    }
+    if (traceFlowRaf !== null) {
+        cancelAnimationFrame(traceFlowRaf);
+        traceFlowRaf = null;
+    }
+    if (cy) {
+        cy.batch(() => {
+            cy.edges('.trace-flow').forEach((edge) => {
+                edge.removeClass('trace-flow');
+                edge.removeStyle('line-dash-offset');
+            });
+        });
     }
 }
 
