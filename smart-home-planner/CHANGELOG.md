@@ -1,6 +1,7 @@
 ## 1.8.0
 
 ### Added
+- Dedicated Map page with its own filters, reachable from the left navigation rail (the map is no longer a tab inside Devices)
 - Device finder on the Diagram view with zoom-to and highlight
 - Floating connection legend on the Diagram view with per-layer toggles
 - Floor plan suggestion banner on the Diagram view when no background image is set
@@ -20,6 +21,7 @@
 
 ### Changed
 - Complete app redesign
+- Refined the Devices list pagination: compact chevron Previous/Next buttons aligned with uniform page cells, flat active state, and consistent hover
 - Improved Diagram view accessibility
 - Device form layout improvements
 - Clearer empty state for device labels

@@ -1042,6 +1042,9 @@ function formatDeviceType(type) {
 
 function getSiteNavIconMarkup(href) {
     const cleanHref = String(href || '').split('?')[0];
+    if (cleanHref.endsWith('map.html')) {
+        return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2.4"></circle><circle cx="5" cy="18" r="2.4"></circle><circle cx="19" cy="18" r="2.4"></circle><path d="M12 7.4v4.1"></path><path d="M11 13l-4.4 3.1"></path><path d="M13 13l4.4 3.1"></path></svg>';
+    }
     if (cleanHref.endsWith('index.html')) {
         return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10l9-7 9 7"></path><path d="M6 9.5v10.5h12v-10.5"></path><path d="M10 20v-5h4v5"></path></svg>';
     }

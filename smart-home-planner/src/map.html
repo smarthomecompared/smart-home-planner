@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="img/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="img/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="img/android-chrome-512x512.png">
+    <link rel="manifest" href="img/site.webmanifest">
+    <link rel="shortcut icon" href="img/favicon.ico">
+    <meta name="theme-color" content="#101216">
+    <title>Map - Smart Home Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700;900&display=swap">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/devices.css">
+    <link rel="stylesheet" href="css/map.css">
+    <script src="https://unpkg.com/cytoscape@3.30.4/dist/cytoscape.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-brand">
+                <a href="index.html" class="header-home-link">
+                    <img src="img/logo.png" alt="Smart Home Planner logo" class="header-logo">
+                    <h1 class="header-title">Smart Home Planner</h1>
+                </a>
+                <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="main-nav">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 6h18"></path>
+                        <path d="M3 12h18"></path>
+                        <path d="M3 18h18"></path>
+                    </svg>
+                </button>
+            </div>
+            <nav class="site-nav" id="main-nav">
+                <a href="index.html">Dashboard</a>
+                <a href="devices.html">Devices</a>
+                <a href="map.html" class="active">Map</a>
+                <a href="test-cases.html">Test Cases</a>
+                <a href="settings.html">Settings</a>
+            </nav>
+        </header>
+
+        <section>
+            <div class="section-header section-header-inline devices-header">
+                <div class="section-title-group">
+                    <h2>Map</h2>
+                    <div class="section-subtitle" id="devices-count" aria-live="polite">0 devices</div>
+                </div>
+                <div class="devices-header-actions">
+                    <button class="btn btn-secondary filters-trigger" type="button" id="toggle-advanced-filters" aria-expanded="false" aria-controls="advanced-filters">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 5h16"></path>
+                            <path d="M7 12h10"></path>
+                            <path d="M10 19h4"></path>
+                        </svg>
+                        Filters<span class="filters-count-badge" id="filters-active-count" hidden>0</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="filters-active-chips" id="filters-active-chips" hidden></div>
+
+            <!-- Device Filters Component (floating drawer) -->
+            <div class="filters-container is-collapsed">
+                <div class="filters-body">
+                    <div class="filters-drawer-header">
+                        <h3>Filters</h3>
+                        <div class="filters-drawer-actions">
+                            <button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Clear Filters</button>
+                            <button class="btn btn-secondary btn-sm btn-icon" type="button" id="filters-drawer-close" aria-label="Close filters">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 6l12 12"></path>
+                                    <path d="M18 6l-12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="filters-row filters-advanced is-collapsed" id="advanced-filters">
+                        <div class="filters-row filters-secondary">
+                            <div class="filter-field filter-field-wide">
+                                <label for="filter-name">Device name</label>
+                                <div class="filter-input-with-clear">
+                                    <input type="text" id="filter-name" class="filter-input" placeholder="Search by device name">
+                                    <button type="button" id="clear-filter-name" class="filter-clear-btn" aria-label="Clear device name filter" hidden>
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M4 4l8 8M12 4l-8 8"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="filter-field">
+                                <label for="filter-brand">Brand</label>
+                                <select id="filter-brand" class="filter-select">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            <div class="filter-field">
+                                <label for="filter-type">Type</label>
+                                <select id="filter-type" class="filter-select">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="filters-block">
+                            <div class="filters-block-title">Installation</div>
+                            <div class="filters-block-body">
+                                <div class="filter-field">
+                                    <label for="filter-floor">Floor</label>
+                                    <select id="filter-floor" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-area">Installed Area</label>
+                                    <select id="filter-area" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-controlled-area">Controlled Area</label>
+                                    <select id="filter-controlled-area" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-status">Status</label>
+                                    <select id="filter-status" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="working">Working</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="not-working">Not Working</option>
+                                        <option value="wishlist">Wishlist</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filters-block">
+                            <div class="filters-block-title">Connectivity</div>
+                            <div class="filters-block-body">
+                                <div class="filter-field">
+                                    <label for="filter-connectivity">Connectivity</label>
+                                    <select id="filter-connectivity" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-network">Network</label>
+                                    <select id="filter-network" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                                <div class="checkbox-chip-group">
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-thread-border-router">
+                                        <span>Thread Border Router</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-matter-hub">
+                                        <span>Matter Hub</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-zigbee-controller">
+                                        <span>Zigbee Controller</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-zigbee-repeater">
+                                        <span>Zigbee Repeater</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filters-block">
+                            <div class="filters-block-title">Labels</div>
+                            <div class="filters-block-body">
+                                <div class="filter-field filter-field-wide">
+                                    <div class="filter-label-row">
+                                        <label for="filter-labels">Labels</label>
+                                        <span class="label-picker-count" id="filter-labels-count">0 selected</span>
+                                    </div>
+                                    <select id="filter-labels" class="visually-hidden" multiple></select>
+                                    <div class="label-picker label-picker-compact" id="filter-labels-picker" role="listbox" aria-multiselectable="true"></div>
+                                    <div class="label-picker-empty" id="filter-labels-empty" hidden>No labels defined in Home Assistant yet.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filters-block">
+                            <div class="filters-block-title">Power</div>
+                            <div class="filters-block-body">
+                                <div class="filter-field">
+                                    <label for="filter-power">Power</label>
+                                    <select id="filter-power" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="wired">Wired</option>
+                                        <option value="battery">Battery</option>
+                                        <option value="__none__">-</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-ups-protected">UPS Protected</label>
+                                    <select id="filter-ups-protected" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-battery-type">Battery Type</label>
+                                    <select id="filter-battery-type" class="filter-select">
+                                        <option value="">All</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filters-block">
+                            <div class="filters-block-title">Integrations</div>
+                            <div class="filters-block-body">
+                                <div class="checkbox-chip-group">
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-home-assistant">
+                                        <span>Home Assistant</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-google-home">
+                                        <span>Google Home</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-alexa">
+                                        <span>Alexa</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-apple-home-kit">
+                                        <span>Apple Home Kit</span>
+                                    </label>
+                                    <label class="checkbox-chip">
+                                        <input type="checkbox" id="filter-samsung-smartthings">
+                                        <span>Samsung SmartThings</span>
+                                    </label>
+                                </div>
+                                <div class="filter-field">
+                                    <label for="filter-local-only">Local Only</label>
+                                    <select id="filter-local-only" class="filter-select">
+                                        <option value="">All</option>
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="diagram-section" class="devices-diagram">
+                <div class="map-display-settings is-collapsed" id="map-config">
+                    <h3 class="map-display-header">
+                        <button type="button" class="map-display-toggle" aria-expanded="false" aria-controls="map-config-body">
+                            <svg class="map-display-title-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 8h10"></path>
+                                <circle cx="17" cy="8" r="2.5"></circle>
+                                <path d="M20 16H10"></path>
+                                <circle cx="7" cy="16" r="2.5"></circle>
+                            </svg>
+                            <span class="map-display-title">Map Settings</span>
+                            <svg class="map-display-chevron" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 9l6 6 6-6"></path>
+                            </svg>
+                        </button>
+                    </h3>
+                    <div class="map-display-body" id="map-config-body">
+                        <div class="settings-group">
+                            <span class="map-group-title">Connections</span>
+                            <label class="connection-toggle">
+                                <span class="legend-line ethernet" aria-hidden="true"></span>
+                                <span class="connection-name">Ethernet</span>
+                                <input type="checkbox" id="show-ethernet-connections" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line usb" aria-hidden="true"></span>
+                                <span class="connection-name">USB</span>
+                                <input type="checkbox" id="show-usb-connections" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line hdmi" aria-hidden="true"></span>
+                                <span class="connection-name">HDMI</span>
+                                <input type="checkbox" id="show-hdmi-connections" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line power" aria-hidden="true"></span>
+                                <span class="connection-name">Power</span>
+                                <input type="checkbox" id="show-power-connections" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line wifi" aria-hidden="true"></span>
+                                <span class="connection-name">Wi-Fi</span>
+                                <input type="checkbox" id="show-wifi-connections" class="ui-switch">
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line zigbee" aria-hidden="true"></span>
+                                <span class="connection-name">Zigbee</span>
+                                <input type="checkbox" id="show-zigbee-connections" class="ui-switch">
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line zwave" aria-hidden="true"></span>
+                                <span class="connection-name">Z-Wave</span>
+                                <input type="checkbox" id="show-zwave-connections" class="ui-switch">
+                            </label>
+                        </div>
+                        <div class="settings-group">
+                            <span class="map-group-title">View</span>
+                            <div class="form-group">
+                                <label for="device-area-mode">Device location</label>
+                                <select id="device-area-mode">
+                                    <option value="installed" selected>Installed area</option>
+                                    <option value="controlled">Controlled area</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="power-label-mode">Power connection label</label>
+                                <select id="power-label-mode">
+                                    <option value="idle">Idle</option>
+                                    <option value="mean" selected>Mean</option>
+                                    <option value="max">Max</option>
+                                </select>
+                            </div>
+                            <label class="connection-toggle">
+                                <span class="connection-name">Show device icons</span>
+                                <input type="checkbox" id="diagram-show-icons" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="connection-name">Dim filtered-out devices</span>
+                                <input type="checkbox" id="diagram-dim-filtered" class="ui-switch" checked>
+                            </label>
+                            <label class="connection-toggle">
+                                <span class="connection-name">Show Internet providers</span>
+                                <input type="checkbox" id="diagram-show-internet" class="ui-switch" checked>
+                            </label>
+                        </div>
+                        <div class="settings-group map-background-group">
+                            <span class="map-group-title">Background</span>
+                            <span class="map-background-file" id="diagram-background-name">No background image</span>
+                            <div class="map-background-actions">
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-upload-btn">Upload image</button>
+                                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="diagram-background-help-btn" aria-label="About background images" title="About background images">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <circle cx="12" cy="12" r="9"></circle>
+                                        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                                        <circle cx="12" cy="17" r="1"></circle>
+                                    </svg>
+                                </button>
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-replace-btn" hidden>Replace</button>
+                                <button class="btn btn-secondary btn-sm" type="button" id="diagram-background-remove-btn" hidden>Remove</button>
+                            </div>
+                            <div class="map-background-tuning" id="diagram-background-tuning">
+                                <div class="form-group">
+                                    <label for="diagram-background-opacity">Background opacity</label>
+                                    <div class="map-range-row">
+                                        <input type="range" id="diagram-background-opacity" min="0" max="100" step="1" value="55">
+                                        <span class="map-range-value" id="diagram-background-opacity-value">55%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="file" id="diagram-background-input" accept="image/*" hidden>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="map-stage">
+                    <div id="network-map-background" aria-hidden="true"></div>
+                    <div id="network-map"></div>
+                    <div class="map-analysis-banner" id="map-analysis-banner" hidden>
+                        <span class="map-analysis-dot" aria-hidden="true"></span>
+                        <span class="map-analysis-text" id="map-analysis-text" role="status"></span>
+                        <button class="btn btn-secondary btn-sm btn-icon" type="button" id="map-analysis-clear" aria-label="Clear analysis" title="Clear (Esc)">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 6l12 12"></path>
+                                <path d="M18 6l-12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="map-legend" id="map-legend" role="group" aria-label="Connection layers">
+                        <button type="button" class="map-legend-chip" data-connection="show-ethernet-connections" aria-pressed="true">
+                            <span class="legend-line ethernet" aria-hidden="true"></span>Ethernet
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-usb-connections" aria-pressed="true">
+                            <span class="legend-line usb" aria-hidden="true"></span>USB
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-hdmi-connections" aria-pressed="true">
+                            <span class="legend-line hdmi" aria-hidden="true"></span>HDMI
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-power-connections" aria-pressed="true">
+                            <span class="legend-line power" aria-hidden="true"></span>Power
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-wifi-connections" aria-pressed="false">
+                            <span class="legend-line wifi" aria-hidden="true"></span>Wi-Fi
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-zigbee-connections" aria-pressed="false">
+                            <span class="legend-line zigbee" aria-hidden="true"></span>Zigbee
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-zwave-connections" aria-pressed="false">
+                            <span class="legend-line zwave" aria-hidden="true"></span>Z-Wave
+                        </button>
+                    </div>
+                    <div class="map-floorplan-cta" id="map-floorplan-cta" hidden>
+                        <span class="map-floorplan-cta-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                                <circle cx="9" cy="9" r="2"></circle>
+                                <path d="M21 15l-5-5-11 11"></path>
+                            </svg>
+                        </span>
+                        <span class="map-floorplan-cta-text">
+                            <strong>Add a floor plan</strong>
+                            <span>Upload an image to pin devices to their real location.</span>
+                        </span>
+                        <button class="btn btn-primary btn-sm" type="button" id="map-floorplan-cta-upload">Upload floor plan</button>
+                        <button class="btn btn-secondary btn-sm btn-icon map-floorplan-cta-dismiss" type="button" id="map-floorplan-cta-dismiss" aria-label="Dismiss floor plan suggestion" title="Dismiss">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 6l12 12"></path>
+                                <path d="M18 6l-12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="map-controls-overlay">
+                        <div class="map-search" id="map-search" hidden>
+                            <div class="map-search-results" id="map-search-results"></div>
+                            <div class="map-search-input-row">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="7"></circle>
+                                    <path d="M20 20l-3.5-3.5"></path>
+                                </svg>
+                                <input type="search" id="map-search-input" placeholder="Find a device" autocomplete="off" spellcheck="false" aria-label="Find a device on the diagram">
+                            </div>
+                        </div>
+                        <div class="map-controls">
+                            <button class="btn btn-secondary btn-sm btn-icon" id="map-search-btn" aria-expanded="false" aria-label="Find device" title="Find device">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="7"></circle>
+                                    <path d="M20 20l-3.5-3.5"></path>
+                                </svg>
+                            </button>
+                            <button class="btn btn-secondary btn-sm" id="toggle-edit-layout-btn">Edit Layout</button>
+                            <button class="btn btn-secondary btn-sm" id="fit-network-btn">Fit to Screen</button>
+                            <button class="btn btn-secondary btn-sm btn-icon" id="zoom-out-btn" aria-label="Zoom out" title="Zoom out">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="7"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            </button>
+                            <button class="btn btn-secondary btn-sm btn-icon" id="zoom-in-btn" aria-label="Zoom in" title="Zoom in">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="11" cy="11" r="7"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            </button>
+                            <button class="btn btn-secondary btn-sm btn-icon" id="fullscreen-map-btn" aria-pressed="false" aria-label="Full screen" title="Full screen">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M4 9V4h5"></path>
+                                    <path d="M20 15v5h-5"></path>
+                                    <path d="M20 9V4h-5"></path>
+                                    <path d="M4 15v5h5"></path>
+                                    <path d="M4 4l6 6"></path>
+                                    <path d="M20 4l-6 6"></path>
+                                    <path d="M4 20l6-6"></path>
+                                    <path d="M20 20l-6-6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="map-controls map-controls-secondary">
+                            <button class="btn btn-secondary btn-sm" id="reset-layout-btn" style="display: none;" disabled>Reset</button>
+                            <button class="btn btn-secondary btn-sm" id="cancel-layout-btn" style="display: none;" disabled>Cancel</button>
+                            <button class="btn btn-primary btn-sm" id="save-positions-btn" style="display: none;" disabled>Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <div class="modal is-hidden" id="diagram-background-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="diagram-background-help-overlay"></div>
+        <div class="modal-content diagram-help-content" role="dialog" aria-modal="true" aria-labelledby="diagram-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="diagram-help-title">Background Image Tips</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="diagram-background-help-close" aria-label="Close dialog" title="Close dialog">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="diagram-help-body">
+                <p>Use a clean floor plan image so you can pin each device to its real location. The diagram keeps that placement aligned during zoom, pan, and fullscreen.</p>
+                <p>If you need to create a floor plan, these apps are a good starting point:</p>
+                <ul class="diagram-help-links">
+                    <li><a href="https://floorplanner.com/" target="_blank" rel="noreferrer">Floorplanner</a></li>
+                    <li><a href="https://planner5d.com/" target="_blank" rel="noreferrer">Planner 5D</a></li>
+                    <li><a href="https://www.homestyler.com/" target="_blank" rel="noreferrer">Homestyler</a></li>
+                    <li><a href="https://www.sweethome3d.com/" target="_blank" rel="noreferrer">Sweet Home 3D</a></li>
+                    <li><a href="https://home.by.me/" target="_blank" rel="noreferrer">HomeByMe</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/metadata.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/device-filters.js"></script>
+    <script src="js/map-cytoscape.js"></script>
+    <script src="js/map.js"></script>
+</body>
+</html>

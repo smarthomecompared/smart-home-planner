@@ -1,6 +1,6 @@
 // Device Diagram JavaScript with Cytoscape.js
 
-window.DeviceDiagram = (() => {
+window.DeviceMap = (() => {
     const DIAGRAM_BACKGROUND_UI_KEY = 'diagramBackground';
     const DIAGRAM_BACKGROUND_OPACITY_UI_KEY = 'diagramBackgroundOpacity';
     const DIAGRAM_DISPLAY_SETTINGS_UI_KEY = 'diagramDisplaySettings';

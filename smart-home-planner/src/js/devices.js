@@ -31,7 +31,6 @@ let sortColumn = null;
 let sortDirection = 'asc';
 let filteredDevices = [];
 let viewMode = 'table';
-let diagramReady = false;
 let selectedDeviceIds = new Set();
 let currentPageDeviceIds = [];
 let bulkEditVisible = false;
@@ -110,9 +109,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentPageDeviceIds = [];
         currentPage = 1;
         renderDevices();
-        if (diagramReady && window.DeviceDiagram) {
-            window.DeviceDiagram.setFilteredDevices(filteredDevices);
-        }
     };
     
     initializeEventListeners();
@@ -224,7 +220,7 @@ function initializeBulkEdit() {
 
 async function initializeViewToggle() {
     const saved = await getUiPreference(getViewStorageKey());
-    if (saved === 'table' || saved === 'grid' || saved === 'diagram') {
+    if (saved === 'table' || saved === 'grid') {
         viewMode = saved;
     } else {
         viewMode = getDefaultViewMode();
@@ -248,7 +244,7 @@ async function initializeViewToggle() {
 
     window.addEventListener('resize', async () => {
         const savedNext = await getUiPreference(getViewStorageKey());
-        const next = (savedNext === 'table' || savedNext === 'grid' || savedNext === 'diagram')
+        const next = (savedNext === 'table' || savedNext === 'grid')
             ? savedNext
             : getDefaultViewMode();
         if (next === viewMode) return;
@@ -270,32 +266,12 @@ function updateViewToggle() {
 function updateViewVisibility() {
     const tableContainer = document.getElementById('devices-table-container');
     const grid = document.getElementById('devices-grid');
-    const diagram = document.getElementById('diagram-section');
-    const pagination = document.querySelector('.pagination-container');
     if (tableContainer) {
         tableContainer.style.display = viewMode === 'table' ? '' : 'none';
     }
     if (grid) {
         grid.style.display = viewMode === 'grid' ? 'grid' : 'none';
     }
-    if (diagram) {
-        diagram.style.display = viewMode === 'diagram' ? 'block' : 'none';
-    }
-    if (pagination) {
-        pagination.style.display = viewMode === 'diagram' ? 'none' : '';
-    }
-
-    if (viewMode === 'diagram') {
-        ensureDiagramReady();
-        if (window.DeviceDiagram) {
-            window.DeviceDiagram.setVisible(true);
-            window.DeviceDiagram.setFilteredDevices(filteredDevices);
-        }
-    } else if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.setVisible(false);
-    }
-
-    updateBulkEditAvailability();
 }
 
 function updateBulkFieldVisibility() {
@@ -326,18 +302,6 @@ function setBulkEditVisible(isVisible, options = {}) {
     updateBulkEditState();
     if (!options.skipRender) {
         renderDevices();
-    }
-}
-
-function updateBulkEditAvailability() {
-    const isDiagram = viewMode === "diagram";
-    document.body.classList.toggle("diagram-view", isDiagram);
-    const bulkToggle = document.getElementById("bulk-edit-toggle");
-    if (bulkToggle) {
-        bulkToggle.hidden = isDiagram;
-    }
-    if (isDiagram && bulkEditVisible) {
-        setBulkEditVisible(false, { skipRender: true, force: true });
     }
 }
 
@@ -496,23 +460,6 @@ function applyAreaColumnVisibility() {
     tableContainer.classList.add(`area-target-${target}`);
 }
 
-function ensureDiagramReady() {
-    if (diagramReady) return;
-    if (!window.DeviceDiagram) return;
-    const mapContainer = document.getElementById('network-map');
-    if (!mapContainer) return;
-    window.DeviceDiagram.init({
-        devices,
-        areas,
-        floors,
-        networks,
-        isps,
-        settings,
-        filteredDevices
-    });
-    diagramReady = true;
-}
-
 // CRUD Operations
 async function createDevice(deviceData) {
     // Validate unique name
@@ -548,9 +495,6 @@ async function createDevice(deviceData) {
     devices = allDevices;
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
-    if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
-    }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
     return device;
 }
@@ -589,9 +533,6 @@ async function updateDevice(id, deviceData) {
         await saveData(await getAllData());
         devices = allDevices;
         deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
-        if (diagramReady && window.DeviceDiagram) {
-            window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
-        }
         deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
         return device;
     }
@@ -638,9 +579,6 @@ async function deleteDevice(id) {
     
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
-    if (diagramReady && window.DeviceDiagram) {
-        window.DeviceDiagram.updateData({ devices, areas, floors, networks, isps, settings });
-    }
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }
 
