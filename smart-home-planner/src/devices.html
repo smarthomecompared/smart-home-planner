@@ -57,27 +57,37 @@
                     <button class="view-toggle-btn" type="button" data-view="diagram" aria-pressed="false">Diagram</button>
                 </div>
                 <div class="devices-header-actions">
+                    <button class="btn btn-secondary filters-trigger" type="button" id="toggle-advanced-filters" aria-expanded="false" aria-controls="advanced-filters">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 5h16"></path>
+                            <path d="M7 12h10"></path>
+                            <path d="M10 19h4"></path>
+                        </svg>
+                        Filters<span class="filters-count-badge" id="filters-active-count" hidden>0</span>
+                    </button>
                     <button class="btn btn-secondary devices-bulk-btn" type="button" id="bulk-edit-toggle" aria-pressed="false">Bulk Edit</button>
                     <a href="device-add.html" class="btn btn-primary devices-add-btn">Add Device</a>
                 </div>
             </div>
-            
-            <!-- Device Filters Component -->
+
+            <div class="filters-active-chips" id="filters-active-chips" hidden></div>
+
+            <!-- Device Filters Component (floating drawer) -->
             <div class="filters-container is-collapsed">
-                <div class="filters-header">
-                    <h3>Filters<span class="filters-count-badge" id="filters-active-count" hidden>0</span></h3>
-                    <div class="filters-active-chips" id="filters-active-chips"></div>
-                    <div class="filters-actions">
-                        <button class="btn btn-secondary btn-sm btn-icon filters-toggle no-tooltip" type="button" id="toggle-advanced-filters" aria-expanded="false" aria-controls="advanced-filters" aria-label="Toggle advanced filters">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M6 9l6 6 6-6"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
                 <div class="filters-body">
+                    <div class="filters-drawer-header">
+                        <h3>Filters</h3>
+                        <div class="filters-drawer-actions">
+                            <button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Clear Filters</button>
+                            <button class="btn btn-secondary btn-sm btn-icon" type="button" id="filters-drawer-close" aria-label="Close filters">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M6 6l12 12"></path>
+                                    <path d="M18 6l-12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
                     <div class="filters-row filters-advanced is-collapsed" id="advanced-filters">
-                        <div class="filters-row filters-primary"></div>
                         <div class="filters-row filters-secondary">
                             <div class="filter-field filter-field-wide">
                                 <label for="filter-name">Device name</label>
@@ -102,7 +112,6 @@
                                     <option value="">All</option>
                                 </select>
                             </div>
-                            <button class="btn btn-secondary btn-sm" type="button" id="clear-filters">Clear Filters</button>
                         </div>
                         <div class="filters-block">
                             <div class="filters-block-title">Installation</div>

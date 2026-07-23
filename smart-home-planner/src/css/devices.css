@@ -153,7 +153,9 @@
 
 .devices-header {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    /* Equal side columns keep the view toggle in the exact center regardless of
+       the subtitle width or which action buttons are visible */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     column-gap: 1rem;
 }
@@ -173,9 +175,11 @@
 
 .devices-header-actions {
     grid-column: 3;
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem;
+    justify-content: flex-end;
+    gap: 0.5rem 0.75rem;
     justify-self: end;
 }
 

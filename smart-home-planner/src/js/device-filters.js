@@ -160,7 +160,7 @@ class DeviceFilters {
         // Toggle advanced filters
         const toggleBtn = document.getElementById('toggle-advanced-filters');
         const advancedFilters = document.getElementById('advanced-filters');
-        const container = toggleBtn ? toggleBtn.closest('.filters-container') : document.querySelector('.filters-container');
+        const container = document.querySelector('.filters-container');
         const toggleFilters = () => {
             if (!container) return;
             const isCollapsed = container.classList.toggle('is-collapsed');
@@ -171,6 +171,11 @@ class DeviceFilters {
                 toggleBtn.classList.toggle('is-expanded', !isCollapsed);
                 toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
             }
+            if (!isCollapsed) {
+                setTimeout(() => {
+                    document.getElementById('filter-name')?.focus({ preventScroll: true });
+                }, 260);
+            }
         };
         if (toggleBtn) {
             toggleBtn.addEventListener('click', (event) => {
@@ -178,18 +183,33 @@ class DeviceFilters {
                 toggleFilters();
             });
         }
-        if (container) {
-            container.addEventListener('click', (event) => {
-                const target = event.target;
-                if (!target) return;
-                if (target.closest('button, a, input, select, textarea, label')) return;
-                if (target.closest('.filters-actions')) return;
-                if (target.closest('.filter-chip')) return;
-                // Collapsed: the whole card toggles. Expanded: only the header row does.
-                if (!container.classList.contains('is-collapsed') && !target.closest('.filters-header')) return;
-                toggleFilters();
+        const drawerClose = document.getElementById('filters-drawer-close');
+        if (drawerClose) {
+            drawerClose.addEventListener('click', () => {
+                if (container && !container.classList.contains('is-collapsed')) {
+                    toggleFilters();
+                }
             });
         }
+        // Close the drawer on outside click or Escape
+        document.addEventListener('mousedown', (event) => {
+            if (!container || container.classList.contains('is-collapsed')) return;
+            const target = event.target;
+            if (!target) return;
+            if (target.closest('.filters-container')) return;
+            if (target.closest('#toggle-advanced-filters')) return;
+            if (target.closest('.filters-active-chips')) return;
+            if (target.closest('.modal')) return;
+            if (target.closest('.ui-select-menu')) return;
+            toggleFilters();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            if (!container || container.classList.contains('is-collapsed')) return;
+            if (document.querySelector('.modal:not(.is-hidden)')) return;
+            if (document.querySelector('.global-search-overlay.is-open')) return;
+            toggleFilters();
+        });
 
         // Clear filters
         const clearBtn = document.getElementById('clear-filters');
@@ -281,6 +301,7 @@ class DeviceFilters {
             badge.textContent = String(descriptors.length);
         }
         if (!container) return;
+        container.hidden = descriptors.length === 0;
         if (!descriptors.length) {
             container.innerHTML = '';
             return;

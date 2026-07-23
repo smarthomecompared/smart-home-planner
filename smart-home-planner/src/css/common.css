@@ -819,9 +819,9 @@ nav.site-nav a:focus-visible .site-nav-label {
     border: none;
     background: transparent;
     color: var(--text-muted);
-    padding: 0.38rem 0.85rem;
+    padding: 0.5rem 1.15rem;
     border-radius: 6px;
-    font-size: 0.78rem;
+    font-size: 0.82rem;
     font-weight: 600;
     font-family: inherit;
     letter-spacing: 0.01em;
@@ -3004,53 +3004,25 @@ input[type="month"]::-webkit-calendar-picker-indicator {
    Device Filters Styles (Shared Component)
    ============================================ */
 
+/* The container is only a logical wrapper for the drawer (state lives in its class) */
 .filters-container {
-    margin-bottom: 1.5rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--card-bg);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    box-shadow: none;
-    display: grid;
-    gap: 1rem;
-    position: relative;
-    overflow: hidden;
+    display: contents;
 }
 
-.filters-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: none;
-    pointer-events: none;
+/* Filters trigger button in the page header */
+.filters-trigger svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
 }
 
-.filters-container.is-collapsed {
-    cursor: pointer;
-}
-
-.filters-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-    position: relative;
-    z-index: 1;
-    cursor: pointer;
-}
-
-.filters-header h3 {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    margin: 0;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 0;
-    flex: 0 0 auto;
+.filters-trigger[aria-expanded="true"] {
+    background: var(--primary-light);
+    border-color: rgba(0, 111, 255, 0.55);
+    color: var(--primary-text);
 }
 
 .filters-count-badge {
@@ -3060,7 +3032,7 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
-    margin-left: 0.55rem;
+    margin-left: 0.15rem;
     border-radius: 9px;
     background: var(--primary-color);
     color: #ffffff;
@@ -3069,14 +3041,14 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     letter-spacing: 0;
 }
 
-/* Removable chips describing the active filters */
+/* Removable chips describing the active filters (row below the page header) */
 .filters-active-chips {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.35rem;
-    flex: 1 1 auto;
     min-width: 0;
+    margin: -0.5rem 0 1.1rem;
 }
 
 .filter-chip {
@@ -3151,31 +3123,86 @@ input[type="month"]::-webkit-calendar-picker-indicator {
     color: var(--text-color);
 }
 
-.filters-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.filters-toggle svg {
-    transition: transform var(--transition-base);
-    transform: rotate(-90deg);
-}
-
-.filters-toggle.is-expanded svg {
-    transform: rotate(0deg);
-}
-
+/* Filters drawer: floating panel sliding in from the right */
 .filters-body {
-    display: grid;
-    gap: 1rem;
-    position: relative;
-    z-index: 1;
+    position: fixed;
+    top: var(--topbar-height);
+    right: 0;
+    bottom: 0;
+    width: min(420px, calc(100vw - var(--rail-width)));
+    z-index: 88;
+    display: flex;
+    flex-direction: column;
+    background: rgba(23, 25, 31, 0.97);
+    backdrop-filter: blur(10px);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -24px 0 48px rgba(0, 0, 0, 0.4);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0.25s ease;
 }
 
-.filters-container.is-collapsed .filters-body {
-    display: none;
+.filters-container:not(.is-collapsed) .filters-body {
+    transform: translateX(0);
+    visibility: visible;
+}
+
+.filters-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.8rem 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    flex: 0 0 auto;
+}
+
+.filters-drawer-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.filters-drawer-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Drawer content: single column with internal scroll */
+.filters-body .filters-advanced {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1rem 1.1rem 1.5rem;
+    margin: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 133, 149, 0.4) transparent;
+}
+
+.filters-body .filters-advanced::-webkit-scrollbar {
+    width: 8px;
+}
+
+.filters-body .filters-advanced::-webkit-scrollbar-thumb {
+    background: rgba(126, 133, 149, 0.4);
+    border-radius: 4px;
+}
+
+/* Keep the drawer content rendered during the slide-out animation */
+.filters-body .filters-advanced.is-collapsed {
+    display: flex;
+}
+
+.filters-body .filters-row.filters-secondary {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.9rem;
 }
 
 .filters,
@@ -3381,6 +3408,111 @@ select,
     box-shadow: 0 0 0 2px rgba(0, 111, 255, 0.2);
 }
 
+/* ── Custom select dropdown (UniFi OS style) ───────────────────────── */
+select[data-ui-select="true"] {
+    cursor: pointer;
+}
+
+select.is-open {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 111, 255, 0.15);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 12l4-4 4 4' stroke='%23b0b6c2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.ui-select-menu {
+    position: fixed;
+    z-index: 1200;
+    display: none;
+    padding: 0.3rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 133, 149, 0.4) transparent;
+}
+
+.ui-select-menu.is-open {
+    display: block;
+}
+
+.ui-select-menu::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ui-select-menu::-webkit-scrollbar-thumb {
+    background: rgba(126, 133, 149, 0.4);
+    border-radius: 4px;
+}
+
+.ui-select-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.ui-select-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ui-select-option.is-active {
+    background: var(--card-hover);
+    color: var(--text-color);
+}
+
+.ui-select-option.is-selected {
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+.ui-select-option.is-disabled {
+    color: var(--text-muted);
+    opacity: 0.55;
+    cursor: default;
+}
+
+.ui-select-check {
+    flex: 0 0 auto;
+    width: 0.85rem;
+    height: 0.85rem;
+    stroke: var(--primary-text);
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+}
+
+.ui-select-option.is-selected .ui-select-check {
+    opacity: 1;
+}
+
+.ui-select-group-label {
+    padding: 0.55rem 0.65rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.ui-select-empty {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
 .filters-advanced {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 0.9rem;
@@ -3506,36 +3638,6 @@ select,
 
 /* Responsive filters */
 @media (max-width: 768px) {
-    .filters-container {
-        padding: 0.75rem;
-        gap: 0.75rem;
-    }
-
-    .filters-header {
-        flex-direction: row;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .filters-header h3 {
-        line-height: 1.1;
-    }
-
-    .filters-active-chips {
-        order: 3;
-        flex-basis: 100%;
-    }
-
-    .filters-actions {
-        width: auto;
-        justify-content: flex-end;
-    }
-
-    .filters-actions .btn {
-        flex: 0 0 auto;
-        width: auto;
-    }
-
     .filters-row,
     .filters-primary,
     .filters-row.filters-secondary {
@@ -3559,5 +3661,13 @@ select,
 
     .filters-block-body {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .filters-body {
+        left: 0;
+        width: auto;
+        border-left: none;
     }
 }

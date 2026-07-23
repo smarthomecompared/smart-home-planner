@@ -1490,6 +1490,409 @@ function initIconTooltips() {
     });
 }
 
+// ── Custom select dropdown (UniFi OS style) ─────────────────────────
+// Progressive enhancement: every single-value <select> stays in the DOM
+// as the source of truth (value, validation, change events), but the
+// native browser popup is replaced with a UniFi-styled floating menu.
+// Opt out per element with data-native-select="true".
+
+const UI_SELECT_MENU_ID = 'ui-select-menu';
+let uiSelectActive = null;
+let uiSelectHighlight = -1;
+let uiSelectTypeahead = '';
+let uiSelectTypeaheadTimer = null;
+
+function isUiSelectCandidate(select) {
+    if (!(select instanceof HTMLSelectElement)) return false;
+    if (select.multiple || select.size > 1) return false;
+    if (select.dataset.nativeSelect === 'true') return false;
+    if (select.classList.contains('visually-hidden')) return false;
+    return true;
+}
+
+function getUiSelectMenu() {
+    return document.getElementById(UI_SELECT_MENU_ID);
+}
+
+function ensureUiSelectMenu() {
+    let menu = getUiSelectMenu();
+    if (menu) return menu;
+    if (!document.body) return null;
+
+    menu = document.createElement('div');
+    menu.id = UI_SELECT_MENU_ID;
+    menu.className = 'ui-select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.tabIndex = -1;
+    document.body.appendChild(menu);
+
+    // Keep focus on the select and stop outside-click handlers (filters
+    // drawer, dialogs, popovers) from reacting to clicks inside the menu.
+    menu.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+        if (event.target !== menu) {
+            event.preventDefault();
+        }
+    });
+    menu.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const item = event.target.closest('.ui-select-option');
+        if (!item || item.classList.contains('is-disabled')) return;
+        commitUiSelectOption(Number(item.dataset.index));
+    });
+    menu.addEventListener('mousemove', (event) => {
+        const item = event.target.closest('.ui-select-option');
+        if (!item || item.classList.contains('is-disabled')) return;
+        const index = Number(item.dataset.index);
+        if (index !== uiSelectHighlight) {
+            setUiSelectHighlight(index, { scroll: false });
+        }
+    });
+    // Mirror keyboard handling in case the menu itself gains focus
+    // (e.g. after a scrollbar interaction).
+    menu.addEventListener('keydown', handleUiSelectOpenKeydown);
+    return menu;
+}
+
+function getUiSelectNavigableIndexes(select) {
+    return Array.from(select.options)
+        .filter(option => !option.disabled && !option.hidden)
+        .map(option => option.index);
+}
+
+function renderUiSelectMenu(select) {
+    const menu = ensureUiSelectMenu();
+    if (!menu) return null;
+
+    const parts = [];
+    const renderOption = (option) => {
+        if (option.hidden) return;
+        const isSelected = option.index === select.selectedIndex;
+        const classes = ['ui-select-option'];
+        if (option.disabled) classes.push('is-disabled');
+        if (isSelected) classes.push('is-selected');
+        const label = escapeHtml(String(option.textContent || '').trim());
+        parts.push(`
+            <div class="${classes.join(' ')}" role="option" data-index="${option.index}" aria-selected="${isSelected ? 'true' : 'false'}"${option.disabled ? ' aria-disabled="true"' : ''}>
+                <span class="ui-select-option-label">${label || '&nbsp;'}</span>
+                <svg class="ui-select-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5"></path></svg>
+            </div>
+        `);
+    };
+    Array.from(select.children).forEach((child) => {
+        if (child.tagName === 'OPTGROUP') {
+            parts.push(`<div class="ui-select-group-label">${escapeHtml(String(child.label || '').trim())}</div>`);
+            Array.from(child.children).forEach((option) => {
+                if (option.tagName === 'OPTION') renderOption(option);
+            });
+        } else if (child.tagName === 'OPTION') {
+            renderOption(child);
+        }
+    });
+    menu.innerHTML = parts.join('') || '<div class="ui-select-empty">No options available</div>';
+    return menu;
+}
+
+function positionUiSelectMenu(menu, select) {
+    const rect = select.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const gap = 6;
+    const margin = 8;
+
+    const triggerWidth = Math.round(Math.min(rect.width, viewportWidth - margin * 2));
+    menu.style.minWidth = `${triggerWidth}px`;
+    menu.style.maxWidth = `${Math.round(Math.min(Math.max(rect.width, 320), viewportWidth - margin * 2))}px`;
+
+    const spaceBelow = viewportHeight - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(300, Math.max(openUp ? spaceAbove : spaceBelow, 120));
+    menu.style.maxHeight = `${Math.round(maxHeight)}px`;
+
+    const menuRect = menu.getBoundingClientRect();
+    let left = Math.min(rect.left, viewportWidth - menuRect.width - margin);
+    left = Math.max(margin, left);
+    let top = openUp ? rect.top - gap - menuRect.height : rect.bottom + gap;
+    top = Math.max(margin, Math.min(top, viewportHeight - menuRect.height - margin));
+    menu.style.left = `${Math.round(left)}px`;
+    menu.style.top = `${Math.round(top)}px`;
+}
+
+function setUiSelectHighlight(index, options = {}) {
+    const menu = getUiSelectMenu();
+    if (!menu || !uiSelectActive) return;
+    uiSelectHighlight = index;
+    let activeItem = null;
+    menu.querySelectorAll('.ui-select-option').forEach((item) => {
+        const isActive = Number(item.dataset.index) === index;
+        item.classList.toggle('is-active', isActive);
+        if (isActive) activeItem = item;
+    });
+    if (!activeItem || options.scroll === false) return;
+    const itemTop = activeItem.offsetTop;
+    const itemBottom = itemTop + activeItem.offsetHeight;
+    if (options.block === 'center') {
+        menu.scrollTop = itemTop - (menu.clientHeight - activeItem.offsetHeight) / 2;
+    } else if (itemTop < menu.scrollTop) {
+        menu.scrollTop = itemTop;
+    } else if (itemBottom > menu.scrollTop + menu.clientHeight) {
+        menu.scrollTop = itemBottom - menu.clientHeight;
+    }
+}
+
+function moveUiSelectHighlight(delta) {
+    const select = uiSelectActive;
+    if (!select) return;
+    const nav = getUiSelectNavigableIndexes(select);
+    if (!nav.length) return;
+    const pos = nav.indexOf(uiSelectHighlight);
+    let nextPos = pos === -1 ? (delta > 0 ? 0 : nav.length - 1) : pos + delta;
+    nextPos = Math.max(0, Math.min(nav.length - 1, nextPos));
+    setUiSelectHighlight(nav[nextPos]);
+}
+
+function applyUiSelectTypeahead(char) {
+    const select = uiSelectActive;
+    if (!select) return;
+    const nav = getUiSelectNavigableIndexes(select);
+    if (!nav.length) return;
+
+    if (uiSelectTypeaheadTimer) clearTimeout(uiSelectTypeaheadTimer);
+    uiSelectTypeaheadTimer = setTimeout(() => {
+        uiSelectTypeahead = '';
+    }, 700);
+
+    const lower = char.toLowerCase();
+    const isRepeatCycle = uiSelectTypeahead.length > 0 &&
+        uiSelectTypeahead.split('').every(value => value === lower);
+    uiSelectTypeahead += lower;
+
+    const labelAt = (index) => String(select.options[index].textContent || '').trim().toLowerCase();
+    let match = -1;
+    if (isRepeatCycle) {
+        // Repeating the same letter cycles through options starting with it
+        const start = nav.indexOf(uiSelectHighlight);
+        for (let step = 1; step <= nav.length; step++) {
+            const index = nav[(start + step) % nav.length];
+            if (labelAt(index).startsWith(lower)) {
+                match = index;
+                break;
+            }
+        }
+    } else {
+        match = nav.find(index => labelAt(index).startsWith(uiSelectTypeahead)) ?? -1;
+    }
+    if (match >= 0) {
+        setUiSelectHighlight(match);
+    }
+}
+
+function openUiSelectMenu(select) {
+    if (uiSelectActive === select) return;
+    closeUiSelectMenu();
+    const menu = renderUiSelectMenu(select);
+    if (!menu) return;
+
+    uiSelectActive = select;
+    menu.classList.add('is-open');
+    select.classList.add('is-open');
+    select.setAttribute('aria-expanded', 'true');
+    select.setAttribute('aria-controls', UI_SELECT_MENU_ID);
+    positionUiSelectMenu(menu, select);
+
+    const nav = getUiSelectNavigableIndexes(select);
+    const initial = nav.includes(select.selectedIndex) ? select.selectedIndex : (nav[0] ?? -1);
+    if (initial >= 0) {
+        setUiSelectHighlight(initial, { block: 'center' });
+    }
+}
+
+function closeUiSelectMenu() {
+    if (!uiSelectActive) return;
+    const menu = getUiSelectMenu();
+    if (menu) {
+        menu.classList.remove('is-open');
+        menu.innerHTML = '';
+    }
+    uiSelectActive.classList.remove('is-open');
+    uiSelectActive.setAttribute('aria-expanded', 'false');
+    uiSelectActive.removeAttribute('aria-controls');
+    uiSelectActive = null;
+    uiSelectHighlight = -1;
+    uiSelectTypeahead = '';
+}
+
+function commitUiSelectOption(index) {
+    const select = uiSelectActive;
+    if (!select) return;
+    closeUiSelectMenu();
+    select.focus();
+    if (!Number.isInteger(index) || index < 0 || index >= select.options.length) return;
+    const option = select.options[index];
+    if (!option || option.disabled) return;
+    if (select.selectedIndex !== index) {
+        select.selectedIndex = index;
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
+function handleUiSelectOpenKeydown(event) {
+    const select = uiSelectActive;
+    if (!select) return;
+    switch (event.key) {
+        case 'ArrowDown':
+            event.preventDefault();
+            moveUiSelectHighlight(1);
+            return;
+        case 'ArrowUp':
+            event.preventDefault();
+            moveUiSelectHighlight(-1);
+            return;
+        case 'PageDown':
+            event.preventDefault();
+            moveUiSelectHighlight(8);
+            return;
+        case 'PageUp':
+            event.preventDefault();
+            moveUiSelectHighlight(-8);
+            return;
+        case 'Home':
+            event.preventDefault();
+            moveUiSelectHighlight(-Infinity);
+            return;
+        case 'End':
+            event.preventDefault();
+            moveUiSelectHighlight(Infinity);
+            return;
+        case 'Enter':
+        case ' ':
+            event.preventDefault();
+            commitUiSelectOption(uiSelectHighlight);
+            return;
+        case 'Escape':
+            // Only close the menu; keep drawers/dialogs behind it open
+            event.preventDefault();
+            event.stopPropagation();
+            closeUiSelectMenu();
+            select.focus();
+            return;
+        case 'Tab':
+            closeUiSelectMenu();
+            return;
+        default:
+            if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                event.preventDefault();
+                applyUiSelectTypeahead(event.key);
+            }
+    }
+}
+
+function toggleUiSelectMenu(select) {
+    if (uiSelectActive === select) {
+        closeUiSelectMenu();
+    } else {
+        openUiSelectMenu(select);
+    }
+}
+
+function enhanceUiSelect(select) {
+    if (!isUiSelectCandidate(select) || select.dataset.uiSelect === 'true') return;
+    select.dataset.uiSelect = 'true';
+    select.setAttribute('aria-haspopup', 'listbox');
+    select.setAttribute('aria-expanded', 'false');
+
+    select.addEventListener('mousedown', (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        select.focus();
+        toggleUiSelectMenu(select);
+    });
+
+    let touchStartY = null;
+    select.addEventListener('touchstart', (event) => {
+        touchStartY = event.touches[0] ? event.touches[0].clientY : null;
+    }, { passive: true });
+    select.addEventListener('touchend', (event) => {
+        const touch = event.changedTouches[0];
+        if (touchStartY !== null && touch && Math.abs(touch.clientY - touchStartY) > 10) return;
+        if (!event.cancelable) return;
+        event.preventDefault();
+        select.focus();
+        toggleUiSelectMenu(select);
+    });
+
+    select.addEventListener('keydown', (event) => {
+        if (uiSelectActive === select) {
+            handleUiSelectOpenKeydown(event);
+            return;
+        }
+        if (event.ctrlKey || event.metaKey) return;
+        const opensMenu = event.key === 'ArrowDown' || event.key === 'ArrowUp' ||
+            event.key === 'Enter' || event.key === ' ' ||
+            (event.key.length === 1 && !event.altKey);
+        if (!opensMenu) return;
+        event.preventDefault();
+        openUiSelectMenu(select);
+        if (event.key.length === 1 && event.key !== ' ') {
+            applyUiSelectTypeahead(event.key);
+        }
+    });
+}
+
+function initUiSelects() {
+    if (!document.body) return;
+    ensureUiSelectMenu();
+    document.querySelectorAll('select').forEach(enhanceUiSelect);
+
+    // Close on any interaction outside the menu (capture phase so other
+    // handlers cannot swallow the event first).
+    document.addEventListener('mousedown', (event) => {
+        if (!uiSelectActive) return;
+        if (event.target === uiSelectActive) return;
+        const menu = getUiSelectMenu();
+        if (menu && event.target instanceof Node && menu.contains(event.target)) return;
+        closeUiSelectMenu();
+    }, true);
+
+    window.addEventListener('resize', () => {
+        const menu = getUiSelectMenu();
+        if (uiSelectActive && menu) positionUiSelectMenu(menu, uiSelectActive);
+    });
+
+    // Follow the trigger when the page or a drawer/modal body scrolls
+    window.addEventListener('scroll', (event) => {
+        if (!uiSelectActive) return;
+        const menu = getUiSelectMenu();
+        if (!menu) return;
+        if (event.target instanceof Node && menu.contains(event.target)) return;
+        positionUiSelectMenu(menu, uiSelectActive);
+    }, true);
+
+    window.addEventListener('blur', () => closeUiSelectMenu());
+
+    // Enhance selects rendered after load (port rows, rebuilt filters, …)
+    const observer = new MutationObserver((mutations) => {
+        let hasNewSelect = false;
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (!(node instanceof HTMLElement)) return;
+                if (node.tagName === 'SELECT' || (node.querySelector && node.querySelector('select'))) {
+                    hasNewSelect = true;
+                }
+            });
+        });
+        if (hasNewSelect) {
+            document.querySelectorAll('select').forEach(enhanceUiSelect);
+        }
+        if (uiSelectActive && !document.contains(uiSelectActive)) {
+            closeUiSelectMenu();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
 async function getUiPreference(key) {
     const storage = await loadStorage();
     return storage.ui ? storage.ui[key] : null;
@@ -1546,6 +1949,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initMobileNav();
     initIconTooltips();
     initGlobalSearch();
+    initUiSelects();
 });
 window.loadMapPositions = loadMapPositions;
 window.saveMapPositions = saveMapPositions;
