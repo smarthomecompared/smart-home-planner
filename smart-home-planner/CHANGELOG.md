@@ -27,6 +27,7 @@
 - Clearer empty state for device labels
 
 ### Fixed
+- Deleting a device now clears every reference to it — wireless links (access point, Zigbee parent, Z-Wave controller), the linked-device lists on the other side, and wired port connections — from both the device list and the edit form, so no dangling references are left behind. The delete confirmation now warns how many other devices will be unassigned.
 - Fix the calendar icon on date inputs rendering black and barely visible on the dark theme.
 - Multiple device form layout and focus glitches
 - Fix the diagram background image being shifted in fullscreen mode

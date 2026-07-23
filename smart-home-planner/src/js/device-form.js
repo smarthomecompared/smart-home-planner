@@ -2712,7 +2712,17 @@ async function handleDeviceSubmit(e) {
         ports: getPortsData(),
         files: normalizeDeviceFiles(deviceFiles)
     };
-    
+
+    const validationErrors = validateDeviceForSave(deviceData, editingDeviceId);
+    if (validationErrors.length) {
+        const message = validationErrors.length === 1
+            ? validationErrors[0]
+            : 'Please fix the following before saving:\n' +
+              validationErrors.map(error => `• ${error}`).join('\n');
+        showAlert(message, { title: 'Cannot save device' });
+        return;
+    }
+
     if (editingDeviceId) {
         await updateDevice(editingDeviceId, deviceData, { stayOnPage: shouldStayOnPage });
     } else {
@@ -5471,7 +5481,11 @@ async function updateDevice(id, deviceData, options = {}) {
 
 async function handleDeleteDevice() {
     if (!editingDeviceId) return;
-    const confirmed = await showConfirm('Are you sure you want to delete this device?', {
+    const refCount = countReferencesToDevice(allDevices, editingDeviceId);
+    const confirmMessage = refCount > 0
+        ? `Are you sure you want to delete this device? ${refCount} other device${refCount === 1 ? '' : 's'} will be unassigned.`
+        : 'Are you sure you want to delete this device?';
+    const confirmed = await showConfirm(confirmMessage, {
         title: 'Delete device',
         confirmText: 'Delete'
     });
@@ -5491,26 +5505,10 @@ async function handleDeleteDevice() {
     }
 
     allDevices = allDevices.filter(device => device.id !== editingDeviceId);
-    allDevices.forEach(device => {
-        if (device.ports && Array.isArray(device.ports)) {
-            // Release connections pointing at the deleted device; keep the ports
-            device.ports.forEach(port => {
-                if (port && port.connectedTo === editingDeviceId) {
-                    port.connectedTo = '';
-                    port.connectedToPort = '';
-                }
-            });
-        }
-        if (String(device.wifiAccessPointId || '').trim() === String(editingDeviceId || '').trim()) {
-            device.wifiAccessPointId = '';
-        }
-        if (String(device.zigbeeParentId || '').trim() === String(editingDeviceId || '').trim()) {
-            device.zigbeeParentId = '';
-        }
-        if (String(device.zwaveControllerId || '').trim() === String(editingDeviceId || '').trim()) {
-            device.zwaveControllerId = '';
-        }
-    });
+    // Clear every reference to the deleted device across the remaining ones:
+    // wired ports, wireless back-references (AP/parent/controller) and the
+    // linked-device arrays on the other side. Ports themselves are kept.
+    clearReferencesToDevice(allDevices, editingDeviceId);
 
     await saveData({
         ...(await loadData()),

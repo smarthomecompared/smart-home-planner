@@ -540,7 +540,11 @@ async function updateDevice(id, deviceData) {
 }
 
 async function deleteDevice(id) {
-    const confirmed = await showConfirm('Are you sure you want to delete this device?', {
+    const refCount = countReferencesToDevice(allDevices, id);
+    const confirmMessage = refCount > 0
+        ? `Are you sure you want to delete this device? ${refCount} other device${refCount === 1 ? '' : 's'} will be unassigned.`
+        : 'Are you sure you want to delete this device?';
+    const confirmed = await showConfirm(confirmMessage, {
         title: 'Delete device',
         confirmText: 'Delete'
     });
@@ -563,20 +567,12 @@ async function deleteDevice(id) {
     allDevices = allDevices.filter(d => d.id !== id);
     devices = allDevices;
     selectedDeviceIds.delete(id);
-    
-    // Release port connections pointing at the deleted device (ports themselves
-    // are part of each device's inventory, so they are kept)
-    allDevices.forEach(device => {
-        if (device.ports && Array.isArray(device.ports)) {
-            device.ports.forEach(port => {
-                if (port && port.connectedTo === id) {
-                    port.connectedTo = '';
-                    port.connectedToPort = '';
-                }
-            });
-        }
-    });
-    
+
+    // Clear every reference to the deleted device across the remaining ones:
+    // wired ports, wireless back-references (AP/parent/controller) and the
+    // linked-device arrays on the other side. Ports themselves are kept.
+    clearReferencesToDevice(allDevices, id);
+
     await saveData(await getAllData());
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
