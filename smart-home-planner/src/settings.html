@@ -592,13 +592,57 @@
 
     <div class="modal is-hidden" id="network-modal" aria-hidden="true">
         <div class="modal-overlay" id="network-modal-overlay"></div>
-        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="network-modal-title">
+        <div class="modal-content isp-modal-content" role="dialog" aria-modal="true" aria-labelledby="network-modal-title">
             <div class="modal-header">
                 <div class="modal-title" id="network-modal-title">Add Network</div>
             </div>
             <div class="form-group">
-                <label for="network-modal-input">Network Name</label>
-                <input type="text" id="network-modal-input" placeholder="e.g., vlan10">
+                <label for="network-name-input">Network Name</label>
+                <input type="text" id="network-name-input" maxlength="80" placeholder="e.g., IoT">
+            </div>
+            <div class="isp-modal-grid">
+                <div class="form-group">
+                    <label for="network-vlan-input">VLAN ID</label>
+                    <input type="number" id="network-vlan-input" min="1" max="4094" step="1" placeholder="e.g., 20">
+                </div>
+                <div class="form-group">
+                    <label for="network-subnet-input">Subnet</label>
+                    <input type="text" id="network-subnet-input" maxlength="64" placeholder="e.g., 192.168.20.0/24">
+                </div>
+                <div class="form-group">
+                    <label for="network-ssid-input">Wi-Fi SSID</label>
+                    <input type="text" id="network-ssid-input" maxlength="64" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label for="network-gateway-select">Gateway Device</label>
+                    <select id="network-gateway-select">
+                        <option value="">None</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Color</label>
+                <div class="network-color-picker" id="network-color-picker" role="radiogroup" aria-label="Network color"></div>
+            </div>
+            <div class="network-flags">
+                <label class="network-flag-row">
+                    <span class="network-flag-text">
+                        <span class="network-flag-title">Isolated network</span>
+                        <span class="network-flag-help">No traffic to or from other VLANs.</span>
+                    </span>
+                    <input type="checkbox" id="network-isolated-toggle" class="ui-switch">
+                </label>
+                <label class="network-flag-row">
+                    <span class="network-flag-text">
+                        <span class="network-flag-title">No internet access</span>
+                        <span class="network-flag-help">Devices on this network cannot reach the WAN.</span>
+                    </span>
+                    <input type="checkbox" id="network-nointernet-toggle" class="ui-switch">
+                </label>
+            </div>
+            <div class="form-group">
+                <label for="network-notes-input">Notes</label>
+                <textarea id="network-notes-input" rows="2" placeholder="Optional notes"></textarea>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" type="button" id="network-modal-cancel">Cancel</button>

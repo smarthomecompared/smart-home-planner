@@ -3,8 +3,11 @@
 let selectedFile = null;
 let settings = {};
 let networks = [];
+let networkDevices = [];
+let networkColorMap = new Map();
 let networkModalMode = 'add';
 let networkModalTargetId = '';
+let networkModalColor = '';
 let isps = [];
 let ispDevices = [];
 let ispModalMode = 'add';
@@ -870,21 +873,51 @@ function showMessage(message, type) {
     }
 }
 
+function getNetworkGatewayName(network) {
+    const gatewayId = String(network.gatewayDeviceId || '').trim();
+    if (!gatewayId) return '';
+    const device = networkDevices.find(d => d.id === gatewayId);
+    return device ? (device.name || device.model || 'Unnamed Device') : '';
+}
+
+function buildNetworkMetaSummary(network) {
+    const parts = [];
+    const vlanLabel = getNetworkVlanLabel(network);
+    if (vlanLabel) parts.push(vlanLabel);
+    if (network.subnet) parts.push(network.subnet);
+    if (network.ssid) parts.push(`SSID: ${network.ssid}`);
+    const gatewayName = getNetworkGatewayName(network);
+    if (gatewayName) parts.push(`Gateway: ${gatewayName}`);
+    return parts.join(' · ');
+}
+
 async function renderNetworksManagement() {
     const data = await loadData();
     networks = data.networks || [];
+    networkDevices = data.devices || [];
+    networkColorMap = buildNetworkColorMap(networks);
 
     const list = document.getElementById('networks-list');
     if (!list) return;
 
     const canDelete = networks.length > 1;
-    list.innerHTML = networks.map(network => `
+    list.innerHTML = networks.map(network => {
+        const color = networkColorMap.get(network.id) || '#7e8595';
+        const metaSummary = buildNetworkMetaSummary(network);
+        const flagBadges = [
+            network.isolated ? '<span class="network-flag-badge">Isolated</span>' : '',
+            network.noInternet ? '<span class="network-flag-badge">No internet</span>' : ''
+        ].filter(Boolean).join('');
+        return `
         <div class="networks-item">
-            <div class="networks-item-info">
-                <span>${escapeHtml(network.name)}</span>
+            <div class="networks-item-info isp-item-info">
+                <span class="network-swatch" style="--network-color: ${escapeHtml(color)}" aria-hidden="true"></span>
+                <span class="isp-item-name">${escapeHtml(network.name)}</span>
+                ${flagBadges}
+                ${metaSummary ? `<span class="isp-item-meta">${escapeHtml(metaSummary)}</span>` : ''}
             </div>
             <div class="networks-item-actions">
-                <button class="btn btn-secondary btn-sm btn-icon" data-network-rename="${network.id}" aria-label="Rename network" title="Rename network">
+                <button class="btn btn-secondary btn-sm btn-icon" data-network-edit="${network.id}" aria-label="Edit network" title="Edit network">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
                         <path d="M13.5 6.5l4 4"></path>
@@ -901,7 +934,8 @@ async function renderNetworksManagement() {
                 </button>` : ''}
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     list.querySelectorAll('button[data-network-delete]').forEach(button => {
         button.addEventListener('click', () => {
@@ -910,10 +944,61 @@ async function renderNetworksManagement() {
         });
     });
 
-    list.querySelectorAll('button[data-network-rename]').forEach(button => {
+    list.querySelectorAll('button[data-network-edit]').forEach(button => {
         button.addEventListener('click', () => {
-            const networkId = button.getAttribute('data-network-rename');
-            openNetworkModal('rename', networkId);
+            const networkId = button.getAttribute('data-network-edit');
+            openNetworkModal('edit', networkId);
+        });
+    });
+}
+
+function populateNetworkModalSelects(keepGatewayDeviceId = '') {
+    const gatewaySelect = document.getElementById('network-gateway-select');
+    if (!gatewaySelect) return;
+    const keepDeviceId = String(keepGatewayDeviceId || '').trim();
+    while (gatewaySelect.options.length > 1) {
+        gatewaySelect.remove(1);
+    }
+    // A VLAN gateway is a router/gateway device; a legacy assignment to an
+    // ineligible device is kept so editing never silently drops it.
+    const sortedDevices = [...networkDevices]
+        .filter(device => device && device.id)
+        .filter(device => isIspGatewayEligibleDevice(device) || device.id === keepDeviceId)
+        .sort((a, b) => String(a.name || a.model || '').localeCompare(String(b.name || b.model || '')));
+    sortedDevices.forEach(device => {
+        const optionEl = document.createElement('option');
+        optionEl.value = device.id;
+        optionEl.textContent = device.name || device.model || 'Unnamed Device';
+        gatewaySelect.appendChild(optionEl);
+    });
+}
+
+function renderNetworkColorPicker(selectedColor, autoColor) {
+    const picker = document.getElementById('network-color-picker');
+    if (!picker) return;
+    const normalizedSelected = normalizeNetworkColor(selectedColor);
+    const swatches = [
+        { value: '', color: autoColor, label: 'Automatic color', isAuto: true },
+        ...NETWORK_COLOR_PALETTE.map(color => ({ value: color, color, label: color }))
+    ];
+    picker.innerHTML = swatches.map(swatch => {
+        const isActive = normalizeNetworkColor(swatch.value) === normalizedSelected;
+        return `<button type="button" class="network-color-swatch${isActive ? ' is-selected' : ''}${swatch.isAuto ? ' is-auto' : ''}"
+            style="--network-color: ${escapeHtml(swatch.color)}"
+            data-color="${escapeHtml(swatch.value)}"
+            role="radio" aria-checked="${isActive ? 'true' : 'false'}"
+            aria-label="${escapeHtml(swatch.isAuto ? 'Automatic color' : swatch.label)}"
+            title="${escapeHtml(swatch.isAuto ? 'Automatic' : swatch.label)}">${swatch.isAuto ? 'Auto' : ''}</button>`;
+    }).join('');
+
+    picker.querySelectorAll('.network-color-swatch').forEach(button => {
+        button.addEventListener('click', () => {
+            networkModalColor = normalizeNetworkColor(button.getAttribute('data-color'));
+            picker.querySelectorAll('.network-color-swatch').forEach(other => {
+                const isActive = other === button;
+                other.classList.toggle('is-selected', isActive);
+                other.setAttribute('aria-checked', isActive ? 'true' : 'false');
+            });
         });
     });
 }
@@ -921,20 +1006,36 @@ async function renderNetworksManagement() {
 function openNetworkModal(mode, networkId = '') {
     const modal = document.getElementById('network-modal');
     const title = document.getElementById('network-modal-title');
-    const input = document.getElementById('network-modal-input');
-    if (!modal || !title || !input) return;
+    const nameInput = document.getElementById('network-name-input');
+    if (!modal || !title || !nameInput) return;
 
     networkModalMode = mode;
     networkModalTargetId = networkId;
     const currentNetwork = networks.find(network => network.id === networkId);
 
-    title.textContent = mode === 'rename' ? 'Rename Network' : 'Add Network';
-    input.value = mode === 'rename' && currentNetwork ? currentNetwork.name : '';
+    populateNetworkModalSelects(currentNetwork ? currentNetwork.gatewayDeviceId : '');
+
+    title.textContent = mode === 'edit' ? 'Edit Network' : 'Add Network';
+    nameInput.value = mode === 'edit' && currentNetwork ? currentNetwork.name : '';
+    document.getElementById('network-vlan-input').value = currentNetwork && currentNetwork.vlanId != null ? currentNetwork.vlanId : '';
+    document.getElementById('network-subnet-input').value = currentNetwork ? (currentNetwork.subnet || '') : '';
+    document.getElementById('network-ssid-input').value = currentNetwork ? (currentNetwork.ssid || '') : '';
+    document.getElementById('network-gateway-select').value = currentNetwork ? (currentNetwork.gatewayDeviceId || '') : '';
+    document.getElementById('network-isolated-toggle').checked = Boolean(currentNetwork && currentNetwork.isolated);
+    document.getElementById('network-nointernet-toggle').checked = Boolean(currentNetwork && currentNetwork.noInternet);
+    document.getElementById('network-notes-input').value = currentNetwork ? (currentNetwork.notes || '') : '';
+
+    networkModalColor = currentNetwork ? normalizeNetworkColor(currentNetwork.color) : '';
+    // The auto swatch previews the palette color this network would inherit.
+    const autoColor = currentNetwork
+        ? (networkColorMap.get(currentNetwork.id) || NETWORK_COLOR_PALETTE[0])
+        : NETWORK_COLOR_PALETTE[networks.length % NETWORK_COLOR_PALETTE.length];
+    renderNetworkColorPicker(networkModalColor, autoColor);
 
     modal.classList.remove('is-hidden');
     modal.setAttribute('aria-hidden', 'false');
-    input.focus();
-    input.select();
+    nameInput.focus();
+    nameInput.select();
 }
 
 function closeNetworkModal() {
@@ -997,9 +1098,9 @@ async function handleOptionAddModalSave() {
 }
 
 async function handleNetworkModalSave() {
-    const input = document.getElementById('network-modal-input');
-    if (!input) return;
-    const name = input.value.trim();
+    const nameInput = document.getElementById('network-name-input');
+    if (!nameInput) return;
+    const name = nameInput.value.trim();
     if (!name) {
         showMessage('Network name cannot be empty.', 'error');
         return;
@@ -1009,18 +1110,44 @@ async function handleNetworkModalSave() {
         return;
     }
 
+    const vlanRaw = String(document.getElementById('network-vlan-input').value || '').trim();
+    let vlanId = null;
+    if (vlanRaw) {
+        vlanId = normalizeVlanId(vlanRaw);
+        if (vlanId === null) {
+            showMessage('VLAN ID must be a whole number between 1 and 4094.', 'error');
+            return;
+        }
+        if (networks.some(network => network.id !== networkModalTargetId && normalizeVlanId(network.vlanId) === vlanId)) {
+            showMessage(`VLAN ID ${vlanId} is already used by another network.`, 'error');
+            return;
+        }
+    }
+
+    const fields = {
+        name: name,
+        vlanId: vlanId,
+        color: normalizeNetworkColor(networkModalColor),
+        subnet: String(document.getElementById('network-subnet-input').value || '').trim(),
+        ssid: String(document.getElementById('network-ssid-input').value || '').trim(),
+        gatewayDeviceId: document.getElementById('network-gateway-select').value || '',
+        isolated: Boolean(document.getElementById('network-isolated-toggle').checked),
+        noInternet: Boolean(document.getElementById('network-nointernet-toggle').checked),
+        notes: String(document.getElementById('network-notes-input').value || '').trim()
+    };
+
     const data = await loadData();
-    if (networkModalMode === 'rename') {
+    if (networkModalMode === 'edit') {
         const updatedNetworks = (data.networks || []).map(network => (
-            network.id === networkModalTargetId ? { ...network, name: name } : network
+            network.id === networkModalTargetId ? { ...network, ...fields } : network
         ));
         await saveData({
             ...data,
             networks: updatedNetworks
         });
-        showMessage('Network renamed successfully!', 'success');
+        showMessage('Network updated successfully!', 'success');
     } else {
-        const newNetwork = buildNetwork(name);
+        const newNetwork = buildNetwork(name, fields);
         const updatedNetworks = [...(data.networks || []), newNetwork];
         await saveData({
             ...data,

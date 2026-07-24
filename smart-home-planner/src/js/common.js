@@ -55,12 +55,92 @@ async function getRuntimeInfo() {
     return runtimeInfoPromise;
 }
 
-function buildNetwork(name) {
+// Palette used to auto-assign a distinct color to each network/VLAN on the map.
+// Values are picked to stay legible over the dark diagram canvas.
+const NETWORK_COLOR_PALETTE = [
+    '#006fff', // blue
+    '#38cc65', // green
+    '#f5a524', // amber
+    '#a855f7', // purple
+    '#00c2d1', // teal
+    '#ec4899', // pink
+    '#f97316', // orange
+    '#f0383b', // red
+    '#22d3ee', // cyan
+    '#84cc16'  // lime
+];
+
+function buildNetwork(name, overrides = {}) {
     return {
         id: `network-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: name,
-        createdAt: new Date().toISOString()
+        vlanId: null,
+        color: '',
+        subnet: '',
+        ssid: '',
+        gatewayDeviceId: '',
+        isolated: false,
+        noInternet: false,
+        notes: '',
+        createdAt: new Date().toISOString(),
+        ...overrides
     };
+}
+
+function normalizeVlanId(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 4094) return null;
+    return parsed;
+}
+
+function normalizeNetworkColor(value) {
+    const raw = String(value || '').trim();
+    return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw.toLowerCase() : '';
+}
+
+// Backfill the extended network shape (VLAN id, color, subnet, flags, ...) on
+// records that predate those fields, keeping legacy id/name/createdAt intact.
+function normalizeNetwork(network) {
+    if (!network || typeof network !== 'object') return null;
+    return {
+        id: String(network.id || '').trim() || `network-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: String(network.name || '').trim(),
+        vlanId: normalizeVlanId(network.vlanId),
+        color: normalizeNetworkColor(network.color),
+        subnet: String(network.subnet || '').trim(),
+        ssid: String(network.ssid || '').trim(),
+        gatewayDeviceId: String(network.gatewayDeviceId || '').trim(),
+        isolated: Boolean(network.isolated),
+        noInternet: Boolean(network.noInternet),
+        notes: String(network.notes || '').trim(),
+        createdAt: network.createdAt || new Date().toISOString()
+    };
+}
+
+// Resolve the effective color for every network: an explicit color wins,
+// otherwise a stable palette color is assigned by catalog position so the same
+// VLAN always renders in the same hue across pages.
+function buildNetworkColorMap(networks) {
+    const map = new Map();
+    (Array.isArray(networks) ? networks : []).forEach((network, index) => {
+        const id = String(network?.id || '').trim();
+        if (!id) return;
+        const explicit = normalizeNetworkColor(network.color);
+        map.set(id, explicit || NETWORK_COLOR_PALETTE[index % NETWORK_COLOR_PALETTE.length]);
+    });
+    return map;
+}
+
+function getNetworkColor(networks, networkId) {
+    const id = String(networkId || '').trim();
+    if (!id) return '';
+    return buildNetworkColorMap(networks).get(id) || '';
+}
+
+function getNetworkVlanLabel(network) {
+    const vlanId = normalizeVlanId(network?.vlanId);
+    return vlanId !== null ? `VLAN ${vlanId}` : '';
 }
 
 // `wireless: true` marks over-the-air last miles, drawn dashed on the diagram
@@ -688,6 +768,14 @@ async function loadData() {
 
     if (!Array.isArray(networks) || networks.length === 0) {
         networks = [buildNetwork('vlan0')];
+        didUpdate = true;
+    }
+
+    // Backfill the extended network fields on legacy records (missing `color`
+    // is a reliable marker) and persist the migration once.
+    const hasLegacyNetworks = networks.some(net => net && typeof net === 'object' && net.color === undefined);
+    networks = networks.map(normalizeNetwork).filter(Boolean);
+    if (hasLegacyNetworks) {
         didUpdate = true;
     }
 

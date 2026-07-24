@@ -21,6 +21,8 @@
 - Brand and Type dropdowns on the device form now include a search box to filter options as you type
 - Data consistency checks: the device form lists warnings at the top and under each affected field, and a new "Data Inconsistencies" dashboard card lists them across all devices
 - Bluetooth connections: devices can be marked as a Bluetooth Proxy and Bluetooth devices can be assigned to one, shown on the Map as a new pink layer with its own toggle and legend chip, and included in the PDF export
+- Networks (VLANs) now carry a VLAN ID, color, subnet, Wi-Fi SSID, gateway device, isolated / no-internet flags and notes, edited from a richer Settings → Networks modal that lists each network as a card with its color swatch and details
+- "Color by network" on the Map: a toggle in Map Settings → View tints each device with a halo in its VLAN color, colors same-VLAN links and draws cross-VLAN links dashed and neutral so network boundaries stand out. A VLAN legend lists the networks in view and clicking one spotlights it; the device tooltip now shows the device's network with its color, VLAN ID and subnet
 
 ### Changed
 - Complete app redesign

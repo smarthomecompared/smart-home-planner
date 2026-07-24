@@ -170,6 +170,8 @@ You can upload a background image such as a floor plan in the Diagram Settings p
 
 Diagram Settings also lets you toggle Ethernet, USB, Power, Wi-Fi, Zigbee, and Z-Wave connection overlays independently so you can focus on the relationship layer you need. The floating legend at the bottom-left of the diagram shows what each line style means, and clicking a legend chip toggles that connection layer directly.
 
+Turn on "Color by network" in Diagram Settings to see how devices map to your VLANs: each device gets a halo in its network color, links between devices on the same VLAN take that color, and links that cross VLANs are drawn dashed and neutral so the boundary (usually a router hop) stands out. A network legend appears above the connection legend listing the VLANs currently in view; click one to spotlight it and dim everything else. Colors come from the Networks settings.
+
 Use the search button in the map toolbar to find a device by name: the diagram zooms to the device and highlights it. Clicking a device opens a popover with its key details and currently visible connections.
 
 ## Add Device
@@ -243,7 +245,7 @@ What the PDF includes:
 
 ### Networks
 
-Networks manages the list of VLANs or network names used in device connectivity fields.
+Networks manages the VLANs (or plain network names) used in device connectivity fields. Each network can capture a VLAN ID, subnet, Wi-Fi SSID, gateway device, an "isolated" flag (no traffic to other VLANs), a "no internet access" flag, notes, and a color. The color is auto-assigned from a palette but can be overridden; it drives the "Color by network" view on the Map.
 
 ### Device Options
 

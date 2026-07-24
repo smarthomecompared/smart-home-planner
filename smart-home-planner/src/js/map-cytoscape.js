@@ -64,6 +64,8 @@ window.DeviceMap = (() => {
     let traceFlowOffset = 0;
     let traceFlowLastStep = 0;
     let isDiagramVisible = true;
+    // Network (VLAN) coloring: the currently spotlighted network id, or null.
+    let highlightedNetworkId = null;
 
     // Icon SVG cache: url -> inner SVG string (or null if failed)
     const _deviceIconCache = {};
@@ -197,7 +199,8 @@ window.DeviceMap = (() => {
             powerLabelMode: 'mean',
             showDeviceIcons: true,
             dimFilteredDevices: true,
-            showInternet: true
+            showInternet: true,
+            colorByNetwork: false
         };
     }
 
@@ -219,7 +222,8 @@ window.DeviceMap = (() => {
             powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode,
             showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons,
             dimFilteredDevices: value.dimFilteredDevices !== undefined ? Boolean(value.dimFilteredDevices) : defaults.dimFilteredDevices,
-            showInternet: value.showInternet !== undefined ? Boolean(value.showInternet) : defaults.showInternet
+            showInternet: value.showInternet !== undefined ? Boolean(value.showInternet) : defaults.showInternet,
+            colorByNetwork: value.colorByNetwork !== undefined ? Boolean(value.colorByNetwork) : defaults.colorByNetwork
         };
     }
 
@@ -237,7 +241,8 @@ window.DeviceMap = (() => {
             powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean',
             showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true),
             dimFilteredDevices: Boolean(document.getElementById('diagram-dim-filtered')?.checked ?? true),
-            showInternet: Boolean(document.getElementById('diagram-show-internet')?.checked ?? true)
+            showInternet: Boolean(document.getElementById('diagram-show-internet')?.checked ?? true),
+            colorByNetwork: Boolean(document.getElementById('diagram-color-by-network')?.checked)
         };
     }
 
@@ -270,6 +275,8 @@ window.DeviceMap = (() => {
         if (dimFilteredToggle) dimFilteredToggle.checked = settings.dimFilteredDevices;
         const showInternetToggle = document.getElementById('diagram-show-internet');
         if (showInternetToggle) showInternetToggle.checked = settings.showInternet;
+        const colorByNetworkToggle = document.getElementById('diagram-color-by-network');
+        if (colorByNetworkToggle) colorByNetworkToggle.checked = settings.colorByNetwork;
         syncDiagramLegend();
     }
 
@@ -1715,6 +1722,16 @@ window.DeviceMap = (() => {
     if (showInternetToggle) {
         showInternetToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const colorByNetworkToggle = document.getElementById('diagram-color-by-network');
+    if (colorByNetworkToggle) {
+        colorByNetworkToggle.addEventListener('change', () => {
+            // Turning coloring off drops any active VLAN highlight before re-render.
+            if (!colorByNetworkToggle.checked) {
+                highlightedNetworkId = null;
+            }
+            handleDiagramConnectionToggleChange();
+        });
+    }
     const dimFilteredToggle = document.getElementById('diagram-dim-filtered');
     if (dimFilteredToggle) {
         dimFilteredToggle.addEventListener('change', handleDiagramConnectionToggleChange);
@@ -2310,6 +2327,31 @@ function initializeCytoscape() {
                     'text-opacity': 0
                 }
             },
+            // Network (VLAN) coloring: a tinted halo behind the device card when
+            // "Color by network" is on and the device belongs to a network.
+            {
+                selector: 'node[type="device"][networkColor]',
+                style: {
+                    'underlay-color': 'data(networkColor)',
+                    'underlay-opacity': 0.35,
+                    'underlay-padding': 7,
+                    'underlay-shape': 'roundrectangle'
+                }
+            },
+            // Devices/edges outside the spotlighted VLAN fade back.
+            {
+                selector: 'node.network-dimmed',
+                style: {
+                    'opacity': 0.12
+                }
+            },
+            {
+                selector: 'edge.network-dimmed',
+                style: {
+                    'opacity': 0.06,
+                    'text-opacity': 0
+                }
+            },
             // Edge styles
             {
                 selector: 'edge[connectionType="ethernet"]',
@@ -2525,6 +2567,27 @@ function initializeCytoscape() {
                 style: {
                     'line-style': 'dashed',
                     'line-dash-pattern': [8, 6]
+                }
+            },
+            // Network (VLAN) coloring for device-to-device links. Same-VLAN links
+            // take the network color; cross-VLAN links render dashed and neutral
+            // so the boundary (usually a router hop) is obvious. Kept after the
+            // per-type edge styles so it overrides their line colors.
+            {
+                selector: 'edge[networkColor]',
+                style: {
+                    'line-color': 'data(networkColor)',
+                    'target-arrow-color': 'data(networkColor)',
+                    'source-arrow-color': 'data(networkColor)'
+                }
+            },
+            {
+                selector: 'edge[crossVlan="true"]',
+                style: {
+                    'line-style': 'dashed',
+                    'line-color': '#7e8595',
+                    'target-arrow-color': '#7e8595',
+                    'source-arrow-color': '#7e8595'
                 }
             },
             // Trace path highlight (kept after the per-type edge styles so the
@@ -2938,6 +3001,102 @@ function initDiagramLegend() {
     syncDiagramLegend();
 }
 
+// Which networks actually have at least one device currently on the map, so the
+// legend only lists VLANs the user can see.
+function getNetworksOnMap() {
+    if (!cy) return [];
+    const presentIds = new Set();
+    cy.nodes('[type="device"]').forEach((node) => {
+        const device = devices.find(d => String(d.id || '') === node.id());
+        const netId = device ? String(device.networkId || '').trim() : '';
+        if (netId) presentIds.add(netId);
+    });
+    return (Array.isArray(networks) ? networks : []).filter(net => presentIds.has(String(net.id || '').trim()));
+}
+
+function renderNetworkLegend(colorByNetwork) {
+    const legend = document.getElementById('map-network-legend');
+    if (!legend) return;
+    const networksOnMap = colorByNetwork ? getNetworksOnMap() : [];
+    if (!networksOnMap.length) {
+        legend.hidden = true;
+        legend.innerHTML = '';
+        legend.classList.remove('has-active');
+        return;
+    }
+    const colorMap = buildNetworkColorMap(networks);
+    legend.hidden = false;
+    legend.innerHTML = networksOnMap.map((net) => {
+        const id = String(net.id || '').trim();
+        const color = colorMap.get(id) || '#7e8595';
+        const vlanLabel = getNetworkVlanLabel(net);
+        return `<button type="button" class="map-network-chip" data-network-id="${escapeHtml(id)}" aria-pressed="false">
+            <span class="map-network-swatch" style="--network-color: ${escapeHtml(color)}" aria-hidden="true"></span>
+            <span class="map-network-name">${escapeHtml(net.name || 'Network')}</span>
+            ${vlanLabel ? `<span class="map-network-vlan">${escapeHtml(vlanLabel)}</span>` : ''}
+        </button>`;
+    }).join('');
+
+    legend.querySelectorAll('.map-network-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            setNetworkHighlight(chip.getAttribute('data-network-id') || '');
+        });
+    });
+}
+
+function setNetworkHighlight(networkId) {
+    const id = String(networkId || '').trim();
+    highlightedNetworkId = (highlightedNetworkId === id || !id) ? null : id;
+    applyNetworkHighlight();
+}
+
+// Spotlight one VLAN: its devices and intra-VLAN links stay bright, everything
+// else dims. Re-applied after each render so it survives filter/layout changes.
+function applyNetworkHighlight() {
+    if (!cy) return;
+    const legend = document.getElementById('map-network-legend');
+    cy.nodes().removeClass('network-dimmed');
+    cy.edges().removeClass('network-dimmed');
+
+    const validIds = new Set((Array.isArray(networks) ? networks : []).map(net => String(net.id || '').trim()));
+    if (highlightedNetworkId && !validIds.has(highlightedNetworkId)) {
+        highlightedNetworkId = null;
+    }
+
+    if (!highlightedNetworkId) {
+        if (legend) {
+            legend.classList.remove('has-active');
+            legend.querySelectorAll('.map-network-chip').forEach((chip) => {
+                chip.classList.remove('is-active');
+                chip.setAttribute('aria-pressed', 'false');
+            });
+        }
+        return;
+    }
+
+    if (legend) {
+        legend.classList.add('has-active');
+        legend.querySelectorAll('.map-network-chip').forEach((chip) => {
+            const isActive = chip.getAttribute('data-network-id') === highlightedNetworkId;
+            chip.classList.toggle('is-active', isActive);
+            chip.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
+    const inNetwork = new Set(
+        devices
+            .filter(device => String(device.networkId || '').trim() === highlightedNetworkId)
+            .map(device => String(device.id || ''))
+    );
+    cy.nodes('[type="device"]').forEach((node) => {
+        if (!inNetwork.has(node.id())) node.addClass('network-dimmed');
+    });
+    cy.edges().forEach((edge) => {
+        const bothInside = inNetwork.has(edge.source().id()) && inNetwork.has(edge.target().id());
+        if (!bothInside) edge.addClass('network-dimmed');
+    });
+}
+
 function formatConnectionTypeLabel(type) {
     if (type === 'wifi') return 'Wi-Fi';
     if (type === 'usb') return 'USB';
@@ -3000,6 +3159,25 @@ function showDeviceTooltip(node) {
                 <span class="tooltip-value">${escapeHtml(value)}</span>
             </div>`).join('');
 
+    // Network (VLAN) row with a color chip matching the map coloring.
+    const deviceNetwork = device.networkId
+        ? (networks || []).find(net => String(net.id || '') === String(device.networkId))
+        : null;
+    let networkHtml = '';
+    if (deviceNetwork) {
+        const networkColor = getNetworkColor(networks, deviceNetwork.id) || '#7e8595';
+        const networkMetaParts = [getNetworkVlanLabel(deviceNetwork), deviceNetwork.subnet].filter(Boolean).join(' · ');
+        networkHtml = `
+            <div class="tooltip-row">
+                <span class="tooltip-label">Network</span>
+                <span class="tooltip-value tooltip-network-value">
+                    <span class="tooltip-network-swatch" style="--network-color: ${escapeHtml(networkColor)}" aria-hidden="true"></span>
+                    <span class="tooltip-network-name">${escapeHtml(deviceNetwork.name || 'Network')}</span>
+                    ${networkMetaParts ? `<span class="tooltip-network-meta">${escapeHtml(networkMetaParts)}</span>` : ''}
+                </span>
+            </div>`;
+    }
+
     const connectionsHtml = connectionItems.length ? `
             <div class="tooltip-connections">
                 <span class="tooltip-connections-title">Connections</span>
@@ -3023,6 +3201,7 @@ function showDeviceTooltip(node) {
         </div>
         <div class="tooltip-body">
             ${detailsHtml}
+            ${networkHtml}
             ${connectionsHtml}
         </div>
         <div class="tooltip-actions">
@@ -3334,10 +3513,12 @@ async function renderNetwork(options = {}) {
             applyDiagramBackground();
             fitNetwork();
         }
+        highlightedNetworkId = null;
+        renderNetworkLegend(false);
         showEmptyMapMessage();
         return;
     }
-    
+
     // Get unique floors and areas from filtered devices
     const areaModeSelect = document.getElementById('device-area-mode');
     const areaMode = areaModeSelect ? areaModeSelect.value : 'installed';
@@ -3870,11 +4051,44 @@ async function renderNetwork(options = {}) {
         });
     }
 
+    // Color devices and their links by network (VLAN) when enabled. Done as a
+    // single post-pass so every edge-building block above stays untouched: same
+    // VLAN on both ends -> tint the link; different VLANs -> flag it cross-VLAN.
+    const colorByNetwork = Boolean(document.getElementById('diagram-color-by-network')?.checked);
+    if (colorByNetwork) {
+        const networkColorMap = buildNetworkColorMap(networks);
+        const deviceNetworkById = new Map(
+            devices.map(device => [String(device.id || ''), String(device.networkId || '').trim()])
+        );
+        elements.forEach((element) => {
+            if (element.group === 'nodes' && element.data && element.data.type === 'device') {
+                const netId = deviceNetworkById.get(String(element.data.id)) || '';
+                const color = netId ? (networkColorMap.get(netId) || '') : '';
+                if (color) element.data.networkColor = color;
+            } else if (element.group === 'edges' && element.data) {
+                const sourceNet = deviceNetworkById.get(String(element.data.source));
+                const targetNet = deviceNetworkById.get(String(element.data.target));
+                // Only device-to-device edges qualify; ISP/WAN endpoints are absent
+                // from the map and skip both branches.
+                if (sourceNet === undefined || targetNet === undefined) return;
+                if (sourceNet && targetNet && sourceNet === targetNet) {
+                    element.data.networkColor = networkColorMap.get(sourceNet) || '';
+                } else if (sourceNet && targetNet && sourceNet !== targetNet) {
+                    element.data.crossVlan = 'true';
+                }
+            }
+        });
+    } else {
+        highlightedNetworkId = null;
+    }
+
     // Update cytoscape
     hideEmptyMapMessage();
     cy.elements().remove();
     cy.add(elements);
     positionIspNodes();
+    renderNetworkLegend(colorByNetwork);
+    applyNetworkHighlight();
 
     // Run layout
     cy.layout({

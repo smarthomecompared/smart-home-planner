@@ -470,6 +470,101 @@
     }
 }
 
+/* Network (VLAN) list + modal */
+.network-swatch {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+    border-radius: 4px;
+    background: var(--network-color, var(--text-muted));
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+}
+
+.networks-item .network-flag-badge {
+    padding: 0.1rem 0.45rem;
+    background: rgba(126, 133, 149, 0.18);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.network-color-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.network-color-swatch {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background: var(--network-color, var(--text-muted));
+    cursor: pointer;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35) inset;
+    transition: border-color var(--transition-base), transform var(--transition-base);
+}
+
+.network-color-swatch.is-auto {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    box-shadow: 0 0 0 1px var(--border-color) inset;
+}
+
+.network-color-swatch.is-selected {
+    border-color: var(--text-color);
+}
+
+.network-color-swatch:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+}
+
+.network-flags {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.network-flag-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.network-flag-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.network-flag-title {
+    color: var(--text-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.network-flag-help {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
 .settings-action-group {
     padding: 1.5rem;
     background: var(--bg-secondary);
