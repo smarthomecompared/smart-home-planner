@@ -269,10 +269,6 @@ function detectDeviceInconsistencies(device, ctx = {}) {
 
     // #4 — wireless device with no parent assigned.
     const connectivity = normalizeText(device.connectivity);
-    if (connectivity === 'wifi' && !normalizeRefId(device.wifiAccessPointId)) {
-        push('ASSIGN_NO_AP', 'warning', 'Wi-Fi device with no access point assigned.',
-            { field: 'wifiAccessPointId' });
-    }
     if (isZigbeeConnectivityValue(connectivity) && !normalizeRefId(device.zigbeeParentId)) {
         push('ASSIGN_NO_ZIGBEE_PARENT', 'warning', 'Zigbee device with no parent assigned.',
             { field: 'zigbeeParentId' });
