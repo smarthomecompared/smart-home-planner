@@ -7,9 +7,16 @@ Plan, document, and visualize your smart home with a Home Assistant app that kee
 - Easy device list with search, filters, and a clear status overview.
 - Simple forms to keep device details, notes, and dates in one place.
 - Organize everything by floors and areas.
-- Visual map to see how devices are connected.
-- Sync devices, labels, areas and floors with Home Assistant
-- Automatic Backup of the data using Home Assisteant Backup system.
+- Dedicated network map to visualize how devices connect, with per-layer legend toggles, a device finder, and a floor plan background.
+- Model your full topology: per-device port inventory (Ethernet, SFP/SFP+, HDMI, USB, power) with PoE and port-to-port links kept in sync.
+- Internet Providers (ISPs) shown as clouds on the diagram, plus a Modems/ONT device type for the box where the ISP line lands.
+- Wireless, Zigbee, Z-Wave and Bluetooth links (including Bluetooth Proxy assignments) drawn on their own diagram layers.
+- Networks (VLANs) with VLAN ID, color, subnet, Wi-Fi SSID and gateway, plus a "Color by network" map view.
+- Trace a device's connection path to the Internet, and simulate device or ISP outages to see what loses connectivity.
+- Data consistency checks that flag inconsistent device data in the form and on the dashboard.
+- Export printable PDF reports of your full device inventory.
+- Sync devices, labels, areas and floors with Home Assistant.
+- Automatic Backup of the data using Home Assistant Backup system.
 
 ## Installation
 

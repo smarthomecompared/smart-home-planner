@@ -1,45 +1,41 @@
 ## 1.8.0
 
 ### Added
-- Dedicated Map page with its own filters, reachable from the left navigation rail (the map is no longer a tab inside Devices)
-- Device finder on the Diagram view with zoom-to and highlight
-- Floating connection legend on the Diagram view with per-layer toggles
-- Floor plan suggestion banner on the Diagram view when no background image is set
-- Filtered-out devices on the Diagram view are now dimmed instead of removed (configurable)
-- Trace path: highlight a device's full connection chain to its network root and the Internet, with animated flow
-- Failure simulation: mark devices as down and see everything that loses connectivity
-- Internet Providers: manage your ISPs and see them on the diagram as clouds, with ISP outage simulation. The contracted speed is labeled on the WAN link, consistent with the other connection types, and over-the-air providers (cellular, satellite, fixed wireless) are drawn with a dashed link. The ISP tooltip has an "Edit Provider" button that opens the provider straight in its Settings modal
-- New "Modems / ONT" device type, so the box where the ISP line lands can be modeled as its own device. When an ISP points at one, the diagram labels the last mile with its real medium (Fiber, Coax, Phone line); with a plain router as gateway the link stays labeled "WAN", since it may be skipping an unmodeled ONT. Auto-detection now picks a modem/ONT over a router
+- Dedicated Map page with its own filters in the navigation rail (no longer a tab inside Devices)
+- Device finder on the Diagram with zoom-to and highlight
+- Floating connection legend with per-layer toggles
+- Floor plan suggestion banner when no background image is set
+- Filtered-out devices are now dimmed instead of removed (configurable)
+- Trace path: highlight a device's full connection chain to the Internet, with animated flow
+- Failure simulation: mark devices as down and see what loses connectivity
+- Internet Providers (ISPs) shown as clouds, with contracted-speed WAN labels, dashed over-the-air links and outage simulation
+- New "Modems / ONT" device type that labels the last mile with its real medium (Fiber, Coax, Phone line)
 - Multiple storages per device
 - Port inventory per device (Ethernet, SFP, SFP+, HDMI, USB and power)
-- HDMI connections are shown on the diagram as a new purple layer with its own toggle, and SFP/SFP+ links appear on the Ethernet layer
-- USB ports now have a connector type (USB-A, USB-B, USB-C, Micro-USB, Mini-USB) and a USB version (USB 2.0, 3.0, 3.1, 3.2, USB4)
-- USB port direction is labeled Host/Device (instead of Input/Output) to match the USB host/peripheral model
-- Network port speeds are now limited to the valid options for each type (Ethernet up to 10G, SFP 100M/1G, SFP+ 1G/10G)
-- PoE on Ethernet ports support
-- Port-to-port connections with both sides kept in sync
-- Brand and Type dropdowns on the device form now include a search box to filter options as you type
-- Data consistency checks: the device form lists warnings at the top and under each affected field, and a new "Data Inconsistencies" dashboard card lists them across all devices
-- Bluetooth connections: devices can be marked as a Bluetooth Proxy and Bluetooth devices can be assigned to one, shown on the Map as a new pink layer with its own toggle and legend chip, and included in the PDF export
-- Networks (VLANs) now carry a VLAN ID, color, subnet, Wi-Fi SSID, gateway device, isolated / no-internet flags and notes, edited from a richer Settings → Networks modal that lists each network as a card with its color swatch and details
-- "Color by network" on the Map: a toggle in Map Settings → View tints each device with a halo in its VLAN color, colors same-VLAN links and draws cross-VLAN links dashed and neutral so network boundaries stand out. A VLAN legend lists the networks in view and clicking one spotlights it; the device tooltip now shows the device's network with its color, VLAN ID and subnet
+- HDMI connections as a new purple diagram layer; SFP/SFP+ links on the Ethernet layer
+- USB ports now have a connector type and USB version
+- USB port direction labeled Host/Device instead of Input/Output
+- Network port speeds limited to the valid options per type
+- PoE support on Ethernet ports
+- Port-to-port connections kept in sync on both sides
+- Search box on the Brand and Type dropdowns
+- Data consistency checks in the device form and a new "Data Inconsistencies" dashboard card
+- Bluetooth connections with Bluetooth Proxy assignment, shown as a new pink Map layer and in the PDF export
+- Networks (VLANs) carry VLAN ID, color, subnet, Wi-Fi SSID, gateway, isolated/no-internet flags and notes
+- "Color by network" Map view that tints devices and links by VLAN, with a VLAN legend and spotlight
 
 ### Changed
 - Complete app redesign
-- Refined the Devices list pagination: compact chevron Previous/Next buttons aligned with uniform page cells, flat active state, and consistent hover
-- Improved Diagram view accessibility
-- Device form layout improvements
-- Clearer empty state for device labels
-- Internal cleanup: removed unused JavaScript functions and CSS rules left over from earlier versions (no functional change)
+- Internal cleanup of unused JavaScript and CSS (no functional change)
 
 ### Fixed
-- Deleting a device now clears every reference to it — wireless links (access point, Zigbee parent, Z-Wave controller), the linked-device lists on the other side, and wired port connections — from both the device list and the edit form, so no dangling references are left behind. The delete confirmation now warns how many other devices will be unassigned.
-- Fix the calendar icon on date inputs rendering black and barely visible on the dark theme.
+- Deleting a device now clears every reference to it (wireless links, linked-device lists and port connections); the confirmation warns how many devices will be unassigned
+- Fix the date-input calendar icon barely visible on the dark theme
 - Multiple device form layout and focus glitches
 - Fix the diagram background image being shifted in fullscreen mode
 - Fix "Clear Filters" not resetting the Model and Network filters
 - Fix the device tooltip opening misaligned or overflowing off screen
-- Device names on the map are now centered horizontally when "Show device icons" is off
+- Device names centered on the map when "Show device icons" is off
 
 ## 1.7.0 - 2026-07-07
 
