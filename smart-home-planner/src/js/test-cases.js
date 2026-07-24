@@ -619,10 +619,6 @@ function formatFrequencyLabel(frequencyDays) {
     return `Every ${value} day${value === 1 ? '' : 's'}`;
 }
 
-function formatMultiline(value) {
-    return escapeHtml(String(value || '')).replace(/\n/g, '<br>');
-}
-
 function toLocalDateTimeValue(date = new Date()) {
     const value = new Date(date);
     const year = value.getFullYear();

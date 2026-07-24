@@ -546,16 +546,6 @@
             background: #f5a524;
         }
 
-        .power-usage-list .legend-item {
-            grid-template-columns: 12px 1fr auto;
-        }
-
-        .power-usage-more {
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
         .modal {
             position: fixed;
             inset: 0;
@@ -1205,7 +1195,7 @@
             const target = document.getElementById(targetId);
             if (!target) return;
             target.classList.add('pie-wrap');
-            target.classList.remove('legend', 'power-usage-list');
+            target.classList.remove('legend');
             if (rows.length === 0) {
                 updateExpandButton(targetId, false);
                 updateCardVisibilityByTargetId(targetId, false);
@@ -1440,25 +1430,6 @@
                 value: row.value,
                 count: row.count
             }));
-        }
-
-        function renderBatteryTotals(targetId, rows) {
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            if (rows.length === 0) {
-                updateCardVisibilityByTargetId(targetId, false);
-                target.innerHTML = '';
-                return;
-            }
-            updateCardVisibilityByTargetId(targetId, true);
-
-            target.innerHTML = rows.map(row => `
-                <a class="legend-item" href="devices.html?batteryType=${encodeURIComponent(row.value)}">
-                    <span class="legend-dot" style="background: var(--primary-color);"></span>
-                    <span>${escapeHtml(row.label)}</span>
-                    <span>${row.count}</span>
-                </a>
-            `).join('');
         }
 
         function getNumberStyle(element, key) {
@@ -2454,25 +2425,6 @@
                 .filter(row => row.percent > 0);
         }
 
-        function renderIntegrationCoverage(targetId, rows) {
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            if (!rows.length) {
-                updateCardVisibilityByTargetId(targetId, false);
-                target.innerHTML = '';
-                return;
-            }
-            updateCardVisibilityByTargetId(targetId, true);
-
-            target.innerHTML = rows.map(row => `
-                <a class="legend-item" href="devices.html?integration=${encodeURIComponent(row.value)}">
-                    <span class="legend-dot" style="background: var(--primary-color);"></span>
-                    <span>${escapeHtml(row.label)}</span>
-                    <span>${row.percent}% (${row.count})</span>
-                </a>
-            `).join('');
-        }
-
         function lightenHex(color, amount) {
             if (!color || color[0] !== '#') return color;
             const hex = color.slice(1);
@@ -2487,46 +2439,6 @@
         function formatWatts(value) {
             if (!Number.isFinite(value)) return '0';
             return value.toFixed(2).replace(/\.00$/, '');
-        }
-
-        function renderPowerUsageList(targetId, rows, options = {}) {
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            target.classList.remove('pie-wrap');
-            target.classList.add('legend', 'power-usage-list');
-            if (!rows.length) {
-                updateExpandButton(targetId, false);
-                updateCardVisibilityByTargetId(targetId, false);
-                target.innerHTML = '';
-                return;
-            }
-            updateCardVisibilityByTargetId(targetId, true);
-
-            const maxRows = options.maxRows === undefined ? 6 : options.maxRows;
-            const showMore = options.showMore !== false;
-            const sortedRows = rows.slice().sort((a, b) => b.count - a.count);
-            const visibleRows = maxRows ? sortedRows.slice(0, maxRows) : sortedRows;
-            const remaining = maxRows ? Math.max(sortedRows.length - maxRows, 0) : 0;
-            const totalPower = sortedRows.reduce((sum, row) => sum + row.count, 0) || 1;
-
-            target.innerHTML = visibleRows.map(row => {
-                const wattsLabel = formatWatts(row.count);
-                return `
-                <a class="legend-item" href="device-edit.html?id=${encodeURIComponent(row.value)}">
-                    <span class="legend-dot" style="background: var(--primary-color);"></span>
-                    <span>${escapeHtml(row.label)}</span>
-                    <span>${Math.round((row.count / totalPower) * 100)}% (${wattsLabel} W)</span>
-                </a>
-            `;
-            }).join('') + (remaining && showMore
-                ? `<div class="power-usage-more">+${remaining} more devices</div>`
-                : '');
-
-            chartRegistry[targetId] = {
-                type: 'list',
-                rows
-            };
-            updateExpandButton(targetId, rows.length > 0);
         }
 
         function buildLocalStats(devices) {

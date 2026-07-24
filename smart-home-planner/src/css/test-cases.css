@@ -131,34 +131,6 @@
     background: rgba(16, 18, 22, 0.54);
 }
 
-.test-badge.health-failed {
-    color: #f88f91;
-    border-color: rgba(240, 56, 59, 0.45);
-    background: rgba(240, 56, 59, 0.16);
-}
-
-.test-badge.health-overdue {
-    color: #f9cb70;
-    border-color: rgba(245, 165, 36, 0.45);
-    background: rgba(245, 165, 36, 0.16);
-}
-
-.test-badge.health-due-soon {
-    color: #fbdc9b;
-    border-color: rgba(245, 165, 36, 0.38);
-    background: rgba(245, 165, 36, 0.1);
-}
-
-.test-badge.health-healthy {
-    color: #8ce3a5;
-    border-color: rgba(56, 204, 101, 0.4);
-    background: rgba(56, 204, 101, 0.14);
-}
-
-.test-badge.health-disabled {
-    color: #7e8595;
-}
-
 .test-badge.priority-high {
     color: #f88f91;
     border-color: rgba(240, 56, 59, 0.45);
@@ -299,18 +271,10 @@
 
 .test-case-description,
 .test-case-steps,
-.test-case-expected,
-.test-case-linked-devices {
+.test-case-expected {
     color: var(--text-secondary);
     font-size: 0.82rem;
     line-height: 1.45;
-}
-
-.test-case-section-title {
-    color: var(--text-color);
-    font-size: 0.78rem;
-    margin-right: 0.35rem;
-    font-weight: 600;
 }
 
 .test-case-runs {
@@ -429,44 +393,12 @@
     word-break: break-word;
 }
 
-.test-run-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    justify-self: end;
-}
-
-.test-case-modal-content {
-    width: min(860px, 100%);
-}
-
-.test-case-form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem;
-}
-
-.form-group-span-2 {
-    grid-column: span 2;
-}
-
-.form-group-checkbox {
-    display: flex;
-    align-items: flex-end;
-}
-
 .checkbox-label {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
     font-size: 0.9rem;
     color: var(--text-color);
-}
-
-.field-hint {
-    margin: 0.35rem 0 0;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
 }
 
 .test-case-runs-header {
@@ -667,13 +599,11 @@
     .test-cases-summary,
     .test-cases-toolbar,
     .test-case-meta-grid,
-    .test-case-form-grid,
     .test-case-run-form-grid {
         grid-template-columns: 1fr;
     }
 
     .toolbar-search,
-    .form-group-span-2,
     .run-notes-group {
         grid-column: span 1;
     }

@@ -9,9 +9,9 @@
 // leaves every client pointing at a device that no longer exists, and so on).
 
 // Scalar fields on the child pointing up to a single device.
-const DEVICE_SCALAR_REF_FIELDS = ['wifiAccessPointId', 'zigbeeParentId', 'zwaveControllerId'];
+const DEVICE_SCALAR_REF_FIELDS = ['wifiAccessPointId', 'zigbeeParentId', 'zwaveControllerId', 'bluetoothProxyId'];
 // Array fields on the parent listing the device ids of its children/clients.
-const DEVICE_ARRAY_REF_FIELDS = ['wifiLinkedDeviceIds', 'zigbeeLinkedDeviceIds', 'zwaveLinkedDeviceIds'];
+const DEVICE_ARRAY_REF_FIELDS = ['wifiLinkedDeviceIds', 'zigbeeLinkedDeviceIds', 'zwaveLinkedDeviceIds', 'bluetoothLinkedDeviceIds'];
 
 function normalizeRefId(value) {
     return String(value == null ? '' : value).trim();
@@ -92,7 +92,8 @@ function clearReferencesToDevice(devices, deviceId) {
 const SELF_REF_LABELS = {
     wifiAccessPointId: 'access point',
     zigbeeParentId: 'Zigbee parent',
-    zwaveControllerId: 'Z-Wave controller'
+    zwaveControllerId: 'Z-Wave controller',
+    bluetoothProxyId: 'Bluetooth proxy'
 };
 
 function validateDeviceForSave(device, selfId) {
@@ -201,6 +202,14 @@ function isZwaveConnectivityValue(value) {
     return text.includes('zwave') || text.includes('z-wave');
 }
 
+function isBluetoothConnectivityValue(value) {
+    // Kept in sync with isBluetoothConnectivity in device-form.js, so a custom
+    // option like "Bluetooth LE" is never flagged here without the form
+    // offering the proxy field to fix it.
+    const text = normalizeText(value);
+    return text.startsWith('bluetooth') || text === 'ble';
+}
+
 function todayIsoDate() {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -272,6 +281,12 @@ function detectDeviceInconsistencies(device, ctx = {}) {
         push('ASSIGN_NO_ZWAVE_CTRL', 'warning', 'Z-Wave device with no controller assigned.',
             { field: 'zwaveControllerId' });
     }
+    // A proxy is the coverage itself, so it never needs one assigned.
+    if (isBluetoothConnectivityValue(connectivity) && !device.bluetoothProxy &&
+        !normalizeRefId(device.bluetoothProxyId)) {
+        push('ASSIGN_NO_BT_PROXY', 'warning', 'Bluetooth device with no proxy assigned.',
+            { field: 'bluetoothProxyId' });
+    }
 
     // #7 — the assigned parent cannot actually route for this protocol. Only
     // breaks after the fact (the pickers filter to capable devices), so it is an
@@ -288,6 +303,12 @@ function detectDeviceInconsistencies(device, ctx = {}) {
             push('ROLE_ZWAVE_CTRL', 'error',
                 `Z-Wave controller "${zwaveController.name || 'Unnamed'}" is not marked as a controller.`,
                 { field: 'zwaveControllerId' });
+        }
+        const bluetoothProxy = devicesById.get(normalizeRefId(device.bluetoothProxyId));
+        if (bluetoothProxy && !bluetoothProxy.bluetoothProxy) {
+            push('ROLE_BT_PROXY', 'error',
+                `Bluetooth proxy "${bluetoothProxy.name || 'Unnamed'}" is not marked as a proxy.`,
+                { field: 'bluetoothProxyId' });
         }
     }
 

@@ -310,6 +310,11 @@
                                 <span class="connection-name">Z-Wave</span>
                                 <input type="checkbox" id="show-zwave-connections" class="ui-switch">
                             </label>
+                            <label class="connection-toggle">
+                                <span class="legend-line bluetooth" aria-hidden="true"></span>
+                                <span class="connection-name">Bluetooth</span>
+                                <input type="checkbox" id="show-bluetooth-connections" class="ui-switch">
+                            </label>
                         </div>
                         <div class="settings-group">
                             <span class="map-group-title">View</span>
@@ -404,6 +409,9 @@
                         </button>
                         <button type="button" class="map-legend-chip" data-connection="show-zwave-connections" aria-pressed="false">
                             <span class="legend-line zwave" aria-hidden="true"></span>Z-Wave
+                        </button>
+                        <button type="button" class="map-legend-chip" data-connection="show-bluetooth-connections" aria-pressed="false">
+                            <span class="legend-line bluetooth" aria-hidden="true"></span>Bluetooth
                         </button>
                     </div>
                     <div class="map-floorplan-cta" id="map-floorplan-cta" hidden>

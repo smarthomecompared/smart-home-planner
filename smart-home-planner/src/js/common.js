@@ -63,20 +63,31 @@ function buildNetwork(name) {
     };
 }
 
+// `wireless: true` marks over-the-air last miles, drawn dashed on the diagram
+// like the other wireless links.
 const ISP_TECHNOLOGY_OPTIONS = [
     { value: 'fiber', label: 'Fiber' },
     { value: 'cable', label: 'Cable' },
     { value: 'dsl', label: 'DSL' },
-    { value: '4g-5g', label: 'Cellular (4G/5G)' },
-    { value: 'satellite', label: 'Satellite' },
-    { value: 'fixed-wireless', label: 'Fixed Wireless' },
+    { value: '4g-5g', label: 'Cellular (4G/5G)', wireless: true },
+    { value: 'satellite', label: 'Satellite', wireless: true },
+    { value: 'fixed-wireless', label: 'Fixed Wireless', wireless: true },
     { value: 'other', label: 'Other' }
 ];
 
-function getIspTechnologyLabel(value) {
+function getIspTechnologyOption(value) {
     const normalized = String(value || '').trim().toLowerCase();
-    const option = ISP_TECHNOLOGY_OPTIONS.find(item => item.value === normalized);
+    return ISP_TECHNOLOGY_OPTIONS.find(item => item.value === normalized) || null;
+}
+
+function getIspTechnologyLabel(value) {
+    const option = getIspTechnologyOption(value);
     return option ? option.label : '';
+}
+
+function isWirelessIspTechnology(value) {
+    const option = getIspTechnologyOption(value);
+    return !!(option && option.wireless);
 }
 
 function buildIsp(name, overrides = {}) {
@@ -836,11 +847,6 @@ function formatConnectivity(value) {
         .join(' ');
 }
 
-function isWifiConnectivity(value) {
-    const normalized = normalizeOptionValue(value);
-    return normalized === 'wifi' || normalized === 'ethernet';
-}
-
 function ensureToastContainer() {
     let container = document.getElementById('app-toast-container');
     if (container) return container;
@@ -1010,15 +1016,6 @@ function showConfirm(message, options = {}) {
     });
 }
 
-function getFloorById(floors, id) {
-    return floors.find(f => f.id === id);
-}
-
-function getFloorName(floors, id) {
-    const floor = getFloorById(floors, id);
-    return floor ? floor.name : 'Unknown';
-}
-
 function getAreaById(areas, id) {
     return areas.find(area => String(area.id) === String(id));
 }
@@ -1026,10 +1023,6 @@ function getAreaById(areas, id) {
 function getAreaName(areas, id) {
     const area = getAreaById(areas, id);
     return area ? area.name : 'Unknown';
-}
-
-function getDeviceById(devices, id) {
-    return devices.find(d => d.id === id);
 }
 
 // Format device type for display

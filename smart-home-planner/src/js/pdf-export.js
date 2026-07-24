@@ -71,6 +71,7 @@ const _C = {
     connWifi:     [ 56, 189, 248],  // #339fff — matches Cytoscape wifi edge (sky, dashed)
     connZigbee:   [250, 204,  21],  // #f7c948 — matches Cytoscape zigbee edge (yellow, dashed)
     connZwave:    [ 34, 197,  94],  // #38cc65 — matches Cytoscape z-wave edge (green, dashed)
+    connBluetooth:[236,  72, 153],  // #ec4899 — matches Cytoscape bluetooth edge (pink, dashed)
     connDefault:  [100, 116, 139],
     barBg:        [226, 232, 240],
     barFill:      [ 14, 116, 144],
@@ -99,15 +100,6 @@ const _PORT_LABELS = {
     'usb-output':      'USB Device',
     'power-input':     'Power In',
     'power-output':    'Power Out',
-};
-
-const _PORT_SHORT = {
-    'ethernet': 'ETH',
-    'sfp':      'SFP',
-    'sfpplus':  'SFP+',
-    'hdmi':     'HDMI',
-    'usb':      'USB',
-    'power':    'PWR',
 };
 
 const _USB_TYPE_LABELS = {
@@ -719,150 +711,6 @@ function _pdfSummaryPage(doc, data, { settings }) {
     _deviceList('Not Working Devices', notWorking,  _C.notWorking);
 }
 
-// ─── Device inventory table ────────────────────────────────────────────────────
-
-function _pdfDeviceTable(doc, data, { settings }) {
-    doc.addPage();
-
-    const { devices, areas, floors } = data;
-    const areaMap  = new Map((areas  || []).map(a => [a.id, a]));
-    const floorMap = new Map((floors || []).map(f => [f.id, f]));
-
-    const rows = (devices || []).map(d => {
-        const area      = areaMap.get(d.controlledArea || d.area || '');
-        const areaName  = area ? area.name : (d.controlledArea || d.area || '-');
-        const floorObj  = area && area.floor ? floorMap.get(area.floor) : null;
-        const floorName = floorObj ? floorObj.name : '-';
-
-        const brand = (settings && settings.brands)
-            ? (getFriendlyOption(settings.brands, d.brand, formatDeviceType) || '-')
-            : (d.brand || '-');
-        const type  = (settings && settings.types)
-            ? (getFriendlyOption(settings.types,  d.type,  formatDeviceType) || '-')
-            : _fmtType(d.type);
-
-        return [
-            d.name || 'Unnamed',
-            brand,
-            type,
-            _fmtConnectivity(d.connectivity),
-            areaName,
-            floorName,
-            _STATUS_LABELS[d.status] || (d.status || 'Working'),
-            d.ip    || '-',
-            d.power ? _fmtPower(d.power) : '-',
-        ];
-    });
-
-    // Column widths sum to _PDF_CW = 182 mm
-    doc.autoTable({
-        startY: _PDF_HEADER_H + 1,
-        head:   [['Name', 'Brand', 'Type', 'Connectivity', 'Area', 'Floor', 'Status', 'IP', 'Power']],
-        body:   rows,
-        theme:  'grid',
-        styles: {
-            fontSize: 7.4,
-            cellPadding: 1.9,
-            overflow: 'linebreak',
-            font: 'helvetica',
-            lineColor: _C.tableGrid,
-            lineWidth: 0.1,
-            textColor: _C.textOnLight,
-        },
-        headStyles: {
-            fillColor: _C.tableHead,
-            textColor: _C.textLight,
-            fontStyle: 'bold',
-            fontSize: 7.8,
-            lineColor: _C.tableHead,
-            lineWidth: 0.1,
-        },
-        alternateRowStyles: { fillColor: _C.rowAlt },
-        columnStyles: {
-            0: { cellWidth: 30 },
-            1: { cellWidth: 22 },
-            2: { cellWidth: 20 },
-            3: { cellWidth: 24 },
-            4: { cellWidth: 20 },
-            5: { cellWidth: 14 },
-            6: { cellWidth: 20 },
-            7: { cellWidth: 18 },
-            8: { cellWidth: 14 },
-        },
-        didParseCell: function (data) {
-            if (data.section !== 'body' || data.column.index !== 6) return;
-            const raw = String(data.cell.raw || '').toLowerCase();
-            if      (raw === 'working')     data.cell.styles.textColor = _C.working;
-            else if (raw === 'pending')     data.cell.styles.textColor = _C.pending;
-            else if (raw === 'not working') data.cell.styles.textColor = _C.notWorking;
-            else if (raw === 'wishlist')    data.cell.styles.textColor = _C.wishlist;
-            data.cell.styles.fontStyle = 'bold';
-        },
-        margin:      { top: _PDF_HEADER_H + 1, left: _PDF_MARGIN, right: _PDF_MARGIN, bottom: _PDF_BOTTOM_MARGIN },
-        didDrawPage: () => _drawPageHeader(doc, 'Device Inventory'),
-    });
-}
-
-// ─── Connections list ──────────────────────────────────────────────────────────
-
-function _pdfConnectionsPage(doc, data) {
-    const { devices } = data;
-    const deviceMap   = new Map((devices || []).map(d => [d.id, d]));
-
-    const rows = [];
-    (devices || []).forEach(device => {
-        if (!Array.isArray(device.ports)) return;
-        device.ports.forEach(port => {
-            if (!port.connectedTo) return;
-            const target     = deviceMap.get(port.connectedTo);
-            const targetName = (target && target.name) ? target.name : port.connectedTo;
-            const portLabel  = _PORT_LABELS[port.type] || port.type || '-';
-            const cable      = [
-                port.cableType ? String(port.cableType).toUpperCase() : '',
-                port.speed     ? String(port.speed) : '',
-                port.usbType   ? (_USB_TYPE_LABELS[port.usbType] || port.usbType) : '',
-                port.usbVersion ? (_USB_VERSION_LABELS[port.usbVersion] || port.usbVersion) : '',
-                port.poeStandard ? (_POE_SHORT[port.poeStandard] || 'PoE') : '',
-            ].filter(Boolean).join(' ');
-            rows.push([device.name || 'Unnamed', targetName, portLabel, cable || '-']);
-        });
-    });
-
-    if (!rows.length) return;
-
-    doc.addPage();
-    doc.autoTable({
-        startY: _PDF_HEADER_H + 1,
-        head:   [['Device', 'Connected To', 'Connection Type', 'Cable Details']],
-        body:   rows,
-        theme:  'grid',
-        styles:             {
-            fontSize: 8.2,
-            cellPadding: 2.2,
-            overflow: 'linebreak',
-            lineColor: _C.tableGrid,
-            lineWidth: 0.12,
-            textColor: _C.textOnLight,
-        },
-        headStyles:         {
-            fillColor: _C.tableHead,
-            textColor: _C.textLight,
-            fontStyle: 'bold',
-            lineColor: _C.tableHead,
-            lineWidth: 0.12,
-        },
-        alternateRowStyles: { fillColor: _C.rowAlt },
-        columnStyles: {
-            0: { cellWidth: 'auto' },
-            1: { cellWidth: 'auto' },
-            2: { cellWidth: 34 },
-            3: { cellWidth: 30 },
-        },
-        margin:      { top: _PDF_HEADER_H + 1, left: _PDF_MARGIN, right: _PDF_MARGIN, bottom: _PDF_BOTTOM_MARGIN },
-        didDrawPage: () => _drawPageHeader(doc, 'Network Connections'),
-    });
-}
-
 // ─── Diagram page ──────────────────────────────────────────────────────────────
 
 const _CONN_TYPE_LABELS = {
@@ -873,6 +721,7 @@ const _CONN_TYPE_LABELS = {
     wifi:     'Wi-Fi',
     zigbee:   'Zigbee',
     zwave:    'Z-Wave',
+    bluetooth:'Bluetooth',
 };
 
 function _resolveDiagramAreaMode(settings) {
@@ -1002,10 +851,11 @@ async function _pdfDiagramPage(doc, data) {
         if (device.wifiAccessPointId   && posSet.has(String(device.wifiAccessPointId)))   activeTypes.add('wifi');
         if (device.zigbeeParentId       && posSet.has(String(device.zigbeeParentId)))       activeTypes.add('zigbee');
         if (device.zwaveControllerId    && posSet.has(String(device.zwaveControllerId)))    activeTypes.add('zwave');
+        if (device.bluetoothProxyId     && posSet.has(String(device.bluetoothProxyId)))     activeTypes.add('bluetooth');
     });
 
     // Order connection types: wired first, wireless last
-    const typeOrder = ['ethernet', 'usb', 'hdmi', 'power', 'wifi', 'zigbee', 'zwave'];
+    const typeOrder = ['ethernet', 'usb', 'hdmi', 'power', 'wifi', 'zigbee', 'zwave', 'bluetooth'];
     const connTypesToDraw = typeOrder.filter(t => activeTypes.has(t));
 
     // ── Render one page per diagram ───────────────────────────────────────────
@@ -1212,7 +1062,8 @@ function _renderDiagramOverlay(
             const wirelessDefs = [
                 { kind: 'wifi', value: device.wifiAccessPointId },
                 { kind: 'zigbee', value: device.zigbeeParentId },
-                { kind: 'zwave', value: device.zwaveControllerId }
+                { kind: 'zwave', value: device.zwaveControllerId },
+                { kind: 'bluetooth', value: device.bluetoothProxyId }
             ];
             wirelessDefs.forEach((entry) => {
                 if (filterType && filterType !== entry.kind) return;
@@ -1476,7 +1327,8 @@ function _renderDiagramOverlay(
         badgePadX: Math.max(0.28, APP_EDGE_LABEL_PADDING_PX * modelToMm * 1.45),
         badgePadY: Math.max(0.2, APP_EDGE_LABEL_PADDING_PX * modelToMm * 0.85),
         dashWifi: [Math.max(0.45, 8 * modelToMm), Math.max(0.34, 6 * modelToMm)],
-        dashMesh: [Math.max(0.42, 7 * modelToMm), Math.max(0.3, 5 * modelToMm)]
+        dashMesh: [Math.max(0.42, 7 * modelToMm), Math.max(0.3, 5 * modelToMm)],
+        dashBluetooth: [Math.max(0.26, 4 * modelToMm), Math.max(0.26, 4 * modelToMm)]
     };
 
     // ── Area/floor frame (kept from full base layout, same as overview) ──────
@@ -1610,12 +1462,14 @@ function _renderDiagramOverlay(
         power:    _C.connPower,
         wifi:     _C.connWifi,
         zigbee:   _C.connZigbee,
-        zwave:    _C.connZwave
+        zwave:    _C.connZwave,
+        bluetooth:_C.connBluetooth
     };
     const connDashByType = {
         wifi: connectionStyle.dashWifi,
         zigbee: connectionStyle.dashMesh,
-        zwave: connectionStyle.dashMesh
+        zwave: connectionStyle.dashMesh,
+        bluetooth: connectionStyle.dashBluetooth
     };
     const placedLabels = [];
 
@@ -1754,6 +1608,7 @@ function _drawDiagramLegend(doc, y, activeTypes, connectionStyle = null, layout 
         { color: _C.connWifi,     label: 'Wi-Fi',     type: 'wifi',     dashed: true  },
         { color: _C.connZigbee,   label: 'Zigbee',    type: 'zigbee',   dashed: true  },
         { color: _C.connZwave,    label: 'Z-Wave',    type: 'zwave',    dashed: true  },
+        { color: _C.connBluetooth, label: 'Bluetooth', type: 'bluetooth', dashed: true  },
     ];
     const lineItems = activeTypes
         ? allLineItems.filter(it => activeTypes.has(it.type))
@@ -2332,6 +2187,10 @@ function _pdfDeviceDetailPages(doc, data, _config) {
             const zw = devMap.get(String(device.zwaveControllerId));
             rows.push(['Z-Wave Parent', zw ? zw.name : device.zwaveControllerId]);
         }
+        if (device.bluetoothProxyId) {
+            const bt = devMap.get(String(device.bluetoothProxyId));
+            rows.push(['Bluetooth Proxy', bt ? bt.name : device.bluetoothProxyId]);
+        }
 
         // ── Storage ───────────────────────────────────────────────────────────
         const storageSummary = formatDeviceStorageSummary(device, ', ');
@@ -2388,6 +2247,7 @@ function _pdfDeviceDetailPages(doc, data, _config) {
         if (device.zigbeeController)   rows.push(['Zigbee Coordinator',   'Yes']);
         if (device.zigbeeRepeater)     rows.push(['Zigbee Router',         'Yes']);
         if (device.zwaveController)    rows.push(['Z-Wave Coordinator',    'Yes']);
+        if (device.bluetoothProxy)     rows.push(['Bluetooth Proxy',       'Yes']);
         if (device.matterHub)          rows.push(['Matter Bridge',         'Yes']);
         if (device.threadBorderRouter) rows.push(['Thread Border Router',  'Yes']);
 
@@ -2718,6 +2578,7 @@ function _mdDevicesSection(lines, data, maps) {
         if (d.wifiAccessPointId) pushChild(d.wifiAccessPointId, `${nm} — Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`);
         if (d.zigbeeParentId)    pushChild(d.zigbeeParentId, `${nm} — Zigbee`);
         if (d.zwaveControllerId) pushChild(d.zwaveControllerId, `${nm} — Z-Wave`);
+        if (d.bluetoothProxyId) pushChild(d.bluetoothProxyId, `${nm} — Bluetooth`);
     });
 
     const sorted = [...devices].sort((a, b) => {
@@ -2792,6 +2653,10 @@ function _mdDevicesSection(lines, data, maps) {
             const zw = devMap.get(String(device.zwaveControllerId));
             add('Z-Wave Parent', zw ? zw.name : device.zwaveControllerId, 'zwaveControllerId');
         } else { skip('zwaveControllerId'); }
+        if (device.bluetoothProxyId) {
+            const bt = devMap.get(String(device.bluetoothProxyId));
+            add('Bluetooth Proxy', bt ? bt.name : device.bluetoothProxyId, 'bluetoothProxyId');
+        } else { skip('bluetoothProxyId'); }
 
         // ── Storage ───────────────────────────────────────────────────────────
         const storageSummary = formatDeviceStorageSummary(device, ', ');
@@ -2841,9 +2706,10 @@ function _mdDevicesSection(lines, data, maps) {
         if (device.zigbeeController)   roles.push('Zigbee Coordinator');
         if (device.zigbeeRepeater)     roles.push('Zigbee Router');
         if (device.zwaveController)    roles.push('Z-Wave Coordinator');
+        if (device.bluetoothProxy)     roles.push('Bluetooth Proxy');
         if (device.matterHub)          roles.push('Matter Bridge');
         if (device.threadBorderRouter) roles.push('Thread Border Router');
-        skip('zigbeeController', 'zigbeeRepeater', 'zwaveController', 'matterHub', 'threadBorderRouter');
+        skip('zigbeeController', 'zigbeeRepeater', 'zwaveController', 'bluetoothProxy', 'matterHub', 'threadBorderRouter');
         if (roles.length) add('Roles', roles.join(', '));
 
         // ── Labels ────────────────────────────────────────────────────────────
@@ -2954,7 +2820,7 @@ function _mdConnectionsSection(lines, data, devMap) {
     }
     lines.push('');
 
-    // Wireless links (Wi-Fi / Zigbee / Z-Wave)
+    // Wireless links (Wi-Fi / Zigbee / Z-Wave / Bluetooth)
     const wireless = [];
     (devices || []).forEach((d) => {
         if (d.wifiAccessPointId) {
@@ -2968,6 +2834,10 @@ function _mdConnectionsSection(lines, data, devMap) {
         if (d.zwaveControllerId) {
             const p = devMap.get(String(d.zwaveControllerId));
             wireless.push([d.name || 'Unnamed', p ? p.name : d.zwaveControllerId, 'Z-Wave']);
+        }
+        if (d.bluetoothProxyId) {
+            const p = devMap.get(String(d.bluetoothProxyId));
+            wireless.push([d.name || 'Unnamed', p ? p.name : d.bluetoothProxyId, 'Bluetooth']);
         }
     });
 

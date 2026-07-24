@@ -8,7 +8,8 @@
 - Filtered-out devices on the Diagram view are now dimmed instead of removed (configurable)
 - Trace path: highlight a device's full connection chain to its network root and the Internet, with animated flow
 - Failure simulation: mark devices as down and see everything that loses connectivity
-- Internet Providers: manage your ISPs and see them on the diagram as clouds, with ISP outage simulation
+- Internet Providers: manage your ISPs and see them on the diagram as clouds, with ISP outage simulation. The contracted speed is labeled on the WAN link, consistent with the other connection types, and over-the-air providers (cellular, satellite, fixed wireless) are drawn with a dashed link. The ISP tooltip has an "Edit Provider" button that opens the provider straight in its Settings modal
+- New "Modems / ONT" device type, so the box where the ISP line lands can be modeled as its own device. When an ISP points at one, the diagram labels the last mile with its real medium (Fiber, Coax, Phone line); with a plain router as gateway the link stays labeled "WAN", since it may be skipping an unmodeled ONT. Auto-detection now picks a modem/ONT over a router
 - Multiple storages per device
 - Port inventory per device (Ethernet, SFP, SFP+, HDMI, USB and power)
 - HDMI connections are shown on the diagram as a new purple layer with its own toggle, and SFP/SFP+ links appear on the Ethernet layer
@@ -19,6 +20,7 @@
 - Port-to-port connections with both sides kept in sync
 - Brand and Type dropdowns on the device form now include a search box to filter options as you type
 - Data consistency checks: the device form lists warnings at the top and under each affected field, and a new "Data Inconsistencies" dashboard card lists them across all devices
+- Bluetooth connections: devices can be marked as a Bluetooth Proxy and Bluetooth devices can be assigned to one, shown on the Map as a new pink layer with its own toggle and legend chip, and included in the PDF export
 
 ### Changed
 - Complete app redesign
@@ -26,6 +28,7 @@
 - Improved Diagram view accessibility
 - Device form layout improvements
 - Clearer empty state for device labels
+- Internal cleanup: removed unused JavaScript functions and CSS rules left over from earlier versions (no functional change)
 
 ### Fixed
 - Deleting a device now clears every reference to it — wireless links (access point, Zigbee parent, Z-Wave controller), the linked-device lists on the other side, and wired port connections — from both the device list and the edit form, so no dangling references are left behind. The delete confirmation now warns how many other devices will be unassigned.
@@ -34,6 +37,7 @@
 - Fix the diagram background image being shifted in fullscreen mode
 - Fix "Clear Filters" not resetting the Model and Network filters
 - Fix the device tooltip opening misaligned or overflowing off screen
+- Device names on the map are now centered horizontally when "Show device icons" is off
 
 ## 1.7.0 - 2026-07-07
 

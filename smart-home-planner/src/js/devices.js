@@ -337,20 +337,6 @@ function toggleDeviceSelection(deviceId, isSelected) {
     updateBulkEditState();
 }
 
-function syncSelectionToFiltered() {
-    const visibleIds = new Set(filteredDevices.map((device) => device.id));
-    let changed = false;
-    selectedDeviceIds.forEach((id) => {
-        if (!visibleIds.has(id)) {
-            selectedDeviceIds.delete(id);
-            changed = true;
-        }
-    });
-    if (changed) {
-        updateBulkEditState();
-    }
-}
-
 function getBulkEditValue() {
     const field = document.getElementById('bulk-edit-field')?.value || '';
     const selectValue = (id) => document.getElementById(id)?.value || '';
@@ -1053,14 +1039,6 @@ function normalizeStatusValue(status) {
     return 'pending';
 }
 
-function formatPowerLabel(value) {
-    const normalized = String(value || '').trim().toLowerCase();
-    if (!normalized) return '-';
-    if (normalized === 'wired') return 'Wired';
-    if (normalized === 'battery') return 'Battery';
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
 function isHomeAssistantLinked(value) {
     if (value === true) return true;
     const normalized = String(value || '').trim().toLowerCase();
@@ -1137,64 +1115,7 @@ function goToPage(page) {
     }
 }
 
-// Filter Functions (now handled by DeviceFilters module)
-
-function updateActiveFilters() {
-    const nameInput = document.getElementById('filter-name');
-    nameInput.classList.toggle('is-active', Boolean(nameInput.value.trim()));
-
-    const selects = [
-        'filter-floor',
-        'filter-area',
-        'filter-brand',
-        'filter-model',
-        'filter-status',
-        'filter-type',
-        'filter-connectivity',
-        'filter-labels',
-        'filter-network',
-        'filter-power',
-        'filter-ups-protected',
-        'filter-battery-type',
-        'filter-local-only'
-    ];
-    selects.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (el.multiple) {
-            const hasSelection = Array.from(el.selectedOptions || []).length > 0;
-            el.classList.toggle('is-active', hasSelection);
-            if (id === 'filter-labels') {
-                const picker = document.getElementById('filter-labels-picker');
-                if (picker) {
-                    picker.classList.toggle('is-active', hasSelection);
-                }
-            }
-        } else {
-            el.classList.toggle('is-active', Boolean(el.value));
-        }
-    });
-
-    const checkboxFilters = [
-        'filter-thread-border-router',
-        'filter-matter-hub',
-        'filter-zigbee-controller',
-        'filter-zigbee-repeater',
-        'filter-home-assistant',
-        'filter-google-home',
-        'filter-alexa',
-        'filter-apple-home-kit',
-        'filter-samsung-smartthings'
-    ];
-    checkboxFilters.forEach(id => {
-        const input = document.getElementById(id);
-        if (!input) return;
-        const label = input.closest('label');
-        if (label) {
-            label.classList.toggle('is-active', input.checked);
-        }
-    });
-}
+// Filter Functions are handled by the DeviceFilters module (device-filters.js)
 
 // Form functions removed - now handled in device-form.js on separate pages
 
@@ -1327,47 +1248,6 @@ function renderDeviceLabelChips(device, labelMetaMap) {
             `;
         })
         .join('');
-}
-
-function renderLimitedLabelChips(device, labelMetaMap, maxItems = 2) {
-    const labelIds = normalizeLabelList(device && device.labels);
-    if (!labelIds.length) {
-        return '';
-    }
-    const ordered = labelIds
-        .map((id) => {
-            const meta = labelMetaMap.get(id) || { name: id, color: '' };
-            return {
-                id,
-                name: meta.name || id,
-                color: meta.color || ''
-            };
-        })
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
-    const visible = ordered.slice(0, maxItems);
-    const remaining = ordered.length - visible.length;
-    const chips = visible.map((meta) => {
-        const colorStyle = meta.color ? ` style="--label-color: ${meta.color};"` : '';
-        const colorClass = meta.color ? ' has-color' : '';
-        return `
-            <span class="label-chip label-chip-compact label-chip-static${colorClass}"${colorStyle}>
-                <span class="label-chip-body">
-                    <span class="label-swatch"></span>
-                    <span class="label-name">${escapeHtml(meta.name)}</span>
-                </span>
-            </span>
-        `;
-    });
-    if (remaining > 0) {
-        chips.push(`
-            <span class="label-chip label-chip-compact label-chip-static label-chip-more">
-                <span class="label-chip-body">
-                    <span class="label-name">+${remaining}</span>
-                </span>
-            </span>
-        `);
-    }
-    return chips.join('');
 }
 
 function updateTableLabelOverflow() {

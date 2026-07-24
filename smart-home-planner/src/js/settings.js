@@ -30,9 +30,10 @@ const OPTION_GROUPS_BY_KEY = new Map(OPTION_GROUPS.map((group) => [group.key, gr
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    const deepLink = readSettingsDeepLink();
     settings = await loadSettings();
     initializeGithubSocialLink();
-    initializeSettingsSubmenu('general');
+    initializeSettingsSubmenu(deepLink.panel || 'general');
     initializeEventListeners();
     renderHaIntegrationSettings();
     renderNotificationSettings();
@@ -41,7 +42,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     await renderIspsManagement();
     renderOptionsManagement();
     renderTestCaseCategoriesManagement();
+    applySettingsDeepLink(deepLink);
 });
+
+// Deep link from the diagram: settings.html?panel=isps&isp=<id> opens the
+// provider straight in its edit modal. The query is dropped afterwards so a
+// reload doesn't reopen it.
+function readSettingsDeepLink() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        panel: String(params.get('panel') || '').trim(),
+        ispId: String(params.get('isp') || '').trim()
+    };
+}
+
+function applySettingsDeepLink(deepLink) {
+    if (!deepLink || (!deepLink.panel && !deepLink.ispId)) return;
+
+    if (deepLink.ispId && isps.some(isp => isp.id === deepLink.ispId)) {
+        openIspModal('edit', deepLink.ispId);
+    }
+
+    window.history.replaceState({}, '', window.location.pathname);
+}
 
 function initializeSettingsSubmenu(defaultPanel = 'general') {
     const menuButtons = Array.from(document.querySelectorAll('[data-settings-panel-target]'));

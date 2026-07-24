@@ -192,6 +192,7 @@ window.DeviceMap = (() => {
             showWifiConnections: false,
             showZigbeeConnections: false,
             showZwaveConnections: false,
+            showBluetoothConnections: false,
             deviceAreaMode: 'installed',
             powerLabelMode: 'mean',
             showDeviceIcons: true,
@@ -213,6 +214,7 @@ window.DeviceMap = (() => {
             showWifiConnections: value.showWifiConnections !== undefined ? Boolean(value.showWifiConnections) : defaults.showWifiConnections,
             showZigbeeConnections: value.showZigbeeConnections !== undefined ? Boolean(value.showZigbeeConnections) : defaults.showZigbeeConnections,
             showZwaveConnections: value.showZwaveConnections !== undefined ? Boolean(value.showZwaveConnections) : defaults.showZwaveConnections,
+            showBluetoothConnections: value.showBluetoothConnections !== undefined ? Boolean(value.showBluetoothConnections) : defaults.showBluetoothConnections,
             deviceAreaMode: value.deviceAreaMode === 'controlled' ? 'controlled' : defaults.deviceAreaMode,
             powerLabelMode: ['idle', 'mean', 'max'].includes(value.powerLabelMode) ? value.powerLabelMode : defaults.powerLabelMode,
             showDeviceIcons: value.showDeviceIcons !== undefined ? Boolean(value.showDeviceIcons) : defaults.showDeviceIcons,
@@ -230,6 +232,7 @@ window.DeviceMap = (() => {
             showWifiConnections: Boolean(document.getElementById('show-wifi-connections')?.checked),
             showZigbeeConnections: Boolean(document.getElementById('show-zigbee-connections')?.checked),
             showZwaveConnections: Boolean(document.getElementById('show-zwave-connections')?.checked),
+            showBluetoothConnections: Boolean(document.getElementById('show-bluetooth-connections')?.checked),
             deviceAreaMode: document.getElementById('device-area-mode')?.value || 'installed',
             powerLabelMode: document.getElementById('power-label-mode')?.value || 'mean',
             showDeviceIcons: Boolean(document.getElementById('diagram-show-icons')?.checked ?? true),
@@ -247,6 +250,7 @@ window.DeviceMap = (() => {
         const wifiToggle = document.getElementById('show-wifi-connections');
         const zigbeeToggle = document.getElementById('show-zigbee-connections');
         const zwaveToggle = document.getElementById('show-zwave-connections');
+        const bluetoothToggle = document.getElementById('show-bluetooth-connections');
         const areaModeSelect = document.getElementById('device-area-mode');
         const powerLabelMode = document.getElementById('power-label-mode');
 
@@ -257,6 +261,7 @@ window.DeviceMap = (() => {
         if (wifiToggle) wifiToggle.checked = settings.showWifiConnections;
         if (zigbeeToggle) zigbeeToggle.checked = settings.showZigbeeConnections;
         if (zwaveToggle) zwaveToggle.checked = settings.showZwaveConnections;
+        if (bluetoothToggle) bluetoothToggle.checked = settings.showBluetoothConnections;
         if (areaModeSelect) areaModeSelect.value = settings.deviceAreaMode;
         if (powerLabelMode) powerLabelMode.value = settings.powerLabelMode;
         const showIconsToggle = document.getElementById('diagram-show-icons');
@@ -1698,6 +1703,10 @@ window.DeviceMap = (() => {
     if (zwaveToggle) {
         zwaveToggle.addEventListener('change', handleDiagramConnectionToggleChange);
     }
+    const bluetoothToggle = document.getElementById('show-bluetooth-connections');
+    if (bluetoothToggle) {
+        bluetoothToggle.addEventListener('change', handleDiagramConnectionToggleChange);
+    }
     const showIconsToggle = document.getElementById('diagram-show-icons');
     if (showIconsToggle) {
         showIconsToggle.addEventListener('change', handleDiagramConnectionToggleChange);
@@ -2030,10 +2039,9 @@ function resizeCytoscape() {
     });
 }
 
-async function navigateToDeviceEdit(deviceId) {
-    const normalizedId = String(deviceId || '').trim();
-    if (!normalizedId) return;
-
+// Leaving the diagram means tearing down its overlays and fullscreen first,
+// otherwise the browser restores the page in a half-fullscreen state.
+async function leaveDiagramForNavigation() {
     hideDeviceTooltip();
     hidePowerConnectionDialog();
     hideResizeHandles();
@@ -2049,8 +2057,26 @@ async function navigateToDeviceEdit(deviceId) {
     if (document.body.classList.contains('map-fullscreen')) {
         setMapFullscreen(false);
     }
+}
+
+async function navigateToDeviceEdit(deviceId) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) return;
+
+    await leaveDiagramForNavigation();
 
     window.location.href = `device-edit.html?id=${encodeURIComponent(normalizedId)}`;
+}
+
+// ISPs live in Settings, so editing one deep-links into that panel with the
+// provider modal already open.
+async function navigateToIspEdit(ispId) {
+    const normalizedId = String(ispId || '').trim();
+    if (!normalizedId) return;
+
+    await leaveDiagramForNavigation();
+
+    window.location.href = `settings.html?panel=isps&isp=${encodeURIComponent(normalizedId)}`;
 }
 
 // Initialize Cytoscape
@@ -2409,6 +2435,28 @@ function initializeCytoscape() {
                 }
             },
             {
+                // Bluetooth is short range and point to point, so a tighter dash
+                // keeps it apart from the mesh protocols above.
+                selector: 'edge[connectionType="bluetooth"]',
+                style: {
+                    'width': 2,
+                    'line-color': '#ec4899',
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [4, 4],
+                    'target-arrow-shape': 'none',
+                    'curve-style': 'bezier',
+                    'label': 'data(label)',
+                    'font-size': 10,
+                    'color': '#f7f8fa',
+                    'text-outline-width': 2,
+                    'text-outline-color': 'rgba(16, 18, 22, 0.9)',
+                    'text-background-color': 'rgba(16, 18, 22, 0.8)',
+                    'text-background-opacity': 1,
+                    'text-background-padding': 2,
+                    'text-background-shape': 'roundrectangle'
+                }
+            },
+            {
                 selector: 'edge[connectionType="zwave"]',
                 style: {
                     'width': 2,
@@ -2468,6 +2516,15 @@ function initializeCytoscape() {
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
+                }
+            },
+            {
+                // Over-the-air last miles (cellular, satellite, fixed wireless)
+                // read as dashed, matching the other wireless layers.
+                selector: 'edge[connectionType="wan"][medium="wireless"]',
+                style: {
+                    'line-style': 'dashed',
+                    'line-dash-pattern': [8, 6]
                 }
             },
             // Trace path highlight (kept after the per-type edge styles so the
@@ -3110,6 +3167,11 @@ function showIspTooltip(node) {
                 ${isSimulatedDown ? 'Restore provider' : 'Simulate outage'}
             </button>
         </div>
+        <div class="tooltip-footer">
+            <button class="tooltip-edit-btn" type="button">
+                Edit Provider
+            </button>
+        </div>
     `;
 
     const tooltipRoot = document.fullscreenElement || document.getElementById('diagram-section') || document.getElementById('map-section') || document.body;
@@ -3120,6 +3182,13 @@ function showIspTooltip(node) {
         simulateButton.addEventListener('click', () => {
             hideDeviceTooltip();
             toggleSimulatedFailure(node.id());
+        });
+    }
+
+    const editButton = tooltip.querySelector('.tooltip-edit-btn');
+    if (editButton) {
+        editButton.addEventListener('click', () => {
+            void navigateToIspEdit(isp.id);
         });
     }
 
@@ -3195,6 +3264,7 @@ async function renderNetwork(options = {}) {
     const wifiToggle = document.getElementById('show-wifi-connections');
     const zigbeeToggle = document.getElementById('show-zigbee-connections');
     const zwaveToggle = document.getElementById('show-zwave-connections');
+    const bluetoothToggle = document.getElementById('show-bluetooth-connections');
     const showEthernet = ethernetToggle ? ethernetToggle.checked : true;
     const showUsb = usbToggle ? usbToggle.checked : true;
     const showHdmi = hdmiToggle ? hdmiToggle.checked : true;
@@ -3202,7 +3272,8 @@ async function renderNetwork(options = {}) {
     const showWifi = wifiToggle ? wifiToggle.checked : false;
     const showZigbee = zigbeeToggle ? zigbeeToggle.checked : false;
     const showZwave = zwaveToggle ? zwaveToggle.checked : false;
-    
+    const showBluetooth = bluetoothToggle ? bluetoothToggle.checked : false;
+
     const matchedDevices = Array.isArray(filteredDevices)
         ? filteredDevices
         : (deviceFilters ? deviceFilters.getFilteredDevices() : devices);
@@ -3771,7 +3842,34 @@ async function renderNetwork(options = {}) {
             });
         });
     }
-    
+
+    if (showBluetooth) {
+        const processedBluetoothConnections = new Set();
+        filteredDevicesList.forEach((device) => {
+            const bluetoothProxyId = String(device.bluetoothProxyId || '').trim();
+            if (!bluetoothProxyId || bluetoothProxyId === String(device.id || '')) return;
+            if (!isBluetoothConnectionDevice(device)) return;
+
+            const bluetoothProxy = filteredDevicesList.find((item) => item.id === bluetoothProxyId);
+            if (!isBluetoothParentDiagramDevice(bluetoothProxy)) return;
+
+            const connectionId = [String(device.id || ''), bluetoothProxyId].sort().join('-bluetooth-');
+            if (processedBluetoothConnections.has(connectionId)) return;
+            processedBluetoothConnections.add(connectionId);
+
+            elements.push({
+                group: 'edges',
+                data: {
+                    id: `bluetooth-${connectionId}`,
+                    source: String(device.id || ''),
+                    target: bluetoothProxyId,
+                    connectionType: 'bluetooth',
+                    label: ''
+                }
+            });
+        });
+    }
+
     // Update cytoscape
     hideEmptyMapMessage();
     cy.elements().remove();
@@ -3853,7 +3951,10 @@ function applyFilterDimming(matchedIds) {
 const ISP_NODE_ID_PREFIX = 'isp-node-';
 const ISP_NODE_HEIGHT = 52;
 const ISP_NODE_VERTICAL_GAP = 110;
-const ISP_GATEWAY_TYPE_HINTS = new Set(['routers', 'modems', 'gateways']);
+const ISP_GATEWAY_TYPE_HINTS = new Set(['routers', 'modems', 'modems-ont', 'gateways']);
+// A modem/ONT terminates the ISP line itself, so it outranks a router when
+// auto-detecting the gateway even though it has far fewer connected ports.
+const ISP_DEMARCATION_TYPES = new Set(['modems', 'modems-ont']);
 
 function getIspByNodeId(nodeId) {
     const ispId = String(nodeId || '').slice(ISP_NODE_ID_PREFIX.length);
@@ -3865,22 +3966,34 @@ function countConnectedPorts(device) {
     return device.ports.filter(port => port && port.connectedTo).length;
 }
 
-// Explicit gateway wins; otherwise fall back to the most-connected router/modem.
+function normalizeDeviceType(device) {
+    return typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(device?.type)
+        : String(device?.type || '').trim().toLowerCase();
+}
+
+// True when the device is the box where the ISP line physically lands, so the
+// WAN edge represents the last mile itself and not a patch cable behind it.
+function isIspDemarcationDevice(device) {
+    return ISP_DEMARCATION_TYPES.has(normalizeDeviceType(device));
+}
+
+// Explicit gateway wins; otherwise fall back to a modem/ONT, then to the
+// most-connected router.
 function resolveIspGatewayDevice(isp, devicesList) {
     const explicitId = String(isp?.gatewayDeviceId || '').trim();
     if (explicitId) {
         return { device: devicesList.find(d => d.id === explicitId) || null, auto: false };
     }
-    const candidates = devicesList.filter((device) => {
-        const type = typeof normalizeOptionValue === 'function'
-            ? normalizeOptionValue(device?.type)
-            : String(device?.type || '').trim().toLowerCase();
-        return ISP_GATEWAY_TYPE_HINTS.has(type);
-    });
+    const candidates = devicesList.filter(device => ISP_GATEWAY_TYPE_HINTS.has(normalizeDeviceType(device)));
     if (!candidates.length) {
         return { device: null, auto: true };
     }
-    candidates.sort((a, b) => countConnectedPorts(b) - countConnectedPorts(a));
+    candidates.sort((a, b) => {
+        const demarcationDelta = Number(isIspDemarcationDevice(b)) - Number(isIspDemarcationDevice(a));
+        if (demarcationDelta) return demarcationDelta;
+        return countConnectedPorts(b) - countConnectedPorts(a);
+    });
     return { device: candidates[0], auto: true };
 }
 
@@ -3889,20 +4002,39 @@ function formatIspSpeedValue(value) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+// The cloud card only carries the technology; link speed belongs on the WAN
+// edge, like cable speed does on ethernet edges.
 function buildIspSubtitle(isp) {
-    const parts = [];
-    const technologyLabel = typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
-    if (technologyLabel) parts.push(technologyLabel);
+    return typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
+}
+
+// Physical medium of each last mile. Only shown when the WAN edge lands on a
+// modem/ONT: with a plain router the edge may be skipping an unmodeled ONT, and
+// the cable actually plugged into that router would be Ethernet, not fiber.
+const ISP_LAST_MILE_MEDIUM = {
+    fiber: 'Fiber',
+    cable: 'Coax',
+    dsl: 'Phone line'
+};
+
+function getIspLastMileMedium(isp, gateway) {
+    if (!isIspDemarcationDevice(gateway)) return '';
+    return ISP_LAST_MILE_MEDIUM[String(isp?.technology || '').trim().toLowerCase()] || '';
+}
+
+function formatWanLabel(isp, gateway) {
     const download = formatIspSpeedValue(isp.downloadSpeed);
     const upload = formatIspSpeedValue(isp.uploadSpeed);
+    let speedLabel = '';
     if (download && upload) {
-        parts.push(`${download}/${upload} Mbps`);
+        speedLabel = `${download}/${upload} Mbps`;
     } else if (download) {
-        parts.push(`${download} Mbps`);
+        speedLabel = `${download} Mbps`;
     } else if (upload) {
-        parts.push(`${upload} Mbps up`);
+        speedLabel = `${upload} Mbps up`;
     }
-    return parts.join(' · ');
+    const base = getIspLastMileMedium(isp, gateway) || 'WAN';
+    return speedLabel ? `${base} (${speedLabel})` : base;
 }
 
 function getIspIconSvgContent(technology) {
@@ -3978,7 +4110,8 @@ function buildIspDiagramElements(devicesList) {
                 source: nodeId,
                 target: gateway.id,
                 connectionType: 'wan',
-                label: 'WAN'
+                medium: isWirelessIspTechnology(isp.technology) ? 'wireless' : 'wired',
+                label: formatWanLabel(isp, gateway)
             }
         });
     });
@@ -4026,8 +4159,12 @@ function repositionIspNodesForGateway(gatewayId) {
 // Both features operate on the connections currently visible on the diagram
 // (hidden connection layers and filtered-out devices are not traversed).
 
+// Bluetooth is deliberately absent: a proxy link carries telemetry, not the
+// device's path to the internet, so losing it is not an upstream outage.
 const NETWORK_ANALYSIS_CONNECTION_TYPES = new Set(['ethernet', 'usb', 'wifi', 'zigbee', 'zwave', 'wan']);
-const WIRELESS_CONNECTION_TYPES = new Set(['wifi', 'zigbee', 'zwave']);
+// Wireless edges point child -> parent, unlike wired ones. Bluetooth is listed
+// so the orientation still reads correctly if it ever joins the analysis set.
+const WIRELESS_CONNECTION_TYPES = new Set(['wifi', 'zigbee', 'zwave', 'bluetooth']);
 
 function isNetworkAnalysisEdge(edge) {
     return NETWORK_ANALYSIS_CONNECTION_TYPES.has(String(edge.data('connectionType') || ''));
@@ -4491,6 +4628,18 @@ function isZwaveConnectionDevice(device) {
     return normalized === 'z-wave' || normalized === 'zwave';
 }
 
+function isBluetoothConnectionDevice(device) {
+    if (!device || typeof device !== 'object') {
+        return false;
+    }
+    const rawConnectivity = device.connectivity;
+    const normalized = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(rawConnectivity)
+        : String(rawConnectivity || '').trim().toLowerCase();
+    // Custom connectivity options such as "Bluetooth LE" count as Bluetooth.
+    return normalized.startsWith('bluetooth') || normalized === 'ble';
+}
+
 function isZigbeeParentDiagramDevice(device) {
     // A coordinator/router is a valid Zigbee parent regardless of its own
     // connectivity (USB/Ethernet/Wi-Fi), so only the role flags matter here.
@@ -4500,6 +4649,11 @@ function isZigbeeParentDiagramDevice(device) {
 function isZwaveParentDiagramDevice(device) {
     // A Z-Wave coordinator is a valid parent regardless of its own connectivity.
     return Boolean(device && device.zwaveController);
+}
+
+function isBluetoothParentDiagramDevice(device) {
+    // A Bluetooth proxy relays for nearby devices no matter how it reaches the hub.
+    return Boolean(device && device.bluetoothProxy);
 }
 
 function formatWifiBandLabel(value) {
@@ -4604,11 +4758,15 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     const mediaSize = showMedia ? clampNumber(safeHeight - safePadding * 2, 26, 42) : 0;
     const mediaX = safePadding + 2;
     const mediaY = Math.round((safeHeight - mediaSize) / 2);
-    const textX = showMedia ? (mediaX + mediaSize + 8) : (safePadding + 4);
+    // Without media the label owns the whole card, so center it horizontally
+    // instead of leaving it hugging the left edge.
+    const textStartX = showMedia ? (mediaX + mediaSize + 8) : (safePadding + 4);
+    const textAnchor = showMedia ? 'start' : 'middle';
+    const textX = showMedia ? textStartX : Math.round(safeWidth / 2);
     const safeTextMaxWidth = clampNumber(
-        Number(textMaxWidth) || (showMedia ? (safeWidth - textX - safePadding - 4) : (safeWidth - safePadding * 2 - 6)),
+        Number(textMaxWidth) || (showMedia ? (safeWidth - textStartX - safePadding - 4) : (safeWidth - safePadding * 2 - 6)),
         50,
-        Math.max(50, safeWidth - textX - safePadding - 4)
+        Math.max(50, safeWidth - textStartX - safePadding - 4)
     );
     const lineHeight = safeFontSize * 1.25;
     const reservedBottom = storageLabel ? 24 : 0;
@@ -4708,7 +4866,7 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
         `<path d="M ${rx} 1.5 H ${safeWidth - rx}" stroke="rgba(255,255,255,0.08)" stroke-width="1" fill="none"/>`,
         statusDotMarkup,
         mediaMarkup,
-        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="start" font-size="${safeFontSize}" font-weight="600" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
+        `<text x="${textX}" y="${safeHeight / 2}" text-anchor="${textAnchor}" font-size="${safeFontSize}" font-weight="600" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
         '</svg>'

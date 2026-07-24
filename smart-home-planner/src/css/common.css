@@ -16,7 +16,6 @@
     --primary-hover: #2483ff;
     --primary-light: rgba(0, 111, 255, 0.14);
     --primary-text: #4d9aff;
-    --secondary-color: #565d6b;
     --success-color: #38cc65;
     --warning-color: #f5a524;
     --danger-color: #f0383b;
@@ -49,7 +48,6 @@
     /* Transitions */
     --transition-fast: 0.15s ease;
     --transition-base: 0.2s ease;
-    --transition-slow: 0.3s ease;
 }
 
 html {
@@ -1056,10 +1054,6 @@ nav.site-nav a:focus-visible .site-nav-label {
     color: var(--text-secondary);
 }
 
-.empty-state-cell .empty-state {
-    padding: 2rem 1rem;
-}
-
 .empty-state-icon {
     opacity: 0.4;
     filter: grayscale(0.3);
@@ -1081,21 +1075,6 @@ nav.site-nav a:focus-visible .site-nav-label {
 }
 
 /* Form Styles */
-.form-container {
-    margin-bottom: 2rem;
-    animation: slideDown 0.3s ease-out;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 
 .form-card {
     background: var(--card-bg);
@@ -1140,21 +1119,6 @@ nav.site-nav a:focus-visible .site-nav-label {
 .form-page .form-card > * {
     position: relative;
     z-index: 1;
-}
-
-.form-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.form-card-header h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin: 0;
 }
 
 .form-row {
@@ -1295,19 +1259,6 @@ nav.site-nav a:focus-visible .site-nav-label {
     border-color: rgba(16, 18, 22, 0.65);
 }
 
-.label-icon {
-    min-width: 1.1rem;
-    height: 1.1rem;
-    border-radius: 6px;
-    background: rgba(126, 133, 149, 0.2);
-    color: var(--text-secondary);
-    font-size: 0.62rem;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-transform: uppercase;
-}
 
 .label-name {
     font-size: 0.6rem;
@@ -1349,12 +1300,6 @@ nav.site-nav a:focus-visible .site-nav-label {
     height: 0.5rem;
 }
 
-.label-chip-compact .label-icon {
-    min-width: 0.95rem;
-    height: 0.95rem;
-    font-size: 0.55rem;
-}
-
 .label-chip-static {
     cursor: default;
 }
@@ -1367,20 +1312,6 @@ nav.site-nav a:focus-visible .site-nav-label {
     background: rgba(126, 133, 149, 0.16);
     border-style: dashed;
     color: var(--text-secondary);
-}
-
-.form-field-meta {
-    margin-top: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.form-field-meta-label {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
 }
 
 .form-field-code {
@@ -2480,13 +2411,13 @@ input[type="month"]:not(.has-value):not(:focus)::-webkit-datetime-edit {
 }
 
 /* Warning shown under the field it refers to, with the full message */
-/* Sits further than the label/control gap (0.5rem) so it reads as a note about
-   the field, but well inside the group's own 1.25rem spacing */
+/* Clearly detached from the control (the label/control gap is only 0.5rem) while
+   still reading as part of the group, whose own spacing is 1.25rem */
 .field-warning {
     display: flex;
     align-items: flex-start;
     gap: 0.4rem;
-    margin-top: 0.75rem;
+    margin-top: 1rem;
     font-size: 0.75rem;
     line-height: 1.4;
     color: var(--warning-color);
@@ -3033,12 +2964,6 @@ button.form-warning-item:hover {
         padding: 1.25rem;
     }
 
-    .form-card-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.5rem;
-    }
-
     .form-actions {
         flex-direction: column-reverse;
     }
@@ -3465,24 +3390,6 @@ button.form-warning-item:hover {
     justify-self: end;
 }
 
-.filters-primary {
-    grid-template-columns: minmax(280px, 1fr) auto;
-    align-items: end;
-}
-
-.filters-primary .btn {
-    justify-self: end;
-    align-self: end;
-    min-height: 44px;
-    padding: 0.75rem 1.1rem;
-    font-size: 0.8rem;
-}
-
-.filters-primary .filter-input-wide,
-.filters-primary .filter-field-wide {
-    grid-column: 1 / 2;
-}
-
 .filter-field {
     display: flex;
     flex-direction: column;
@@ -3594,10 +3501,6 @@ button.form-warning-item:hover {
     box-shadow: 0 0 0 2px rgba(0, 111, 255, 0.25);
 }
 
-.filter-input-wide {
-    flex: 1 1 320px;
-}
-
 .filter-select:hover,
 .filter-input:hover {
     border-color: var(--border-hover);
@@ -3622,19 +3525,6 @@ select,
     background-repeat: no-repeat;
     background-position: right 0.9rem center;
     background-size: 0.55rem;
-}
-
-.form-multi-select,
-.filter-multi-select {
-    min-height: 120px;
-    padding-right: 0.9rem;
-    background-image: none;
-    appearance: auto;
-}
-
-.form-multi-select option,
-.filter-multi-select option {
-    padding: 0.25rem 0.4rem;
 }
 
 .filter-select.is-active,
@@ -3878,12 +3768,6 @@ select.is-open {
     grid-column: auto;
 }
 
-.filters-block.is-connectivity-options .filters-block-body {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-content: start;
-}
-
 /* Compact selectable filter chips (checkbox pills) */
 .checkbox-chip-group {
     display: flex;
@@ -3948,17 +3832,10 @@ select.is-open {
 /* Responsive filters */
 @media (max-width: 768px) {
     .filters-row,
-    .filters-primary,
     .filters-row.filters-secondary {
         grid-template-columns: 1fr;
     }
 
-    .filters-primary .filter-input-wide,
-    .filters-primary .filter-field-wide {
-        grid-column: auto;
-    }
-
-    .filters-primary .btn,
     .filters-row.filters-secondary .btn {
         width: 100%;
         justify-self: stretch;
