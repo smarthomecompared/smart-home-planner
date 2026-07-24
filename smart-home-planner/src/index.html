@@ -860,6 +860,24 @@
                     <div class="legend" id="battery-alerts"></div>
                     <div class="battery-summary" id="battery-alert-summary"></div>
                 </div>
+                <div class="chart-card warning-card" id="data-inconsistency-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Data Inconsistencies</div>
+                        <button class="btn btn-secondary btn-sm chart-expand" type="button" data-chart="data-inconsistencies" aria-label="Expand chart" title="Expand chart">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 9V4h5"></path>
+                                <path d="M20 15v5h-5"></path>
+                                <path d="M20 9V4h-5"></path>
+                                <path d="M4 15v5h5"></path>
+                                <path d="M4 4l6 6"></path>
+                                <path d="M20 4l-6 6"></path>
+                                <path d="M4 20l6-6"></path>
+                                <path d="M20 20l-6-6"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="legend" id="data-inconsistencies"></div>
+                </div>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Total Batteries by Type</div>
@@ -1031,6 +1049,7 @@
 
     <script src="js/metadata.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/data-consistency.js"></script>
     <script>
         const chartRegistry = {};
         let haCountry = '';
@@ -1114,6 +1133,7 @@
             });
             renderWarrantyAlerts('warranty-alerts', buildWarrantyAlerts(devices));
             renderBatteryAlerts('battery-alerts', 'battery-alert-summary', buildBatteryAlerts(devices, settings));
+            renderDataInconsistencies('data-inconsistencies', detectAllInconsistencies(devices));
 
             // Fire-and-forget: send HA notifications for active warnings
             const _notifUrl = typeof buildAppUrl === 'function' ? buildAppUrl('api/notifications/check') : '/api/notifications/check';
@@ -2275,6 +2295,22 @@
 
             alerts.sort((a, b) => a.daysUntil - b.daysUntil);
             return alerts;
+        }
+
+        function renderDataInconsistencies(listId, findings) {
+            // renderLegendList hides the card on its own when there is nothing to
+            // show, so a clean inventory simply has no card.
+            const rows = (findings || []).map(finding => ({
+                label: finding.deviceName,
+                meta: finding.message,
+                href: finding.deviceId
+                    ? `device-edit.html?id=${encodeURIComponent(finding.deviceId)}`
+                    : '',
+                dotColor: finding.severity === 'error'
+                    ? 'var(--danger-color)'
+                    : 'var(--warning-color)'
+            }));
+            renderLegendList(listId, rows, { maxItems: 'fit' });
         }
 
         function renderWarrantyAlerts(listId, alerts) {

@@ -18,6 +18,7 @@
 - PoE on Ethernet ports support
 - Port-to-port connections with both sides kept in sync
 - Brand and Type dropdowns on the device form now include a search box to filter options as you type
+- Data consistency checks: the device form lists warnings at the top and under each affected field, and a new "Data Inconsistencies" dashboard card lists them across all devices
 
 ### Changed
 - Complete app redesign

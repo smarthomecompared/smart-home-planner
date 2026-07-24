@@ -166,8 +166,206 @@ function validateDeviceForSave(device, selfId) {
     return errors;
 }
 
+// === Soft inconsistencies (warnings) ===
+// Unlike validateDeviceForSave, these never block a save: the data is possible,
+// just incomplete or suspicious. The device form surfaces them inline while you
+// edit, and the dashboard card sweeps every saved device with the same rules.
+
+// Maximum link speed each cable category can carry, in Mbps. Cat6 is listed at
+// 10G because home runs are short enough for 10GBASE-T; rating it at 1G would
+// flag the very common "Cat6 + multi-gig" setup as wrong.
+const CABLE_MAX_MBPS = {
+    cat1: 1, cat2: 4, cat3: 10, cat4: 16, cat5: 100, cat5e: 1000,
+    cat6: 10000, cat6a: 10000, cat7: 10000, cat8: 40000
+};
+
+function normalizeText(value) {
+    return String(value == null ? '' : value).trim().toLowerCase();
+}
+
+// '2.5Gbps' -> 2500, '100Mbps' -> 100. Returns 0 when unparseable.
+function parseLinkSpeedToMbps(speed) {
+    const match = normalizeText(speed).match(/^([\d.]+)\s*(m|g)bps$/);
+    if (!match) return 0;
+    const amount = parseFloat(match[1]);
+    if (!Number.isFinite(amount)) return 0;
+    return match[2] === 'g' ? amount * 1000 : amount;
+}
+
+function isZigbeeConnectivityValue(value) {
+    return normalizeText(value).includes('zigbee');
+}
+
+function isZwaveConnectivityValue(value) {
+    const text = normalizeText(value);
+    return text.includes('zwave') || text.includes('z-wave');
+}
+
+function todayIsoDate() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function findPortById(device, portId) {
+    if (!device || !Array.isArray(device.ports)) return null;
+    const target = normalizeRefId(portId);
+    if (!target) return null;
+    return device.ports.find(port => port && normalizeRefId(port.id) === target) || null;
+}
+
+// All soft findings for a single device. `ctx` may carry { devicesById, devices,
+// today } — the relational rules (PoE roles, parent capability, duplicate names)
+// are skipped when it isn't provided, so the local rules work standalone.
+function detectDeviceInconsistencies(device, ctx = {}) {
+    const findings = [];
+    if (!device || typeof device !== 'object') return findings;
+    const devicesById = ctx.devicesById || null;
+    const today = ctx.today || todayIsoDate();
+    // `extra` may carry { dedupeKey, field, portId }. `field` names the device
+    // property the finding is about — a semantic name, not a DOM id, so the form
+    // can point at the right input while this module stays UI-agnostic.
+    const push = (ruleId, severity, message, extra = {}) =>
+        findings.push({ ruleId, severity, message, ...extra });
+
+    const ports = Array.isArray(device.ports) ? device.ports : [];
+    ports.forEach(port => {
+        if (!port || typeof port !== 'object') return;
+
+        // #1 — the cable category cannot carry the declared link speed.
+        const cableMax = CABLE_MAX_MBPS[normalizeText(port.cableType)];
+        const speedMbps = parseLinkSpeedToMbps(port.speed);
+        if (cableMax && speedMbps && speedMbps > cableMax) {
+            push('CAP_CABLE_SPEED', 'warning',
+                `${String(port.cableType).replace(/^cat/i, 'Cat')} cable cannot carry ${port.speed}.`,
+                { field: 'port.cableType', portId: normalizeRefId(port.id) });
+        }
+
+        // #3 — a PoE link where both ends only draw power (no PSE).
+        if (devicesById && normalizeText(port.poeRole) === 'pd') {
+            const remoteDevice = devicesById.get(normalizeRefId(port.connectedTo));
+            const remotePort = findPortById(remoteDevice, port.connectedToPort);
+            if (remotePort && normalizeText(remotePort.poeRole) === 'pd') {
+                const linkKey = [
+                    `${normalizeRefId(device.id)}:${normalizeRefId(port.id)}`,
+                    `${normalizeRefId(remoteDevice.id)}:${normalizeRefId(remotePort.id)}`
+                ].sort().join('|');
+                push('POE_BOTH_PD', 'warning',
+                    `PoE link with ${remoteDevice.name || 'another device'} has no power source (both ends are PD).`,
+                    { dedupeKey: linkKey, field: 'port.poeRole', portId: normalizeRefId(port.id) });
+            }
+        }
+    });
+
+    // #4 — wireless device with no parent assigned.
+    const connectivity = normalizeText(device.connectivity);
+    if (connectivity === 'wifi' && !normalizeRefId(device.wifiAccessPointId)) {
+        push('ASSIGN_NO_AP', 'warning', 'Wi-Fi device with no access point assigned.',
+            { field: 'wifiAccessPointId' });
+    }
+    if (isZigbeeConnectivityValue(connectivity) && !normalizeRefId(device.zigbeeParentId)) {
+        push('ASSIGN_NO_ZIGBEE_PARENT', 'warning', 'Zigbee device with no parent assigned.',
+            { field: 'zigbeeParentId' });
+    }
+    if (isZwaveConnectivityValue(connectivity) && !normalizeRefId(device.zwaveControllerId)) {
+        push('ASSIGN_NO_ZWAVE_CTRL', 'warning', 'Z-Wave device with no controller assigned.',
+            { field: 'zwaveControllerId' });
+    }
+
+    // #7 — the assigned parent cannot actually route for this protocol. Only
+    // breaks after the fact (the pickers filter to capable devices), so it is an
+    // error rather than a soft omission.
+    if (devicesById) {
+        const zigbeeParent = devicesById.get(normalizeRefId(device.zigbeeParentId));
+        if (zigbeeParent && !zigbeeParent.zigbeeController && !zigbeeParent.zigbeeRepeater) {
+            push('ROLE_ZIGBEE_PARENT', 'error',
+                `Zigbee parent "${zigbeeParent.name || 'Unnamed'}" is neither a coordinator nor a repeater.`,
+                { field: 'zigbeeParentId' });
+        }
+        const zwaveController = devicesById.get(normalizeRefId(device.zwaveControllerId));
+        if (zwaveController && !zwaveController.zwaveController) {
+            push('ROLE_ZWAVE_CTRL', 'error',
+                `Z-Wave controller "${zwaveController.name || 'Unnamed'}" is not marked as a controller.`,
+                { field: 'zwaveControllerId' });
+        }
+    }
+
+    // #8 — battery powered but no battery type chosen.
+    if (normalizeText(device.power) === 'battery' && !normalizeText(device.batteryType)) {
+        push('BATTERY_NO_TYPE', 'warning', 'Battery powered but no battery type selected.',
+            { field: 'batteryType' });
+    }
+
+    // #11 — consumption figures recorded without saying how the device is powered.
+    const hasConsumption = [device.idleConsumption, device.meanConsumption, device.maxConsumption]
+        .some(value => value != null && String(value).trim() !== '');
+    if (hasConsumption && !normalizeText(device.power)) {
+        push('CONSUMPTION_NO_POWER', 'warning', 'Power consumption set but no power type selected.',
+            { field: 'power' });
+    }
+
+    // #15 — dates that cannot have happened yet.
+    if (device.purchaseDate && device.purchaseDate > today) {
+        push('FUTURE_PURCHASE_DATE', 'warning', 'Purchase date is in the future.',
+            { field: 'purchaseDate' });
+    }
+    if (device.lastBatteryChange && device.lastBatteryChange > today) {
+        push('FUTURE_BATTERY_CHANGE', 'warning', 'Last battery change is in the future.',
+            { field: 'lastBatteryChange' });
+    }
+
+    // #17 — another device already uses this name.
+    if (ctx.devices && normalizeText(device.name)) {
+        const selfId = normalizeRefId(device.id);
+        const duplicate = ctx.devices.some(other =>
+            other && normalizeRefId(other.id) !== selfId &&
+            normalizeText(other.name) === normalizeText(device.name));
+        if (duplicate) {
+            // One finding per repeated name, not one per device sharing it.
+            push('DUPLICATE_NAME', 'warning', 'Another device already uses this name.',
+                { field: 'name', dedupeKey: `duplicate-name:${normalizeText(device.name)}` });
+        }
+    }
+
+    return findings;
+}
+
+// Sweep every device and return flat findings for the dashboard card. Findings
+// that describe a shared link are reported once, not once per end.
+function detectAllInconsistencies(devices, options = {}) {
+    if (!Array.isArray(devices)) return [];
+    const devicesById = new Map();
+    devices.forEach(device => {
+        if (device && typeof device === 'object') {
+            devicesById.set(normalizeRefId(device.id), device);
+        }
+    });
+    const ctx = { devicesById, devices, today: options.today || todayIsoDate() };
+    const seenDedupeKeys = new Set();
+    const results = [];
+    devices.forEach(device => {
+        if (!device || typeof device === 'undefined') return;
+        detectDeviceInconsistencies(device, ctx).forEach(finding => {
+            if (finding.dedupeKey) {
+                if (seenDedupeKeys.has(finding.dedupeKey)) return;
+                seenDedupeKeys.add(finding.dedupeKey);
+            }
+            results.push({
+                ...finding,
+                deviceId: normalizeRefId(device.id),
+                deviceName: device.name || device.model || 'Unnamed Device'
+            });
+        });
+    });
+    // Errors first, so the most structural problems lead the list.
+    return results.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1));
+}
+
 // Some pages reach these through the global object; expose them like common.js
 // does for its shared helpers.
 window.countReferencesToDevice = countReferencesToDevice;
 window.clearReferencesToDevice = clearReferencesToDevice;
 window.validateDeviceForSave = validateDeviceForSave;
+window.detectDeviceInconsistencies = detectDeviceInconsistencies;
+window.detectAllInconsistencies = detectAllInconsistencies;

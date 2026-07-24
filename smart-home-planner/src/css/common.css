@@ -2467,6 +2467,89 @@ input[type="month"]:not(.has-value):not(:focus)::-webkit-datetime-edit {
     border-top: 1px solid var(--border-color);
 }
 
+/* Non-blocking data warnings, listed at the top of the device form */
+.form-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.125rem;
+    background: rgba(245, 165, 36, 0.12);
+    border: 1px solid rgba(245, 165, 36, 0.35);
+    border-radius: 8px;
+}
+
+/* Warning shown under the field it refers to, with the full message */
+/* Sits further than the label/control gap (0.5rem) so it reads as a note about
+   the field, but well inside the group's own 1.25rem spacing */
+.field-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--warning-color);
+}
+
+.field-warning svg {
+    flex: 0 0 auto;
+    width: 13px;
+    height: 13px;
+    margin-top: 1px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.form-warnings.is-hidden {
+    display: none;
+}
+
+.form-warnings-title {
+    margin-bottom: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--warning-color);
+}
+
+.form-warning-item {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    text-align: left;
+    color: var(--text-secondary);
+    background: none;
+    border: 0;
+    border-radius: 4px;
+}
+
+/* Rows that resolve to a field double as a shortcut to it */
+button.form-warning-item {
+    cursor: pointer;
+}
+
+button.form-warning-item:hover {
+    background: rgba(245, 165, 36, 0.16);
+    color: var(--text-color);
+}
+
+.form-warning-item::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    margin-top: 0.45rem;
+    border-radius: 50%;
+    background: var(--warning-color);
+}
+
 .status-badge {
     display: inline-block;
     padding: 0.22rem 0.55rem;

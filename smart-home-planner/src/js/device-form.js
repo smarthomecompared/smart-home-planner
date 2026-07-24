@@ -324,9 +324,140 @@ document.addEventListener('DOMContentLoaded', async () => {
     handlePowerTypeChange();
 });
 
+// === Inline data warnings ===
+// Soft issues (never blocking) recomputed from the live form and listed above
+// the actions. Uses the same rules as the dashboard's Data Inconsistencies card.
+
+// Snapshot of the form as a device-shaped object, complete enough for the rules.
+function buildDeviceDraftForWarnings() {
+    const value = (id) => document.getElementById(id)?.value || '';
+    const pickedDeviceId = (id) => String(document.getElementById(id)?.dataset?.deviceId || '').trim();
+    return {
+        id: editingDeviceId || '',
+        name: value('device-name'),
+        connectivity: normalizeOptionValue(value('device-connectivity')),
+        wifiAccessPointId: pickedDeviceId('device-wifi-access-point'),
+        zigbeeParentId: pickedDeviceId('device-zigbee-parent'),
+        zwaveControllerId: pickedDeviceId('device-zwave-coordinator'),
+        power: value('device-power'),
+        batteryType: value('device-battery-type'),
+        idleConsumption: value('device-idle-consumption'),
+        meanConsumption: value('device-mean-consumption'),
+        maxConsumption: value('device-max-consumption'),
+        purchaseDate: value('device-purchase-date'),
+        lastBatteryChange: value('device-last-battery-change'),
+        ports: getPortsData()
+    };
+}
+
+// Maps the rules' semantic field names onto the form's inputs, so a finding can
+// flag the control it is about. Port rules resolve through the port row instead,
+// because their input ids are per-row.
+const WARNING_FIELD_INPUT_IDS = {
+    name: 'device-name',
+    wifiAccessPointId: 'device-wifi-access-point',
+    zigbeeParentId: 'device-zigbee-parent',
+    zwaveControllerId: 'device-zwave-coordinator',
+    batteryType: 'device-battery-type',
+    power: 'device-power',
+    purchaseDate: 'device-purchase-date',
+    lastBatteryChange: 'device-last-battery-change'
+};
+
+const WARNING_PORT_FIELD_SUFFIXES = {
+    'port.cableType': 'cable-type',
+    'port.poeRole': 'poe-role'
+};
+
+function resolveWarningFieldId(finding) {
+    const portSuffix = WARNING_PORT_FIELD_SUFFIXES[finding.field];
+    if (portSuffix) {
+        if (!finding.portId) return '';
+        const row = [...document.querySelectorAll('.port-item')]
+            .find(item => String(item.dataset.recordId || '') === String(finding.portId));
+        return row?.dataset?.portId ? `${row.dataset.portId}-${portSuffix}` : '';
+    }
+    return WARNING_FIELD_INPUT_IDS[finding.field] || '';
+}
+
+function clearFieldWarnings() {
+    document.querySelectorAll('.field-warning').forEach(note => note.remove());
+}
+
+// Shows the full warning text right under the field it refers to. A field hit by
+// more than one rule gets one line per message.
+function markFieldWarning(fieldId, message) {
+    const control = document.getElementById(fieldId);
+    if (!control) return;
+    const container = control.closest('.form-group, .port-field') || control.parentElement;
+    if (!container) return;
+    const note = document.createElement('div');
+    note.className = 'field-warning';
+    note.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path d="M12 3.5 21 19H3z"></path><path d="M12 10v3.5"></path><path d="M12 16.5h.01"></path></svg>' +
+        `<span>${escapeHtml(message)}</span>`;
+    container.appendChild(note);
+}
+
+function refreshDeviceWarnings() {
+    const container = document.getElementById('device-warnings');
+    if (!container || typeof detectDeviceInconsistencies !== 'function') return;
+    const devicesById = new Map();
+    (devices || []).forEach(device => {
+        if (device && typeof device === 'object') {
+            devicesById.set(String(device.id || '').trim(), device);
+        }
+    });
+    const findings = detectDeviceInconsistencies(buildDeviceDraftForWarnings(), {
+        devicesById,
+        devices
+    });
+    clearFieldWarnings();
+    if (!findings.length) {
+        container.classList.add('is-hidden');
+        container.innerHTML = '';
+        return;
+    }
+    // Resolve the target field once: it both places the inline note and turns the
+    // summary row into a shortcut to the control that fixes it.
+    const items = findings.map(finding => {
+        const fieldId = resolveWarningFieldId(finding);
+        if (fieldId) markFieldWarning(fieldId, finding.message);
+        return { message: finding.message, fieldId };
+    });
+    container.innerHTML =
+        `<div class="form-warnings-title">${findings.length === 1 ? 'Warning' : `Warnings (${findings.length})`}</div>` +
+        items.map(item => (item.fieldId
+            ? `<button type="button" class="form-warning-item" data-warning-field="${escapeHtml(item.fieldId)}">${escapeHtml(item.message)}</button>`
+            : `<div class="form-warning-item">${escapeHtml(item.message)}</div>`
+        )).join('');
+    container.classList.remove('is-hidden');
+}
+
+// Jump from a summary row to the control that resolves it.
+function focusWarningField(fieldId) {
+    const control = document.getElementById(fieldId);
+    if (!control) return;
+    const group = control.closest('.form-group, .port-field') || control;
+    group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof control.focus === 'function') {
+        control.focus({ preventScroll: true });
+    }
+}
+
 // Event Listeners
 function initializeEventListeners() {
     document.getElementById('device-form').addEventListener('submit', handleDeviceSubmit);
+    // Recompute the soft warnings on any edit. 'click' is included because the
+    // device pickers set their selection through dataset instead of an input event.
+    ['change', 'input', 'click'].forEach(eventName => {
+        document.getElementById('device-form').addEventListener(eventName, refreshDeviceWarnings);
+    });
+    // The summary rows are rebuilt on every refresh, so delegate from the panel.
+    document.getElementById('device-warnings')?.addEventListener('click', (event) => {
+        const row = event.target.closest('[data-warning-field]');
+        if (row) focusWarningField(row.dataset.warningField);
+    });
     initDevicePhotoUpload();
     document.getElementById('device-power').addEventListener('change', handlePowerTypeChange);
     document.getElementById('device-connectivity').addEventListener('change', handleConnectivitySelectChange);
@@ -2452,6 +2583,8 @@ function loadDeviceData(device) {
     }
 
     syncDateInputs();
+    // Surface any pre-existing soft issues as soon as the device is loaded.
+    refreshDeviceWarnings();
 }
 
 // Form Handlers
