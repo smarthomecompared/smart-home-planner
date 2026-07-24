@@ -9,6 +9,8 @@ let labels = [];
 let editingDeviceId = null;
 let settings = {};
 let networks = [];
+let isps = [];
+let selectedIspGatewayIds = new Set();
 let lastBrandValue = '';
 let lastTypeValue = '';
 let lastBatteryTypeValue = '';
@@ -297,8 +299,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     haDefaultCurrency = String(haConfig?.currency || '').trim().toUpperCase();
     haCountryCode = String(haConfig?.country || '').trim().toUpperCase();
     networks = data.networks || [];
+    isps = data.isps || [];
     devices = allDevices;
-    
+
     // Check if we're editing (device-edit.html)
     const urlParams = new URLSearchParams(window.location.search);
     editingDeviceId = urlParams.get('id');
@@ -329,6 +332,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateZigbeeClientsManagerVisibility();
     updateZwaveClientsManagerVisibility();
     updateBluetoothClientsManagerVisibility();
+    seedIspGatewaySelectionFromDevice();
+    setupIspGatewaySelect();
+    renderIspGatewayField();
     initializeDeviceLinksSupport();
     initializeDeviceStoragesSupport();
 
@@ -2612,6 +2618,7 @@ function loadDeviceData(device) {
     updateZigbeeClientsManagerVisibility();
     updateZwaveClientsManagerVisibility();
     updateBluetoothClientsManagerVisibility();
+    renderIspGatewayField();
     lastTypeValue = document.getElementById('device-type').value;
     lastBatteryTypeValue = document.getElementById('device-battery-type').value;
     lastConnectivityValue = document.getElementById('device-connectivity').value;
@@ -2863,6 +2870,7 @@ async function handleDeviceSubmit(e) {
         zwaveLinkedDeviceIds: zwaveLinkedDeviceIds,
         bluetoothProxyId: bluetoothProxyValue,
         bluetoothLinkedDeviceIds: bluetoothLinkedDeviceIds,
+        ispGatewayIds: isIspGatewayEligibleDevice({ type: typeValue }) ? getSelectedIspGatewayIds() : [],
         area: document.getElementById('device-area').value,
         controlledArea: document.getElementById('device-controlled-area')?.value || '',
         threadBorderRouter: document.getElementById('device-thread-border-router').checked,
@@ -3082,6 +3090,7 @@ function handleTypeChange() {
     } else {
         lastTypeValue = typeSelect.value;
         updateWifiClientsManagerVisibility();
+        renderIspGatewayField();
         syncDevicePhotoTypeFallback();
     }
 }
@@ -3708,6 +3717,129 @@ function setupWifiAccessPointSearch() {
 
 function getCurrentFormDeviceId() {
     return String(editingDeviceId || activeDeviceId || '').trim();
+}
+
+// The ISP↔gateway link is the other end of the Settings "Gateway Device" picker:
+// here a router/modem/ONT lists the providers that enter through it, mirroring
+// the wireless linked-device sections (a searchable dropdown feeds a removable
+// list). `isp.gatewayDeviceId` stays the single source of truth: the selection
+// is seeded from it on edit and written back on save, so both ends agree.
+// Only seeded in edit mode — a duplicate must not inherit (and thus steal) the
+// original's providers.
+function seedIspGatewaySelectionFromDevice() {
+    selectedIspGatewayIds = new Set(
+        editingDeviceId
+            ? getIspsForGatewayDevice(isps, editingDeviceId).map(isp => String(isp.id))
+            : []
+    );
+}
+
+function isIspGatewayFieldEligible() {
+    const typeValue = normalizeOptionValue(document.getElementById('device-type')?.value || '');
+    return isIspGatewayEligibleDevice({ type: typeValue });
+}
+
+// Selected ids that still resolve to an existing ISP.
+function getSelectedIspGatewayIds() {
+    const valid = new Set((isps || []).map(isp => String(isp.id)));
+    return [...selectedIspGatewayIds].filter(id => valid.has(String(id)));
+}
+
+function renderIspGatewayField() {
+    const group = document.getElementById('isp-gateway-group');
+    const list = document.getElementById('isp-gateway-list');
+    const empty = document.getElementById('isp-gateway-empty');
+    if (!group || !list || !empty) return;
+
+    const eligible = isIspGatewayFieldEligible();
+    group.classList.toggle('is-hidden', !eligible);
+    if (!eligible) {
+        list.innerHTML = '';
+        return;
+    }
+
+    const selectedIds = getSelectedIspGatewayIds();
+    if (!selectedIds.length) {
+        list.innerHTML = '';
+        empty.classList.remove('is-hidden');
+    } else {
+        empty.classList.add('is-hidden');
+        list.innerHTML = selectedIds.map(buildIspGatewayItemMarkup).join('');
+        list.querySelectorAll('[data-isp-gateway-remove]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const targetId = String(button.getAttribute('data-isp-gateway-remove') || '').trim();
+                if (!targetId) return;
+                selectedIspGatewayIds.delete(targetId);
+                renderIspGatewayField();
+            });
+        });
+    }
+    // Rebuilt here (not by the caller) so it also runs on the recursive removal
+    // call above: dropping a provider puts it back in the dropdown.
+    populateIspGatewayAddSelect();
+}
+
+function buildIspGatewayItemMarkup(ispId) {
+    const isp = (isps || []).find(item => String(item.id) === String(ispId));
+    if (!isp) return '';
+    const name = escapeHtml(isp.name || 'Internet');
+    const tech = isp.technology && typeof getIspTechnologyLabel === 'function'
+        ? getIspTechnologyLabel(isp.technology)
+        : '';
+    return `
+        <div class="protocol-linked-device-item" data-isp-id="${escapeHtml(String(ispId))}">
+            <div class="protocol-linked-device-meta">
+                <div class="protocol-linked-device-name">${name}</div>
+                ${tech ? `<div class="protocol-linked-device-details">${escapeHtml(tech)}</div>` : ''}
+            </div>
+            <button type="button" class="btn btn-danger btn-sm" data-isp-gateway-remove="${escapeHtml(String(ispId))}">Remove</button>
+        </div>
+    `;
+}
+
+function populateIspGatewayAddSelect() {
+    const select = document.getElementById('device-isp-gateway-search');
+    if (!select) return;
+    const currentDeviceId = getCurrentFormDeviceId();
+    const selected = new Set(getSelectedIspGatewayIds());
+    const candidates = [...(isps || [])]
+        .filter(isp => isp && isp.id && !selected.has(String(isp.id)))
+        .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }));
+    const optionsMarkup = candidates.map((isp) => {
+        const gatewayId = String(isp.gatewayDeviceId || '').trim();
+        // A provider already fed through another device shows that owner, since
+        // adding it here moves it (each ISP has a single gateway).
+        const otherName = (gatewayId && gatewayId !== currentDeviceId)
+            ? String(devices.find(device => device.id === gatewayId)?.name || '').trim()
+            : '';
+        const label = otherName ? `${isp.name || 'Internet'} (now: ${otherName})` : (isp.name || 'Internet');
+        return `<option value="${escapeHtml(String(isp.id))}">${escapeHtml(label)}</option>`;
+    }).join('');
+    select.innerHTML = '<option value="">Add an internet provider</option>' + optionsMarkup;
+    select.value = '';
+}
+
+function setupIspGatewaySelect() {
+    const select = document.getElementById('device-isp-gateway-search');
+    if (!select) return;
+    select.addEventListener('change', () => {
+        const ispId = String(select.value || '').trim();
+        if (!ispId) return;
+        selectedIspGatewayIds.add(ispId);
+        renderIspGatewayField();
+    });
+}
+
+// Mirror of the sync*ForParent helpers, but the other end is the isps
+// collection: point the selected providers at this device and release any it no
+// longer owns.
+async function syncIspGatewaysForDevice(deviceId, selectedIspIds) {
+    const normalizedId = String(deviceId || '').trim();
+    if (!normalizedId) return;
+    const data = await loadData();
+    const nextIsps = setDeviceAsIspGateway(data.isps || [], normalizedId, selectedIspIds || []);
+    isps = nextIsps;
+    await saveData({ ...data, isps: nextIsps });
 }
 
 function getSelectedWifiClientIds() {
@@ -5494,6 +5626,7 @@ async function createDevice(deviceData) {
     await syncZigbeeChildrenForParent(device.id, deviceData.zigbeeLinkedDeviceIds || []);
     await syncZwaveChildrenForController(device.id, deviceData.zwaveLinkedDeviceIds || []);
     await syncBluetoothChildrenForProxy(device.id, deviceData.bluetoothLinkedDeviceIds || []);
+    await syncIspGatewaysForDevice(device.id, deviceData.ispGatewayIds || []);
 
     window.location.href = 'devices.html';
 }
@@ -5587,6 +5720,7 @@ async function updateDevice(id, deviceData, options = {}) {
         await syncZigbeeChildrenForParent(device.id, deviceData.zigbeeLinkedDeviceIds || []);
         await syncZwaveChildrenForController(device.id, deviceData.zwaveLinkedDeviceIds || []);
         await syncBluetoothChildrenForProxy(device.id, deviceData.bluetoothLinkedDeviceIds || []);
+        await syncIspGatewaysForDevice(device.id, deviceData.ispGatewayIds || []);
         if (isHomeAssistantLinked(device.homeAssistant)) {
             const currentName = String(device.name || '').trim();
             const shouldSyncName = previousName !== currentName;
@@ -5648,9 +5782,8 @@ async function updateDevice(id, deviceData, options = {}) {
 async function handleDeleteDevice() {
     if (!editingDeviceId) return;
     const refCount = countReferencesToDevice(allDevices, editingDeviceId);
-    const confirmMessage = refCount > 0
-        ? `Are you sure you want to delete this device? ${refCount} other device${refCount === 1 ? '' : 's'} will be unassigned.`
-        : 'Are you sure you want to delete this device?';
+    const ispGatewayCount = getIspsForGatewayDevice((await loadData()).isps, editingDeviceId).length;
+    const confirmMessage = buildDeviceDeleteMessage(refCount, ispGatewayCount);
     const confirmed = await showConfirm(confirmMessage, {
         title: 'Delete device',
         confirmText: 'Delete'
@@ -5676,9 +5809,12 @@ async function handleDeleteDevice() {
     // linked-device arrays on the other side. Ports themselves are kept.
     clearReferencesToDevice(allDevices, editingDeviceId);
 
+    // Drop the device as any ISP's gateway too (ISPs are a separate collection).
+    const data = await loadData();
     await saveData({
-        ...(await loadData()),
-        devices: allDevices
+        ...data,
+        devices: allDevices,
+        isps: clearDeviceFromIspGateways(data.isps, editingDeviceId)
     });
 
     window.location.href = 'devices.html';

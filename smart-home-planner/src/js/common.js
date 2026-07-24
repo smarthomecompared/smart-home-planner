@@ -105,6 +105,76 @@ function buildIsp(name, overrides = {}) {
     };
 }
 
+// Only these device types can terminate an ISP line, so only they can be picked
+// as a gateway — a motion sensor never carries WAN. Canonical list shared by the
+// diagram auto-detection, the Settings gateway picker and the device form.
+const ISP_GATEWAY_ELIGIBLE_TYPES = new Set(['routers', 'modems', 'modems-ont', 'gateways']);
+
+function isIspGatewayEligibleDevice(device) {
+    if (!device || typeof device !== 'object') return false;
+    const type = typeof normalizeOptionValue === 'function'
+        ? normalizeOptionValue(device.type)
+        : String(device.type || '').trim().toLowerCase();
+    return ISP_GATEWAY_ELIGIBLE_TYPES.has(type);
+}
+
+function normalizeIspRefId(value) {
+    return String(value == null ? '' : value).trim();
+}
+
+// The ISP↔gateway link lives only on the ISP (isp.gatewayDeviceId). These
+// helpers let either end edit it while keeping both sides consistent, the same
+// way wired/wireless links stay mirrored.
+
+// ISPs whose gateway is this device (a device may feed several ISPs, e.g. a
+// dual-WAN router with a primary and a backup line).
+function getIspsForGatewayDevice(isps, deviceId) {
+    const target = normalizeIspRefId(deviceId);
+    if (!target || !Array.isArray(isps)) return [];
+    return isps.filter(isp => isp && normalizeIspRefId(isp.gatewayDeviceId) === target);
+}
+
+// Returns a new isps array where `deviceId` is the gateway of exactly the ISPs
+// in `selectedIspIds`: each selected ISP points here, and any ISP that pointed
+// here but is no longer selected falls back to auto-detect (empty gateway).
+// Assigning an ISP already owned by another device moves it here.
+function setDeviceAsIspGateway(isps, deviceId, selectedIspIds) {
+    const target = normalizeIspRefId(deviceId);
+    if (!target || !Array.isArray(isps)) return Array.isArray(isps) ? isps : [];
+    const selected = new Set((Array.isArray(selectedIspIds) ? selectedIspIds : []).map(normalizeIspRefId).filter(Boolean));
+    return isps.map((isp) => {
+        if (!isp) return isp;
+        const ispId = normalizeIspRefId(isp.id);
+        const shouldOwn = selected.has(ispId);
+        const ownsNow = normalizeIspRefId(isp.gatewayDeviceId) === target;
+        if (shouldOwn && !ownsNow) return { ...isp, gatewayDeviceId: target };
+        if (!shouldOwn && ownsNow) return { ...isp, gatewayDeviceId: '' };
+        return isp;
+    });
+}
+
+// Deleting a device drops it as any ISP's gateway (those fall back to
+// auto-detect), so no ISP is left pointing at a device that no longer exists.
+function clearDeviceFromIspGateways(isps, deviceId) {
+    return setDeviceAsIspGateway(isps, deviceId, []);
+}
+
+// Delete-confirmation wording that also accounts for ISP gateways, so a router
+// that feeds an ISP but has no device links still warns the provider is affected.
+function buildDeviceDeleteMessage(deviceRefCount, ispGatewayCount) {
+    const parts = [];
+    if (deviceRefCount > 0) {
+        parts.push(`${deviceRefCount} other device${deviceRefCount === 1 ? '' : 's'} will be unassigned`);
+    }
+    if (ispGatewayCount > 0) {
+        parts.push(`${ispGatewayCount} internet provider${ispGatewayCount === 1 ? '' : 's'} will lose ${ispGatewayCount === 1 ? 'its' : 'their'} gateway`);
+    }
+    if (!parts.length) {
+        return 'Are you sure you want to delete this device?';
+    }
+    return `Are you sure you want to delete this device? ${parts.join(' and ')}.`;
+}
+
 function buildDefaultStorage() {
     return {
         devices: [],

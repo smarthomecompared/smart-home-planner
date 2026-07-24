@@ -3951,7 +3951,8 @@ function applyFilterDimming(matchedIds) {
 const ISP_NODE_ID_PREFIX = 'isp-node-';
 const ISP_NODE_HEIGHT = 52;
 const ISP_NODE_VERTICAL_GAP = 110;
-const ISP_GATEWAY_TYPE_HINTS = new Set(['routers', 'modems', 'modems-ont', 'gateways']);
+// Eligible gateway types come from common.js (isIspGatewayEligibleDevice) so the
+// diagram, Settings and the device form never disagree on what can be a gateway.
 // A modem/ONT terminates the ISP line itself, so it outranks a router when
 // auto-detecting the gateway even though it has far fewer connected ports.
 const ISP_DEMARCATION_TYPES = new Set(['modems', 'modems-ont']);
@@ -3985,7 +3986,7 @@ function resolveIspGatewayDevice(isp, devicesList) {
     if (explicitId) {
         return { device: devicesList.find(d => d.id === explicitId) || null, auto: false };
     }
-    const candidates = devicesList.filter(device => ISP_GATEWAY_TYPE_HINTS.has(normalizeDeviceType(device)));
+    const candidates = devicesList.filter(device => isIspGatewayEligibleDevice(device));
     if (!candidates.length) {
         return { device: null, auto: true };
     }

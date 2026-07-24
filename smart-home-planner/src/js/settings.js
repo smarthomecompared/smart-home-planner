@@ -1149,7 +1149,7 @@ async function renderIspsManagement() {
     });
 }
 
-function populateIspModalSelects() {
+function populateIspModalSelects(keepGatewayDeviceId = '') {
     const technologySelect = document.getElementById('isp-technology-select');
     if (technologySelect && technologySelect.options.length <= 1) {
         ISP_TECHNOLOGY_OPTIONS.forEach(option => {
@@ -1162,12 +1162,18 @@ function populateIspModalSelects() {
 
     const gatewaySelect = document.getElementById('isp-gateway-select');
     if (gatewaySelect) {
-        const currentValue = gatewaySelect.value;
+        // The value is set by openIspModal after this runs, so it is passed in
+        // explicitly to keep a legacy assignment listed even when ineligible.
+        const keepDeviceId = String(keepGatewayDeviceId || '').trim();
         while (gatewaySelect.options.length > 1) {
             gatewaySelect.remove(1);
         }
+        // Only devices that can actually terminate a WAN line (router, modem/ONT,
+        // gateway) — a motion sensor is never a gateway. A legacy assignment to
+        // an ineligible device is kept so editing an ISP never silently drops it.
         const sortedDevices = [...ispDevices]
             .filter(device => device && device.id)
+            .filter(device => isIspGatewayEligibleDevice(device) || device.id === keepDeviceId)
             .sort((a, b) => String(a.name || a.model || '').localeCompare(String(b.name || b.model || '')));
         sortedDevices.forEach(device => {
             const optionEl = document.createElement('option');
@@ -1175,7 +1181,6 @@ function populateIspModalSelects() {
             optionEl.textContent = device.name || device.model || 'Unnamed Device';
             gatewaySelect.appendChild(optionEl);
         });
-        gatewaySelect.value = currentValue;
     }
 }
 
@@ -1184,11 +1189,11 @@ function openIspModal(mode, ispId = '') {
     const title = document.getElementById('isp-modal-title');
     if (!modal || !title) return;
 
-    populateIspModalSelects();
-
     ispModalMode = mode;
     ispModalTargetId = ispId;
     const currentIsp = isps.find(isp => isp.id === ispId);
+
+    populateIspModalSelects(currentIsp ? currentIsp.gatewayDeviceId : '');
 
     title.textContent = mode === 'edit' ? 'Edit Provider' : 'Add Provider';
     const nameInput = document.getElementById('isp-name-input');

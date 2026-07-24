@@ -527,9 +527,8 @@ async function updateDevice(id, deviceData) {
 
 async function deleteDevice(id) {
     const refCount = countReferencesToDevice(allDevices, id);
-    const confirmMessage = refCount > 0
-        ? `Are you sure you want to delete this device? ${refCount} other device${refCount === 1 ? '' : 's'} will be unassigned.`
-        : 'Are you sure you want to delete this device?';
+    const ispGatewayCount = getIspsForGatewayDevice((await loadData()).isps, id).length;
+    const confirmMessage = buildDeviceDeleteMessage(refCount, ispGatewayCount);
     const confirmed = await showConfirm(confirmMessage, {
         title: 'Delete device',
         confirmText: 'Delete'
@@ -559,7 +558,10 @@ async function deleteDevice(id) {
     // linked-device arrays on the other side. Ports themselves are kept.
     clearReferencesToDevice(allDevices, id);
 
-    await saveData(await getAllData());
+    // Drop the device as any ISP's gateway too (ISPs live in their own
+    // collection, so clearReferencesToDevice can't reach them).
+    const data = await getAllData();
+    await saveData({ ...data, isps: clearDeviceFromIspGateways(data.isps, id) });
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }
