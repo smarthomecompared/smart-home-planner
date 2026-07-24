@@ -2658,6 +2658,10 @@ async function handleDeviceSubmit(e) {
     const purchaseCurrencyValue = document.getElementById('device-purchase-currency')?.value || 'USD';
     const hasPurchasePrice = purchasePriceRaw.trim() !== '';
     const purchasePrice = hasPurchasePrice ? parseFloat(purchasePriceRaw) : null;
+    // Battery details only apply to battery-powered devices; drop them otherwise
+    // so switching a device to Wired can't leave stale battery data behind.
+    const powerValue = document.getElementById('device-power').value;
+    const isBatteryPowered = powerValue === 'battery';
     const deviceData = {
         name: document.getElementById('device-name').value,
         brand: brandValue,
@@ -2668,11 +2672,11 @@ async function handleDeviceSubmit(e) {
         ip: ipValue,
         mac: macValue,
         status: statusValue,
-        power: document.getElementById('device-power').value,
-        batteryType: batteryTypeValue,
-        batteryCount: document.getElementById('device-battery-count').value,
-        lastBatteryChange: document.getElementById('device-last-battery-change').value,
-        batteryDuration: document.getElementById('device-battery-duration').value,
+        power: powerValue,
+        batteryType: isBatteryPowered ? batteryTypeValue : '',
+        batteryCount: isBatteryPowered ? document.getElementById('device-battery-count').value : '',
+        lastBatteryChange: isBatteryPowered ? document.getElementById('device-last-battery-change').value : '',
+        batteryDuration: isBatteryPowered ? document.getElementById('device-battery-duration').value : '',
         upsProtected: document.getElementById('device-ups-protected').checked,
         idleConsumption: idleConsumptionResult.value,
         meanConsumption: meanConsumptionResult.value,

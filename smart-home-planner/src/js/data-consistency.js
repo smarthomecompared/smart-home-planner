@@ -113,12 +113,19 @@ function validateDeviceForSave(device, selfId) {
     const ports = Array.isArray(device.ports) ? device.ports : [];
     let selfConnectedPort = false;
     let poeOnNonEthernet = false;
+    let connectionMissingPort = false;
     ports.forEach(port => {
         if (!port || typeof port !== 'object') return;
+        const target = normalizeRefId(port.connectedTo);
         // connectedTo holds a device id, so pointing at our own id means the port
         // is wired to another port on the same device.
-        if (id && normalizeRefId(port.connectedTo) === id) {
+        if (id && target === id) {
             selfConnectedPort = true;
+        }
+        // A port linked to a device but with no remote port picked is an
+        // incomplete connection: the other end can't be resolved.
+        if (target && !normalizeRefId(port.connectedToPort)) {
+            connectionMissingPort = true;
         }
         // PoE is only offered on Ethernet ports; a leftover value on any other
         // kind (e.g. after switching the port to USB) is invalid.
@@ -128,6 +135,9 @@ function validateDeviceForSave(device, selfId) {
     });
     if (selfConnectedPort) {
         errors.push('A port cannot be connected to another port on the same device.');
+    }
+    if (connectionMissingPort) {
+        errors.push('A port is connected to a device but no remote port is selected. Pick the remote port or clear the connection.');
     }
     if (poeOnNonEthernet) {
         errors.push('PoE can only be set on Ethernet ports.');
@@ -141,8 +151,13 @@ function validateDeviceForSave(device, selfId) {
         }
     }
 
-    // Warranty cannot expire before the device was purchased (date inputs are
-    // YYYY-MM-DD, so a lexicographic comparison is a chronological one).
+    // Date inputs are YYYY-MM-DD, so lexicographic comparison is chronological.
+    // A device cannot be installed before it was purchased, and its warranty
+    // cannot expire before then either.
+    if (device.installationDate && device.purchaseDate &&
+        device.installationDate < device.purchaseDate) {
+        errors.push('Installation date cannot be earlier than the purchase date.');
+    }
     if (device.warrantyExpiration && device.purchaseDate &&
         device.warrantyExpiration < device.purchaseDate) {
         errors.push('Warranty expiration cannot be earlier than the purchase date.');
