@@ -96,15 +96,29 @@
                             </div>
                             <div class="filter-field">
                                 <label for="filter-brand">Brand</label>
-                                <select id="filter-brand" class="filter-select">
-                                    <option value="">All</option>
-                                </select>
+                                <div class="filter-select-with-clear">
+                                    <select id="filter-brand" class="filter-select" data-searchable="true">
+                                        <option value="">All</option>
+                                    </select>
+                                    <button type="button" id="clear-filter-brand" class="filter-clear-btn filter-select-clear" aria-label="Reset brand filter" hidden>
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M4 4l8 8M12 4l-8 8"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="filter-field">
                                 <label for="filter-type">Type</label>
-                                <select id="filter-type" class="filter-select">
-                                    <option value="">All</option>
-                                </select>
+                                <div class="filter-select-with-clear">
+                                    <select id="filter-type" class="filter-select" data-searchable="true">
+                                        <option value="">All</option>
+                                    </select>
+                                    <button type="button" id="clear-filter-type" class="filter-clear-btn filter-select-clear" aria-label="Reset type filter" hidden>
+                                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                                            <path d="M4 4l8 8M12 4l-8 8"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="filters-block">

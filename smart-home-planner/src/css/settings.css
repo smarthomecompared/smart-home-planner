@@ -1013,6 +1013,14 @@
     color: var(--text-muted);
 }
 
+/* Usage count next to a custom option: how many records reference it. */
+.option-editor-usage-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
 .option-editor-group-hidden-count {
     font-size: 0.72rem;
     color: var(--text-muted);

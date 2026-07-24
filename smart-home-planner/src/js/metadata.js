@@ -8,17 +8,17 @@ var supportedStores = [
 ];
 
 const DEFAULT_BRANDS = [
-    'Aeotec', 'AirGradient', 'Airthings', 'Amazon', 'Apollo Automation',
+    'Aeotec', 'AirGradient', 'Airthings', 'Amazon', 'APC', 'Apollo Automation',
     'Apple', 'Aqara', 'Aranet', 'Arlo', 'Arre', 'Asus',
     'Beelink', 'Blink', 'Bosch', 'BroadLink', 'Centralite',
     'Ecobee', 'Eero', 'Eufy', 'Eve', 'Fibaro',
-    'Geekom', 'Google', 'Govee Life', 'Heiman',
-    'IKEA', 'iRobot', 'Kasa',
+    'Gadnic', 'Geekom', 'Google', 'Govee Life', 'Heiman', 'HP', 'Huawei',
+    'IKEA', 'iRobot', 'Kasa', 'Lenovo', 'LG',
     'Meross', 'Moes', 'Nanoleaf', 'Nabu Casa',
     'Netatmo', 'Nest', 'Nuki', 'Philips',
-    'Reolink', 'Ring', 'Roborock', 'Sensi', 'Shelly',
+    'Raspberry Pi', 'Reolink', 'Ring', 'Roborock', 'Samsung', 'Sensi', 'Sensibo', 'Shelly',
     'Smlight', 'SmartThings', 'Sonoff', 'Sonos', 'SwitchBot',
-    'Tapo', 'Third Reality', 'TP-Link', 'Tuya', 'Ubiquiti', 'Wyze',
+    'Tapo', 'Third Reality', 'TP-Link', 'Tuya', 'Ubiquiti', 'UGREEN', 'Wyze',
     'X-Sense', 'Xiaomi', 'Yale', 'YoLink', 'Zooz'
 ];
 
@@ -27,11 +27,11 @@ const DEFAULT_TYPES = [
     'Dehumidifiers', 'Dimmer Switches', 'Displays', 'Dongles', 'Door Locks',
     'Door/Window Sensors', 'Doorbells', 'Energy Monitors', 'Fans', 'Garage Door Openers', 'Gate Controllers',
     'Heaters', 'Hubs', 'Humidifiers', 'IR Remote Controls', 'Keypads', 'LED Bulbs', 'Light Sensors', 'Light Strips',
-    'Mini PCs', 'Modems / ONT', 'Motion Sensors', 'NAS', 'Network Switches', 'Plugs', 'Power Strips', 'Presence Sensors',
+    'Mini PCs', 'Mobile Phone', 'Modems / ONT', 'Motion Sensors', 'NAS', 'Network Switches', 'Notebook', 'Plugs', 'Power Strips', 'Presence Sensors', 'Printers',
     'Radiator Valves', 'Rain Sensors', 'Relays', 'Robot Vacuums', 'Routers', 'Sirens',
-    'Smart Buttons', 'Smart TVs', 'Smoke & CO detectors', 'Soil Moisture Sensors', 'Speakers', 'Streaming Devices',
-    'Temperature/Humidity Sensors', 'Thermostats', 'UV Sensors', 'Vibration Sensors', 'Voice Assistants',
-    'Wall Outlets', 'Wall Switches', 'Water Leak Sensors', 'Water Meters', 'Water Valves', 'Weather Stations',
+    'Smart Buttons', 'Smart TVs', 'Smoke & CO detectors', 'Smoke Alarms', 'Soil Moisture Sensors', 'Speakers', 'Streaming Devices',
+    'Tablet', 'Temperature/Humidity Sensors', 'Thermostats', 'UPS', 'UV Sensors', 'Vibration Sensors', 'Voice Assistants',
+    'Wall Outlets', 'Wall Switches', 'Washing Machine', 'Water Leak Sensors', 'Water Meters', 'Water Valves', 'Weather Stations',
     'Window Shades'
 ];
 
@@ -45,7 +45,8 @@ const DEFAULT_TEST_CASE_CATEGORIES = [
     'Network',
     'Power',
     'Climate',
-    'Access'
+    'Access',
+    'Irrigation'
 ];
 
 const DEFAULT_BATTERY_TYPES = [

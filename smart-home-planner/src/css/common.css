@@ -3438,6 +3438,24 @@ button.form-warning-item:hover {
     position: relative;
 }
 
+.filter-select-with-clear {
+    position: relative;
+}
+
+.filter-select-with-clear .filter-select {
+    width: 100%;
+}
+
+/* Reserve room for the reset button, kept to the left of the dropdown arrow */
+.filter-select-with-clear .filter-select.has-value {
+    padding-right: 3.5rem;
+}
+
+/* Sit the reset button to the left of the dropdown chevron */
+.filter-select-with-clear .filter-select-clear {
+    right: 1.9rem;
+}
+
 .filters-container .filter-select,
 .filters-container .filter-input {
     background-color: rgba(16, 18, 22, 0.75);

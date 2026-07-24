@@ -1529,6 +1529,14 @@ function buildOptionEditorItemMarkup(key, entry) {
         ? (isHidden ? '<span class="option-editor-badge is-hidden-badge">Hidden</span>' : '')
         : '<span class="option-editor-badge is-custom-badge">Custom</span>';
 
+    // Custom values show how many records reference them, so the user can see at a
+    // glance whether one is in use. Filled asynchronously by updateOptionUsageCounts
+    // once the data is loaded — see renderOptionGroups.
+    const usageNoun = getDeviceOptionGroupConfig(key)?.usage?.noun || 'record';
+    const usageCount = isDefault
+        ? ''
+        : `<span class="option-editor-usage-count" title="How many ${escapeHtml(usageNoun)}s use this option"></span>`;
+
     const renameButton = allowRename
         ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-rename-start aria-label="Rename" title="Rename">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1567,7 +1575,7 @@ function buildOptionEditorItemMarkup(key, entry) {
 
     return `
         <div class="${classNames.join(' ')}" data-option-key="${escapeHtml(key)}" data-option-value="${escapeHtml(valueToken)}" data-option-default="${isDefault ? 'true' : 'false'}">
-            <div class="option-editor-value">${escapeHtml(safeValue)}${badge}</div>
+            <div class="option-editor-value">${escapeHtml(safeValue)}${badge}${usageCount}</div>
             <div class="option-editor-actions">
                 ${actions}
             </div>${renameEditor}
@@ -1620,6 +1628,26 @@ function renderOptionGroups(containerId, groups) {
     `;
 
     initializeOptionEditorEvents(containerId);
+    // The counts need the full dataset, whose load can hit the network, so the list
+    // renders first and the usage numbers fill in once the data resolves.
+    void updateOptionUsageCounts(containerId);
+}
+
+// Fills the "(n)" next to each custom option with how many records reference it.
+// Runs after the synchronous render so a slow data load never blocks the list.
+async function updateOptionUsageCounts(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const items = container.querySelectorAll('.option-editor-item[data-option-default="false"]');
+    if (!items.length) return;
+    const data = await loadData();
+    items.forEach((item) => {
+        const countEl = item.querySelector('.option-editor-usage-count');
+        if (!countEl) return;
+        const group = getDeviceOptionGroupConfig(item.dataset.optionKey);
+        const value = decodeOptionToken(item.dataset.optionValue);
+        countEl.textContent = `(${countOptionUsageIn(data, group, value)})`;
+    });
 }
 
 function initializeOptionEditorEvents(containerId) {
@@ -1713,15 +1741,20 @@ async function toggleHiddenDefaultOption(context) {
     await persistOptionGroup(key, { hidden: nextHidden }, `"${label}" ${isHidden ? 'shown' : 'hidden'}.`);
 }
 
-// How many stored records reference this value. Matches on the normalized slug
-// so casing/spacing differences don't hide a use.
-async function countOptionUsage(group, value) {
+// How many records in already-loaded data reference this value. Matches on the
+// normalized slug so casing/spacing differences don't hide a use.
+function countOptionUsageIn(data, group, value) {
     const usage = group?.usage;
     const target = normalizeOptionValue(value);
     if (!usage || !target) return 0;
-    const data = await loadData();
     const records = Array.isArray(data?.[usage.collection]) ? data[usage.collection] : [];
     return records.filter(record => normalizeOptionValue(record?.[usage.field]) === target).length;
+}
+
+// Same count, loading the data on demand — used by the delete confirmation.
+async function countOptionUsage(group, value) {
+    if (!group?.usage || !normalizeOptionValue(value)) return 0;
+    return countOptionUsageIn(await loadData(), group, value);
 }
 
 // Deleting a custom also clears it from every record that uses it — same as

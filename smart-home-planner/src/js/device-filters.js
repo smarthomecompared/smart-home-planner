@@ -36,6 +36,12 @@ const FILTER_CHIP_FIELDS = [
     { id: 'filter-labels', label: 'Labels', type: 'labels' }
 ];
 
+// Select filters that show an inline reset (×) button to jump back to "All"
+const SELECT_CLEAR_FILTERS = [
+    { selectId: 'filter-brand', buttonId: 'clear-filter-brand' },
+    { selectId: 'filter-type', buttonId: 'clear-filter-type' }
+];
+
 class DeviceFilters {
     constructor() {
         this.devices = [];
@@ -156,6 +162,7 @@ class DeviceFilters {
             }
         });
         this.setupNameFilterClearButton();
+        this.setupSelectFilterClearButtons();
 
         // Toggle advanced filters
         const toggleBtn = document.getElementById('toggle-advanced-filters');
@@ -340,6 +347,37 @@ class DeviceFilters {
         clearNameBtn.hidden = !nameInput.value;
     }
 
+    // Wire the inline reset (×) button on the Brand/Type filters so a single
+    // click jumps back to "All" without having to open and scroll the dropdown.
+    setupSelectFilterClearButtons() {
+        SELECT_CLEAR_FILTERS.forEach(({ selectId, buttonId }) => {
+            const select = document.getElementById(selectId);
+            const button = document.getElementById(buttonId);
+            if (!select || !button) return;
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!select.value) return;
+                select.value = '';
+                // Mirror a user selection so applyFilters and the chips update
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                select.focus();
+            });
+        });
+        this.updateSelectFilterClearButtons();
+    }
+
+    updateSelectFilterClearButtons() {
+        SELECT_CLEAR_FILTERS.forEach(({ selectId, buttonId }) => {
+            const select = document.getElementById(selectId);
+            const button = document.getElementById(buttonId);
+            if (!select || !button) return;
+            const hasValue = Boolean(select.value);
+            button.hidden = !hasValue;
+            select.classList.toggle('has-value', hasValue);
+        });
+    }
+
     // Update filter dropdown options
     updateFilterOptions() {
         // Update floor filter
@@ -382,7 +420,7 @@ class DeviceFilters {
             const configuredBrands = this.settings.brands || [];
             const deviceBrands = [...new Set(this.devices.map(d => d.brand).filter(Boolean))];
             const brandOptions = this.buildFriendlyOptions(configuredBrands, deviceBrands, this.formatDeviceType);
-            brandFilter.innerHTML = '<option value="">All</option>' +
+            brandFilter.innerHTML = '<option value="" data-ui-select-pinned="true">All</option>' +
                 brandOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             brandFilter.value = currentBrandValue ? normalizeOptionValue(currentBrandValue) : currentBrandValue;
@@ -418,7 +456,7 @@ class DeviceFilters {
             const configuredTypes = this.settings.types || [];
             const deviceTypes = [...new Set(this.devices.map(d => d.type).filter(Boolean))];
             const typeOptions = this.buildFriendlyOptions(configuredTypes, deviceTypes, this.formatDeviceType);
-            typeFilter.innerHTML = '<option value="">All</option>' +
+            typeFilter.innerHTML = '<option value="" data-ui-select-pinned="true">All</option>' +
                 typeOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('') +
                 '<option value="__none__">-</option>';
             typeFilter.value = currentTypeValue ? normalizeOptionValue(currentTypeValue) : currentTypeValue;
@@ -503,11 +541,14 @@ class DeviceFilters {
                 batteryOptions.map(option => `<option value="${option.value}">${this.escapeHtml(option.label)}</option>`).join('');
             batteryTypeFilter.value = currentBatteryTypeValue ? normalizeOptionValue(currentBatteryTypeValue) : currentBatteryTypeValue;
         }
+
+        this.updateSelectFilterClearButtons();
     }
 
     // Apply all filters and return filtered devices
     applyFilters() {
         this.updateNameFilterClearButtonVisibility();
+        this.updateSelectFilterClearButtons();
         const getElementValue = (id) => {
             const el = document.getElementById(id);
             if (!el) {
