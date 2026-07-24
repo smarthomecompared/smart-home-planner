@@ -16,14 +16,16 @@ let excludedDevicesCurrentPage = 1;
 let excludedDevicesSortColumn = 'name';
 let excludedDevicesSortDirection = 'asc';
 const EXCLUDED_DEVICES_PAGE_SIZE = 10;
+// `usage` tells which stored records reference a value, so deleting a custom can
+// warn how many entries currently use it. `noun` is what those records are called.
 const DEVICE_OPTIONS_GROUPS = [
-    { key: 'brands', label: 'Brands', singularLabel: 'brand', addPlaceholder: 'Add brand' },
-    { key: 'types', label: 'Device Types', singularLabel: 'device type', addPlaceholder: 'Add device type' },
-    { key: 'connectivity', label: 'Connectivity Options', singularLabel: 'connectivity option', addPlaceholder: 'Add connectivity option' },
-    { key: 'batteryTypes', label: 'Battery Types', singularLabel: 'battery type', addPlaceholder: 'Add battery type' }
+    { key: 'brands', label: 'Brands', singularLabel: 'brand', addPlaceholder: 'Add brand', usage: { collection: 'devices', field: 'brand', noun: 'device' } },
+    { key: 'types', label: 'Device Types', singularLabel: 'device type', addPlaceholder: 'Add device type', usage: { collection: 'devices', field: 'type', noun: 'device' } },
+    { key: 'connectivity', label: 'Connectivity Options', singularLabel: 'connectivity option', addPlaceholder: 'Add connectivity option', usage: { collection: 'devices', field: 'connectivity', noun: 'device' } },
+    { key: 'batteryTypes', label: 'Battery Types', singularLabel: 'battery type', addPlaceholder: 'Add battery type', usage: { collection: 'devices', field: 'batteryType', noun: 'device' } }
 ];
 const TEST_CASE_OPTIONS_GROUPS = [
-    { key: 'testCaseCategories', label: 'Test Case Categories', singularLabel: 'test case category', addPlaceholder: 'Add test case category' }
+    { key: 'testCaseCategories', label: 'Test Case Categories', singularLabel: 'test case category', addPlaceholder: 'Add test case category', usage: { collection: 'testCases', field: 'category', noun: 'test case' } }
 ];
 const OPTION_GROUPS = [...DEVICE_OPTIONS_GROUPS, ...TEST_CASE_OPTIONS_GROUPS];
 const OPTION_GROUPS_BY_KEY = new Map(OPTION_GROUPS.map((group) => [group.key, group]));
@@ -1314,30 +1316,19 @@ function normalizeOptionIdentity(value) {
     return normalized || raw.toLowerCase();
 }
 
-function buildUniqueOptionValues(values) {
-    const seen = new Set();
-    const result = [];
-    (values || []).forEach((value) => {
-        const text = String(value || '').trim();
-        if (!text) return;
-        const key = normalizeOptionIdentity(text);
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        result.push(text);
+// Settings lists everything — visible defaults, hidden defaults and customs —
+// so the user can see the full catalog and bring hidden entries back.
+function getOptionEditorEntries(key) {
+    const hiddenSlugs = new Set(getHiddenDefaultSlugs(settings, key));
+    const entries = getDefaultOptionValuesByKey(key).map(value => ({
+        value,
+        isDefault: true,
+        isHidden: hiddenSlugs.has(normalizeOptionValue(value))
+    }));
+    getCustomOptionValues(settings, key).forEach((value) => {
+        entries.push({ value, isDefault: false, isHidden: false });
     });
-    return result;
-}
-
-function sortOptionValues(values) {
-    return [...(values || [])]
-        .map((value) => String(value || '').trim())
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-}
-
-function getOptionValuesByKey(key) {
-    const source = Array.isArray(settings?.[key]) ? settings[key] : [];
-    return buildUniqueOptionValues(source);
+    return entries.sort((a, b) => String(a.value).localeCompare(String(b.value), undefined, { sensitivity: 'base' }));
 }
 
 function encodeOptionToken(value) {
@@ -1361,14 +1352,17 @@ function findOptionIndex(values, targetValue) {
     return values.findIndex((value) => normalizeOptionIdentity(value) === targetKey);
 }
 
-async function persistDeviceOptions(key, nextValues, successMessage) {
+// Only the edited group is written. It used to spread the whole settings object,
+// which persisted every other list too — that is how adding a single brand froze
+// the device types and kept later releases from delivering new ones.
+async function persistOptionGroup(key, patch, successMessage) {
     const nextSettings = {
         ...settings,
-        [key]: sortOptionValues(buildUniqueOptionValues(nextValues)),
-        haAreaSyncTarget: settings.haAreaSyncTarget === 'installed' ? 'installed' : 'controlled'
+        customOptions: { ...settings.customOptions, ...(patch.customs ? { [key]: patch.customs } : {}) },
+        hiddenDefaults: { ...settings.hiddenDefaults, ...(patch.hidden ? { [key]: patch.hidden } : {}) }
     };
     await saveSettings(nextSettings);
-    settings = nextSettings;
+    settings = await loadSettings();
     renderOptionsManagement();
     renderTestCaseCategoriesManagement();
     if (successMessage) {
@@ -1376,29 +1370,50 @@ async function persistDeviceOptions(key, nextValues, successMessage) {
     }
 }
 
-function buildOptionEditorItemMarkup(key, value) {
-    const safeValue = String(value || '').trim();
-    const valueToken = encodeOptionToken(safeValue);
-    return `
-        <div class="option-editor-item" data-option-key="${escapeHtml(key)}" data-option-value="${escapeHtml(valueToken)}">
-            <div class="option-editor-value">${escapeHtml(safeValue)}</div>
-            <div class="option-editor-actions">
-                <button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-rename-start aria-label="Rename" title="Rename">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
-                        <path d="M13.5 6.5l4 4"></path>
-                    </svg>
-                </button>
-                <button class="btn btn-danger btn-sm btn-icon" type="button" data-option-delete aria-label="Delete" title="Delete">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
+const OPTION_ICON_EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>';
+const OPTION_ICON_EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.9 5.7A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17 17 0 0 1-3.3 4"></path><path d="M6.3 7.9A16.7 16.7 0 0 0 2 12s3.6 6.5 10 6.5a9.9 9.9 0 0 0 3.6-.66"></path><path d="M10.3 10.3a2.6 2.6 0 0 0 3.4 3.4"></path><path d="M3 3l18 18"></path></svg>';
+
+const OPTION_ICON_DELETE = `<svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M3 6h18"></path>
                         <path d="M8 6V4h8v2"></path>
                         <path d="M6 6l1 14h10l1-14"></path>
                         <path d="M10 11v6"></path>
                         <path d="M14 11v6"></path>
+                    </svg>`;
+
+// Defaults live in the code: their slugs back icons, map layers and lookups, so
+// renaming or deleting one would break those silently — they can only be hidden.
+// Regular customs get the full rename/delete pair. A custom in a fixed group
+// (a connectivity value typed in before those were locked) can only be deleted:
+// renaming would let it masquerade as a new one, which the group no longer allows.
+function buildOptionEditorItemMarkup(key, entry) {
+    const safeValue = String(entry?.value || '').trim();
+    const valueToken = encodeOptionToken(safeValue);
+    const isDefault = !!entry?.isDefault;
+    const isHidden = !!entry?.isHidden;
+    const allowRename = !isDefault && !isFixedOptionGroup(key);
+
+    const badge = isDefault
+        ? (isHidden ? '<span class="option-editor-badge is-hidden-badge">Hidden</span>' : '')
+        : '<span class="option-editor-badge is-custom-badge">Custom</span>';
+
+    const renameButton = allowRename
+        ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-rename-start aria-label="Rename" title="Rename">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l10.5-10.5a2.12 2.12 0 0 0 0-3l-2-2a2.12 2.12 0 0 0-3 0L4 16v4z"></path>
+                        <path d="M13.5 6.5l4 4"></path>
                     </svg>
-                </button>
-            </div>
+                </button>`
+        : '';
+    const deleteButton = `<button class="btn btn-danger btn-sm btn-icon" type="button" data-option-delete aria-label="Delete" title="Delete">${OPTION_ICON_DELETE}</button>`;
+
+    const actions = isDefault
+        ? `<button class="btn btn-secondary btn-sm btn-icon" type="button" data-option-toggle-hidden aria-label="${isHidden ? 'Show' : 'Hide'}" title="${isHidden ? 'Show in pickers' : 'Hide from pickers'}">
+                    ${isHidden ? OPTION_ICON_EYE : OPTION_ICON_EYE_OFF}
+                </button>`
+        : `${renameButton}${deleteButton}`;
+
+    const renameEditor = !allowRename ? '' : `
             <div class="option-editor-rename">
                 <input type="text" class="option-editor-rename-input" value="${escapeHtml(safeValue)}" maxlength="80">
                 <button class="btn btn-primary btn-sm btn-icon" type="button" data-option-rename-save aria-label="Save" title="Save">
@@ -1412,7 +1427,18 @@ function buildOptionEditorItemMarkup(key, value) {
                         <path d="M6 6l12 12"></path>
                     </svg>
                 </button>
-            </div>
+            </div>`;
+
+    const classNames = ['option-editor-item'];
+    if (isDefault) classNames.push('is-default');
+    if (isHidden) classNames.push('is-hidden-option');
+
+    return `
+        <div class="${classNames.join(' ')}" data-option-key="${escapeHtml(key)}" data-option-value="${escapeHtml(valueToken)}" data-option-default="${isDefault ? 'true' : 'false'}">
+            <div class="option-editor-value">${escapeHtml(safeValue)}${badge}</div>
+            <div class="option-editor-actions">
+                ${actions}
+            </div>${renameEditor}
         </div>
     `;
 }
@@ -1432,18 +1458,25 @@ function renderOptionGroups(containerId, groups) {
     container.innerHTML = `
         <div class="option-editor-layout">
             ${groups.map((group) => {
-                const values = sortOptionValues(getOptionValuesByKey(group.key));
-                const listContent = values.length
-                    ? values.map((value) => buildOptionEditorItemMarkup(group.key, value)).join('')
+                const entries = getOptionEditorEntries(group.key);
+                const hiddenCount = entries.filter(entry => entry.isHidden).length;
+                const listContent = entries.length
+                    ? entries.map((entry) => buildOptionEditorItemMarkup(group.key, entry)).join('')
                     : `<div class="option-editor-empty">No ${escapeHtml(group.label.toLowerCase())} yet.</div>`;
+                // Connectivity values map to protocol logic in the code, so a custom
+                // one would be an inert label: no add button there.
+                const addButton = isFixedOptionGroup(group.key)
+                    ? ''
+                    : `<button class="btn btn-primary btn-sm option-editor-group-add-btn" type="button" data-option-add-open="${escapeHtml(group.key)}" aria-label="Add" title="Add">+</button>`;
                 return `
                     <div class="option-editor-group" data-option-group="${escapeHtml(group.key)}">
                         <div class="option-editor-group-header">
                             <div class="option-editor-group-heading">
                                 <div class="option-editor-group-title">${escapeHtml(group.label)}</div>
-                                <span class="option-editor-group-count">${values.length}</span>
+                                <span class="option-editor-group-count">${entries.length - hiddenCount}</span>
+                                ${hiddenCount ? `<span class="option-editor-group-hidden-count">${hiddenCount} hidden</span>` : ''}
                             </div>
-                            <button class="btn btn-primary btn-sm option-editor-group-add-btn" type="button" data-option-add-open="${escapeHtml(group.key)}" aria-label="Add" title="Add">+</button>
+                            ${addButton}
                         </div>
                         <div class="option-editor-list">
                             ${listContent}
@@ -1504,7 +1537,7 @@ function exitOptionRenameMode(item) {
 
 async function addDeviceOption(key, nextValue = '') {
     const group = getDeviceOptionGroupConfig(key);
-    if (!group) return false;
+    if (!group || isFixedOptionGroup(key)) return false;
 
     const value = String(nextValue || '').trim();
     if (!value) {
@@ -1512,29 +1545,105 @@ async function addDeviceOption(key, nextValue = '') {
         return false;
     }
 
-    const currentValues = getOptionValuesByKey(key);
     const valueKey = normalizeOptionIdentity(value);
-    const alreadyExists = currentValues.some((item) => normalizeOptionIdentity(item) === valueKey);
-    if (alreadyExists) {
+    // A name that matches a hidden default is a request to bring it back, not a
+    // new custom — otherwise the user would end up with two entries alike.
+    if (isDefaultOptionValue(key, value)) {
+        if (!isHiddenDefaultOption(settings, key, value)) {
+            showMessage(`That ${group.singularLabel} already exists.`, 'error');
+            return false;
+        }
+        const hidden = getHiddenDefaultSlugs(settings, key).filter(slug => slug !== normalizeOptionValue(value));
+        await persistOptionGroup(key, { hidden }, `${group.label} updated.`);
+        return true;
+    }
+
+    const customs = getCustomOptionValues(settings, key);
+    if (customs.some((item) => normalizeOptionIdentity(item) === valueKey)) {
         showMessage(`That ${group.singularLabel} already exists.`, 'error');
         return false;
     }
 
-    await persistDeviceOptions(key, [...currentValues, value], `${group.label} updated.`);
+    await persistOptionGroup(key, { customs: [...customs, value] }, `${group.label} updated.`);
     return true;
+}
+
+async function toggleHiddenDefaultOption(context) {
+    if (!context) return;
+    const { key, group, currentValue } = context;
+    const slug = normalizeOptionValue(currentValue);
+    if (!slug || !isDefaultOptionValue(key, currentValue)) return;
+
+    const hidden = getHiddenDefaultSlugs(settings, key);
+    const isHidden = hidden.includes(slug);
+    const nextHidden = isHidden ? hidden.filter(item => item !== slug) : [...hidden, slug];
+    const label = String(currentValue || '').trim() || group.singularLabel;
+    await persistOptionGroup(key, { hidden: nextHidden }, `"${label}" ${isHidden ? 'shown' : 'hidden'}.`);
+}
+
+// How many stored records reference this value. Matches on the normalized slug
+// so casing/spacing differences don't hide a use.
+async function countOptionUsage(group, value) {
+    const usage = group?.usage;
+    const target = normalizeOptionValue(value);
+    if (!usage || !target) return 0;
+    const data = await loadData();
+    const records = Array.isArray(data?.[usage.collection]) ? data[usage.collection] : [];
+    return records.filter(record => normalizeOptionValue(record?.[usage.field]) === target).length;
+}
+
+// Deleting a custom also clears it from every record that uses it — same as
+// deleting a network clears it from its devices — so no record is left pointing
+// at a value that no longer exists.
+function buildDeleteOptionMessage(group, label, usageCount) {
+    if (!usageCount) {
+        return `Delete "${label}"?`;
+    }
+    const noun = group?.usage?.noun || 'record';
+    const field = group?.singularLabel || 'value';
+    const subject = usageCount === 1 ? `1 ${noun} uses` : `${usageCount} ${noun}s use`;
+    const them = usageCount === 1 ? 'it' : 'them';
+    return `${subject} "${label}". Deleting it will clear the ${field} from ${them}.`;
+}
+
+// Blanks the field on every record in the usage collection that points at this
+// value. Returns the updated data (or null when nothing referenced it).
+function clearOptionFromRecords(data, group, value) {
+    const usage = group?.usage;
+    const target = normalizeOptionValue(value);
+    if (!usage || !target) return null;
+    const records = Array.isArray(data?.[usage.collection]) ? data[usage.collection] : [];
+    let changed = false;
+    const updated = records.map((record) => {
+        if (record && normalizeOptionValue(record[usage.field]) === target) {
+            changed = true;
+            return { ...record, [usage.field]: '' };
+        }
+        return record;
+    });
+    return changed ? { ...data, [usage.collection]: updated } : null;
 }
 
 async function deleteDeviceOption(context) {
     if (!context) return;
     const { key, group, currentValue } = context;
-    const currentValues = getOptionValuesByKey(key);
-    const index = findOptionIndex(currentValues, currentValue);
+    const customs = getCustomOptionValues(settings, key);
+    const index = findOptionIndex(customs, currentValue);
     if (index < 0) {
         renderOptionsManagement();
         return;
     }
-    const nextValues = currentValues.filter((_, itemIndex) => itemIndex !== index);
-    await persistDeviceOptions(key, nextValues, `${group.label} updated.`);
+    const nextValues = customs.filter((_, itemIndex) => itemIndex !== index);
+
+    // Clear the value from referencing records first, in its own save, so the
+    // records never point at a preset that is already gone.
+    const data = await loadData();
+    const cleared = clearOptionFromRecords(data, group, currentValue);
+    if (cleared) {
+        await saveData(cleared);
+    }
+
+    await persistOptionGroup(key, { customs: nextValues }, `${group.label} updated.`);
 }
 
 async function renameDeviceOption(context) {
@@ -1550,26 +1659,27 @@ async function renameDeviceOption(context) {
         return;
     }
 
-    const currentValues = getOptionValuesByKey(key);
-    const index = findOptionIndex(currentValues, currentValue);
+    const customs = getCustomOptionValues(settings, key);
+    const index = findOptionIndex(customs, currentValue);
     if (index < 0) {
         renderOptionsManagement();
         return;
     }
 
-    const duplicate = currentValues.some((value, itemIndex) => (
+    const collidesWithDefault = isDefaultOptionValue(key, nextValue);
+    const duplicate = customs.some((value, itemIndex) => (
         itemIndex !== index && normalizeOptionIdentity(value) === normalizeOptionIdentity(nextValue)
     ));
-    if (duplicate) {
+    if (collidesWithDefault || duplicate) {
         showMessage(`That ${group.singularLabel} already exists.`, 'error');
         input.focus();
         input.select();
         return;
     }
 
-    const nextValues = [...currentValues];
+    const nextValues = [...customs];
     nextValues[index] = nextValue;
-    await persistDeviceOptions(key, nextValues, `${group.label} updated.`);
+    await persistOptionGroup(key, { customs: nextValues }, `${group.label} updated.`);
 }
 
 async function handleOptionEditorClick(event) {
@@ -1577,6 +1687,12 @@ async function handleOptionEditorClick(event) {
     if (addOpenBtn) {
         const key = addOpenBtn.getAttribute('data-option-add-open') || '';
         openOptionAddModal(key);
+        return;
+    }
+
+    const toggleHiddenBtn = event.target.closest('[data-option-toggle-hidden]');
+    if (toggleHiddenBtn) {
+        await toggleHiddenDefaultOption(getOptionEditorItemContext(toggleHiddenBtn));
         return;
     }
 
@@ -1608,7 +1724,9 @@ async function handleOptionEditorClick(event) {
         const context = getOptionEditorItemContext(deleteBtn);
         if (!context) return;
         const label = String(context.currentValue || '').trim() || context.group.singularLabel;
-        const confirmed = await showConfirm(`Delete "${label}"?`, { confirmLabel: 'Delete', isDanger: true });
+        const usageCount = await countOptionUsage(context.group, context.currentValue);
+        const message = buildDeleteOptionMessage(context.group, label, usageCount);
+        const confirmed = await showConfirm(message, { title: `Delete ${context.group.singularLabel}`, confirmText: 'Delete' });
         if (!confirmed) return;
         await deleteDeviceOption(context);
     }

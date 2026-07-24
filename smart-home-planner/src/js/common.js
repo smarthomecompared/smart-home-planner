@@ -682,7 +682,27 @@ async function saveData(data) {
 }
 
 // Settings Management Functions
-function getDefaultSettings() {
+//
+// Option lists are the union of two sources:
+//   • defaults — they live in the code and are never editable. Renaming one used
+//     to silently break features, because their normalized slugs are hardcoded
+//     all over: icon files (`img/devices/routers.svg`), the ISP gateway hints,
+//     the Wi-Fi/Zigbee/Z-Wave map layers, the Amazon ASIN lookup for batteries.
+//     Keeping them in the code also means a new default ships to everyone,
+//     instead of being frozen out by whatever list the user happened to save.
+//   • customs — the user's own values, freely renamed and deleted.
+// A default the user does not care about can be hidden, which drops it from the
+// pickers without touching its slug.
+const OPTION_GROUP_KEYS = ['brands', 'types', 'connectivity', 'batteryTypes', 'testCaseCategories'];
+// Connectivity values are protocols with dedicated logic behind them, so a
+// custom one would be an inert label. Existing customs stay deletable.
+const FIXED_OPTION_GROUP_KEYS = new Set(['connectivity']);
+
+function isFixedOptionGroup(key) {
+    return FIXED_OPTION_GROUP_KEYS.has(key);
+}
+
+function getDefaultOptionValues() {
     const mapType = (value) => {
         const normalized = normalizeOptionValue(value);
         return value === normalized ? formatDeviceType(value) : value;
@@ -699,29 +719,142 @@ function getDefaultSettings() {
         types: (DEFAULT_TYPES || []).map(mapType),
         connectivity: (DEFAULT_CONNECTIVITY || []).map(mapConnectivity),
         batteryTypes: batteryDefaults,
-        testCaseCategories: [...(DEFAULT_TEST_CASE_CATEGORIES || [])],
-        haAreaSyncTarget: 'controlled'
+        testCaseCategories: [...(DEFAULT_TEST_CASE_CATEGORIES || [])]
     };
+}
+
+function getDefaultOptionValuesByKey(key) {
+    const defaults = getDefaultOptionValues();
+    return Array.isArray(defaults[key]) ? defaults[key] : [];
+}
+
+function isDefaultOptionValue(key, value) {
+    const normalized = normalizeOptionValue(value);
+    if (!normalized) return false;
+    return getDefaultOptionValuesByKey(key).some(item => normalizeOptionValue(item) === normalized);
+}
+
+function sortOptionLabels(values) {
+    return [...(values || [])].sort((a, b) => String(a).localeCompare(String(b), undefined, { sensitivity: 'base' }));
+}
+
+function normalizeOptionSlugList(values) {
+    const seen = new Set();
+    (values || []).forEach((value) => {
+        const normalized = normalizeOptionValue(value);
+        if (normalized) seen.add(normalized);
+    });
+    return [...seen];
+}
+
+// Drops blanks, duplicates (by slug) and anything that collides with a default.
+function normalizeCustomOptionValues(key, values) {
+    const result = [];
+    const seen = new Set();
+    (values || []).forEach((value) => {
+        const label = String(value || '').trim();
+        const normalized = normalizeOptionValue(label);
+        if (!normalized || seen.has(normalized)) return;
+        if (isDefaultOptionValue(key, label)) return;
+        seen.add(normalized);
+        result.push(label);
+    });
+    return result;
+}
+
+function buildOptionGroupMap(factory) {
+    const result = {};
+    OPTION_GROUP_KEYS.forEach((key) => {
+        result[key] = factory(key);
+    });
+    return result;
+}
+
+function getCustomOptionValues(settings, key) {
+    const source = settings?.customOptions?.[key];
+    return normalizeCustomOptionValues(key, Array.isArray(source) ? source : []);
+}
+
+function getHiddenDefaultSlugs(settings, key) {
+    const source = settings?.hiddenDefaults?.[key];
+    return normalizeOptionSlugList(Array.isArray(source) ? source : []);
+}
+
+function isHiddenDefaultOption(settings, key, value) {
+    const normalized = normalizeOptionValue(value);
+    if (!normalized) return false;
+    return getHiddenDefaultSlugs(settings, key).includes(normalized);
+}
+
+// What every picker and filter sees: visible defaults plus customs.
+function getEffectiveOptionValues(settings, key) {
+    const hidden = new Set(getHiddenDefaultSlugs(settings, key));
+    const visibleDefaults = getDefaultOptionValuesByKey(key)
+        .filter(value => !hidden.has(normalizeOptionValue(value)));
+    return sortOptionLabels([...visibleDefaults, ...getCustomOptionValues(settings, key)]);
 }
 
 function normalizeHaAreaSyncTarget(value) {
     return value === 'installed' ? 'installed' : 'controlled';
 }
 
+// Pre-1.8.0 storage kept one flat list per group, mixing defaults and customs.
+// Extracting the customs is exact — whatever is not a default is a custom.
+//
+// Missing defaults are deliberately NOT turned into hidden ones, even though a
+// user may well have deleted them: an absent default is equally consistent with
+// "deleted on purpose" and "added by a release after this list was frozen", and
+// the two cannot be told apart. The errors are not symmetric — hiding something
+// the user never deleted loses an option silently, while showing something they
+// did delete is visible noise they can re-hide in one click — so the tie breaks
+// toward showing. Hidden state starts empty and is exact from here on.
+function migrateLegacyOptionLists(settings) {
+    const legacyKeys = OPTION_GROUP_KEYS.filter(key => Array.isArray(settings?.[key]));
+    if (!legacyKeys.length) return { settings, migrated: false };
+
+    const customOptions = { ...(settings.customOptions || {}) };
+
+    legacyKeys.forEach((key) => {
+        if (Array.isArray(customOptions[key])) return;
+        const legacyList = ensureFriendlyList(settings[key], key === 'connectivity' ? formatConnectivity : formatDeviceType);
+        customOptions[key] = legacyList.filter(value => !isDefaultOptionValue(key, value));
+    });
+
+    const next = { ...settings, customOptions };
+    OPTION_GROUP_KEYS.forEach((key) => { delete next[key]; });
+    return { settings: next, migrated: true };
+}
+
+function normalizeSettings(settings) {
+    const source = settings && typeof settings === 'object' ? settings : {};
+    const normalized = {
+        ...source,
+        customOptions: buildOptionGroupMap(key => normalizeCustomOptionValues(key, source.customOptions?.[key])),
+        hiddenDefaults: buildOptionGroupMap(key => normalizeOptionSlugList(source.hiddenDefaults?.[key])),
+        haAreaSyncTarget: normalizeHaAreaSyncTarget(source.haAreaSyncTarget)
+    };
+    // Effective lists are derived, never stored — see stripDerivedOptionLists.
+    OPTION_GROUP_KEYS.forEach((key) => {
+        normalized[key] = getEffectiveOptionValues(normalized, key);
+    });
+    return normalized;
+}
+
+// loadSettings hands back the effective lists so every caller keeps reading
+// `settings.types` as before; only `customOptions`/`hiddenDefaults` are stored.
+function stripDerivedOptionLists(settings) {
+    const stored = { ...(settings && typeof settings === 'object' ? settings : {}) };
+    OPTION_GROUP_KEYS.forEach((key) => { delete stored[key]; });
+    return stored;
+}
+
 async function loadSettings() {
     const storage = await loadStorage();
-    const defaults = getDefaultSettings();
-    let settings = storage.settings || defaults;
-    settings = ensureFriendlySettings({
-        brands: settings.brands || defaults.brands,
-        types: settings.types || defaults.types,
-        connectivity: settings.connectivity || defaults.connectivity,
-        batteryTypes: settings.batteryTypes || defaults.batteryTypes,
-        testCaseCategories: settings.testCaseCategories || defaults.testCaseCategories,
-        haAreaSyncTarget: settings.haAreaSyncTarget || defaults.haAreaSyncTarget
-    });
-    if (!storage.settings) {
-        await saveStorage({ ...storage, settings });
+    const stored = storage.settings && typeof storage.settings === 'object' ? storage.settings : null;
+    const { settings: unmigrated, migrated } = migrateLegacyOptionLists(stored || {});
+    const settings = normalizeSettings(unmigrated);
+    if (!stored || migrated) {
+        await saveStorage({ ...storage, settings: stripDerivedOptionLists(settings) });
     }
     return settings;
 }
@@ -730,8 +863,34 @@ async function saveSettings(settings) {
     const storage = await loadStorage();
     await saveStorage({
         ...storage,
-        settings
+        settings: stripDerivedOptionLists(normalizeSettings(settings))
     });
+}
+
+// Adds a user value to a group and returns the reloaded settings. Used by the
+// quick-add modals on the device form.
+async function addCustomOptionValue(key, value) {
+    const settings = await loadSettings();
+    const label = String(value || '').trim();
+    if (!label || !OPTION_GROUP_KEYS.includes(key)) return settings;
+
+    const normalized = normalizeOptionValue(label);
+    // Re-adding a hidden default brings it back instead of creating a twin.
+    if (isDefaultOptionValue(key, label)) {
+        const hidden = getHiddenDefaultSlugs(settings, key).filter(slug => slug !== normalized);
+        return await persistSettingsPatch(settings, { hiddenDefaults: { ...settings.hiddenDefaults, [key]: hidden } });
+    }
+    if (getCustomOptionValues(settings, key).some(item => normalizeOptionValue(item) === normalized)) {
+        return settings;
+    }
+    const customs = [...getCustomOptionValues(settings, key), label];
+    return await persistSettingsPatch(settings, { customOptions: { ...settings.customOptions, [key]: customs } });
+}
+
+async function persistSettingsPatch(settings, patch) {
+    const next = { ...settings, ...patch };
+    await saveSettings(next);
+    return normalizeSettings(next);
 }
 
 // Utility Functions
@@ -806,17 +965,6 @@ function ensureFriendlyList(values, formatter) {
         result.push(label);
     });
     return result;
-}
-
-function ensureFriendlySettings(settings) {
-    return {
-        brands: ensureFriendlyList(settings.brands, formatDeviceType),
-        types: ensureFriendlyList(settings.types, formatDeviceType),
-        connectivity: ensureFriendlyList(settings.connectivity, formatConnectivity),
-        batteryTypes: ensureFriendlyList(settings.batteryTypes, formatDeviceType),
-        testCaseCategories: ensureFriendlyList(settings.testCaseCategories),
-        haAreaSyncTarget: normalizeHaAreaSyncTarget(settings.haAreaSyncTarget)
-    };
 }
 
 function getFriendlyOption(options, value, fallbackFormatter) {

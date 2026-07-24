@@ -875,11 +875,52 @@
     gap: 0.4rem;
 }
 
+/* Hidden defaults stay listed so they can be brought back, just dimmed. */
+.option-editor-item.is-hidden-option {
+    background: rgba(16, 18, 22, 0.25);
+    border-style: dashed;
+}
+
+.option-editor-item.is-hidden-option .option-editor-value {
+    color: var(--text-muted);
+}
+
 .option-editor-value {
     color: var(--text-color);
     font-size: 0.84rem;
     font-weight: 600;
     word-break: break-word;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.option-editor-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 17px;
+    padding: 0 0.35rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.option-editor-badge.is-custom-badge {
+    background: rgba(0, 111, 255, 0.18);
+    color: #cce2ff;
+}
+
+.option-editor-badge.is-hidden-badge {
+    background: rgba(126, 133, 149, 0.18);
+    color: var(--text-muted);
+}
+
+.option-editor-group-hidden-count {
+    font-size: 0.72rem;
+    color: var(--text-muted);
 }
 
 .option-editor-actions {

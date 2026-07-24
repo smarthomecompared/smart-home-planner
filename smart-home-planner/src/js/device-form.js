@@ -558,10 +558,6 @@ function initializeEventListeners() {
     document.getElementById('battery-type-modal-cancel').addEventListener('click', closeBatteryTypeModal);
     document.getElementById('battery-type-modal-save').addEventListener('click', saveBatteryTypeModal);
     document.getElementById('battery-type-modal-overlay').addEventListener('click', closeBatteryTypeModal);
-    document.getElementById('connectivity-modal-close').addEventListener('click', closeConnectivityModal);
-    document.getElementById('connectivity-modal-cancel').addEventListener('click', closeConnectivityModal);
-    document.getElementById('connectivity-modal-save').addEventListener('click', saveConnectivityModal);
-    document.getElementById('connectivity-modal-overlay').addEventListener('click', closeConnectivityModal);
     const connectivityHelpBtn = document.getElementById('connectivity-help-btn');
     if (connectivityHelpBtn) {
         connectivityHelpBtn.addEventListener('click', openConnectivityHelpModal);
@@ -761,7 +757,6 @@ function initializeEventListeners() {
             closeBrandModal();
             closeTypeModal();
             closeBatteryTypeModal();
-            closeConnectivityModal();
             closeConnectivityHelpModal();
             closeLocalOnlyHelpModal();
             closeNetworkHelpModal();
@@ -1685,19 +1680,16 @@ function populateConnectivity() {
     const connectivitySelect = document.getElementById('device-connectivity');
     const currentValue = connectivitySelect.value;
     
+    // No "+ Add new": connectivity values are protocols the code has dedicated
+    // logic for, so a user-made one would be an inert label.
     const connectivity = settings.connectivity || [];
     const deviceConnectivity = [...new Set(devices.map(d => d.connectivity).filter(Boolean))];
     const connectivityOptions = buildFriendlyOptions(connectivity, deviceConnectivity, formatConnectivity);
     connectivitySelect.innerHTML = '<option value="">Select connectivity</option>' +
         connectivityOptions.map(option => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join('');
-    const newOption = document.createElement('option');
-    newOption.value = '__new__';
-    newOption.textContent = '+ Add new connectivity';
-    connectivitySelect.appendChild(newOption);
-    
+
     if (currentValue) {
-        const normalizedValue = currentValue === '__new__' ? currentValue : normalizeOptionValue(currentValue);
-        connectivitySelect.value = normalizedValue;
+        connectivitySelect.value = normalizeOptionValue(currentValue);
     }
 
     lastConnectivityValue = connectivitySelect.value || '';
@@ -2644,12 +2636,7 @@ async function handleDeviceSubmit(e) {
         form.dataset.submitMode = 'save';
     }
 
-    let connectivity = document.getElementById('device-connectivity').value;
-    if (connectivity === '__new__') {
-        showAlert('Please add a new connectivity option first.');
-        return;
-    }
-    connectivity = normalizeOptionValue(connectivity);
+    const connectivity = normalizeOptionValue(document.getElementById('device-connectivity').value);
     const isWifi = connectivity === 'wifi';
     const isZigbee = isZigbeeConnectivity(connectivity);
     const isZwave = isZwaveConnectivity(connectivity);
@@ -3100,13 +3087,8 @@ function handleTypeChange() {
 }
 
 function handleConnectivitySelectChange() {
-    const connectivitySelect = document.getElementById('device-connectivity');
-    if (connectivitySelect.value === '__new__') {
-        openConnectivityModal();
-    } else {
-        lastConnectivityValue = connectivitySelect.value;
-        handleConnectivityChange();
-    }
+    lastConnectivityValue = document.getElementById('device-connectivity').value;
+    handleConnectivityChange();
 }
 
 function openBrandModal() {
@@ -3135,15 +3117,8 @@ async function saveBrandModal() {
         return;
     }
 
-    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
-    const hasMatch = (updatedSettings.brands || []).some(item => normalizeOptionValue(item) === normalized);
-    if (!hasMatch) {
-        updatedSettings.brands = [...updatedSettings.brands, name]
-            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        await saveSettings(updatedSettings);
-        settings = updatedSettings;
-    }
+    settings = await addCustomOptionValue('brands', name);
 
     populateBrands();
     document.getElementById('device-brand').value = normalized;
@@ -3179,15 +3154,8 @@ async function saveTypeModal() {
         return;
     }
 
-    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
-    const hasMatch = (updatedSettings.types || []).some(item => normalizeOptionValue(item) === normalized);
-    if (!hasMatch) {
-        updatedSettings.types = [...updatedSettings.types, name]
-            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        await saveSettings(updatedSettings);
-        settings = updatedSettings;
-    }
+    settings = await addCustomOptionValue('types', name);
 
     populateTypes();
     document.getElementById('device-type').value = normalized;
@@ -3224,40 +3192,14 @@ async function saveBatteryTypeModal() {
         return;
     }
 
-    const updatedSettings = await loadSettings();
     const normalized = normalizeOptionValue(name);
-    const hasMatch = (updatedSettings.batteryTypes || []).some(item => normalizeOptionValue(item) === normalized);
-    if (!hasMatch) {
-        updatedSettings.batteryTypes = [...updatedSettings.batteryTypes, name]
-            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        await saveSettings(updatedSettings);
-        settings = updatedSettings;
-    }
+    settings = await addCustomOptionValue('batteryTypes', name);
 
     populateBatteryTypes();
     document.getElementById('device-battery-type').value = normalized;
     lastBatteryTypeValue = normalized;
     handleBatteryTypeChange();
     closeBatteryTypeModal();
-}
-
-function openConnectivityModal() {
-    const modal = document.getElementById('connectivity-modal');
-    const input = document.getElementById('connectivity-modal-input');
-    if (!modal || !input) return;
-    modal.classList.remove('is-hidden');
-    modal.setAttribute('aria-hidden', 'false');
-    input.value = '';
-    input.focus();
-}
-
-function closeConnectivityModal() {
-    const modal = document.getElementById('connectivity-modal');
-    if (!modal || modal.classList.contains('is-hidden')) return;
-    modal.classList.add('is-hidden');
-    modal.setAttribute('aria-hidden', 'true');
-    document.getElementById('device-connectivity').value = lastConnectivityValue;
-    handleConnectivityChange();
 }
 
 function openConnectivityHelpModal() {
@@ -3546,31 +3488,6 @@ function closeMatterBridgeHelpModal() {
     if (!modal || modal.classList.contains('is-hidden')) return;
     modal.classList.add('is-hidden');
     modal.setAttribute('aria-hidden', 'true');
-}
-
-async function saveConnectivityModal() {
-    const input = document.getElementById('connectivity-modal-input');
-    const name = input.value.trim();
-    if (!name) {
-        showAlert('Please enter a connectivity option.');
-        return;
-    }
-
-    const updatedSettings = await loadSettings();
-    const normalized = normalizeOptionValue(name);
-    const hasMatch = (updatedSettings.connectivity || []).some(item => normalizeOptionValue(item) === normalized);
-    if (!hasMatch) {
-        updatedSettings.connectivity = [...updatedSettings.connectivity, name]
-            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-        await saveSettings(updatedSettings);
-        settings = updatedSettings;
-    }
-
-    populateConnectivity();
-    document.getElementById('device-connectivity').value = normalized;
-    lastConnectivityValue = normalized;
-    handleConnectivityChange();
-    closeConnectivityModal();
 }
 
 function handleConnectivityChange() {
