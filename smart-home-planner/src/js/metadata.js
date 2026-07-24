@@ -36,7 +36,7 @@ const DEFAULT_TYPES = [
 ];
 
 const DEFAULT_CONNECTIVITY = [
-    'Bluetooth', 'Matter', 'Offline','Wi-Fi', 'Z-Wave', 'Zigbee'
+    'Bluetooth', 'Ethernet', 'Matter', 'Offline', 'Other', 'Wi-Fi', 'Z-Wave', 'Zigbee'
 ];
 
 const DEFAULT_TEST_CASE_CATEGORIES = [
