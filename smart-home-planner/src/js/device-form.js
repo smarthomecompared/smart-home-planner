@@ -504,6 +504,7 @@ function initializeEventListeners() {
     });
     initDevicePhotoUpload();
     document.getElementById('device-power').addEventListener('change', handlePowerTypeChange);
+    document.getElementById('device-poe-max-power')?.addEventListener('input', updatePoeUsageDisplay);
     document.getElementById('device-connectivity').addEventListener('change', handleConnectivitySelectChange);
     document.getElementById('device-battery-type').addEventListener('change', handleBatteryTypeChange);
     document.getElementById('device-brand').addEventListener('change', handleBrandChange);
@@ -2553,6 +2554,10 @@ function loadDeviceData(device) {
     document.getElementById('device-idle-consumption').value = device.idleConsumption || '';
     document.getElementById('device-mean-consumption').value = device.meanConsumption || '';
     document.getElementById('device-max-consumption').value = device.maxConsumption || '';
+    const poeMaxPowerInput = document.getElementById('device-poe-max-power');
+    if (poeMaxPowerInput) {
+        poeMaxPowerInput.value = device.poeMaxPower || '';
+    }
     document.getElementById('device-installation-date').value = device.installationDate || '';
     const purchaseDateInput = document.getElementById('device-purchase-date');
     if (purchaseDateInput) {
@@ -2648,6 +2653,7 @@ function loadDeviceData(device) {
     if (device.ports) {
         loadPorts(device.ports);
     }
+    updatePoeUsageDisplay();
 
     syncDateInputs();
     // Surface any pre-existing soft issues as soon as the device is loaded.
@@ -2836,6 +2842,14 @@ async function handleDeviceSubmit(e) {
         showAlert(maxConsumptionResult.error);
         return;
     }
+    const poeMaxPowerResult = parseOptionalNonNegativeNumberWithError(
+        document.getElementById('device-poe-max-power')?.value,
+        'Max PoE Power Budget'
+    );
+    if (poeMaxPowerResult.error) {
+        showAlert(poeMaxPowerResult.error);
+        return;
+    }
     const storagesResult = collectDeviceStorages();
     if (storagesResult.error) {
         showAlert(storagesResult.error);
@@ -2868,6 +2882,7 @@ async function handleDeviceSubmit(e) {
         idleConsumption: idleConsumptionResult.value,
         meanConsumption: meanConsumptionResult.value,
         maxConsumption: maxConsumptionResult.value,
+        poeMaxPower: poeMaxPowerResult.value,
         installationDate: document.getElementById('device-installation-date').value,
         purchaseDate: document.getElementById('device-purchase-date')?.value || '',
         purchaseStore: document.getElementById('device-purchase-store')?.value || '',
@@ -3023,6 +3038,68 @@ function handlePowerTypeChange() {
         document.getElementById('device-battery-duration').value = '';
         updateBatteryBuyButton();
     }
+}
+
+function formatPoeWatts(watts) {
+    return Number.isInteger(watts) ? String(watts) : watts.toFixed(1);
+}
+
+// A device "supports PoE" once at least one Ethernet port in its Data Ports
+// is configured to provide power (PSE). PoE Power in Use sums the rated
+// wattage of each PSE port that is actually linked to a port marked Powered
+// (PD) on the other device — the same PSE↔PD pairing the diagram uses. A PSE
+// port that is unconnected, or linked to a non-PD remote, draws nothing.
+function updatePoeUsageDisplay() {
+    const row = document.getElementById('poe-power-row');
+    const fill = document.getElementById('poe-usage-fill');
+    const valueEl = document.getElementById('poe-usage-value');
+    if (!row || !fill || !valueEl) return;
+
+    const container = document.getElementById('ports-container');
+    let hasPse = false;
+    let usedW = 0;
+    if (container) {
+        container.querySelectorAll('.port-item').forEach(portEl => {
+            const portId = portEl.dataset.portId;
+            const typeSelect = document.getElementById(`${portId}-type`);
+            const portKind = typeSelect ? typeSelect.value : (portEl.dataset.portKind || '');
+            if (portKind !== 'ethernet') return;
+            const poeRoleSelect = document.getElementById(`${portId}-poe-role`);
+            if (!poeRoleSelect || poeRoleSelect.value !== 'pse') return;
+            hasPse = true;
+            // The remote end must be a Powered (PD) port for power to flow.
+            const searchInput = document.getElementById(`${portId}-search`);
+            const remoteDeviceId = String(searchInput?.dataset.deviceId || '').trim();
+            if (!remoteDeviceId) return;
+            const remoteSelect = document.getElementById(`${portId}-remote-port`);
+            const remotePortId = String(remoteSelect?.value || '').trim();
+            if (!remotePortId) return;
+            const remoteDevice = devices.find(d => String(d.id || '') === remoteDeviceId);
+            const remotePort = (remoteDevice && Array.isArray(remoteDevice.ports))
+                ? remoteDevice.ports.find(p => String(p.id) === remotePortId)
+                : null;
+            if (!remotePort || remotePort.poeRole !== 'pd') return;
+            const poeStandardSelect = document.getElementById(`${portId}-poe-standard`);
+            const standard = poeStandardSelect ? poeStandardSelect.value : '';
+            usedW += POE_STANDARD_WATTS[standard] || 0;
+        });
+    }
+
+    row.classList.toggle('is-hidden', !hasPse);
+    if (!hasPse) return;
+
+    const maxInput = document.getElementById('device-poe-max-power');
+    const maxW = maxInput ? parseFloat(maxInput.value) : NaN;
+    const hasMax = Number.isFinite(maxW) && maxW > 0;
+    const percent = hasMax ? Math.min(100, (usedW / maxW) * 100) : 0;
+
+    fill.style.width = `${percent}%`;
+    fill.classList.toggle('poe-usage-danger', hasMax && usedW > maxW);
+    fill.classList.toggle('poe-usage-warning', hasMax && usedW <= maxW && percent >= 90);
+
+    valueEl.textContent = hasMax
+        ? `${formatPoeWatts(usedW)} / ${formatPoeWatts(maxW)} W`
+        : `${formatPoeWatts(usedW)} W in use`;
 }
 
 function handleStatusChange() {
@@ -4580,6 +4657,15 @@ const POE_STANDARD_OPTIONS = [
     { value: 'poe-pp-90', text: 'PoE++ (802.3bt Type 4 · 90 W)' },
     { value: 'passive',   text: 'Passive PoE (24V)' }
 ];
+// Rated power budget each standard reserves on the sourcing (PSE) port.
+// Passive PoE has no fixed wattage (it varies by injector), so it is not
+// counted toward the device's PoE Power in Use total.
+const POE_STANDARD_WATTS = {
+    'poe': 15,
+    'poe-plus': 30,
+    'poe-pp-60': 60,
+    'poe-pp-90': 90
+};
 
 // Selectable kinds for the Data Ports section
 const DATA_PORT_KINDS = ['ethernet', 'sfp', 'sfpplus', 'hdmi', 'usb'];
@@ -4855,8 +4941,6 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
                                 id="${portId}-goto"
                                 class="port-goto-btn${connectedTo ? '' : ' is-hidden'}"
                                 ${connectedTo ? `href="device-edit.html?id=${encodeURIComponent(connectedTo)}"` : ''}
-                                target="_blank"
-                                rel="noopener"
                                 title="Open connected device"
                                 aria-label="Open connected device"
                             >
@@ -4995,6 +5079,7 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
         updatePoeStandardVisibility();
         // Kind/direction changed: recompute which remote ports are compatible
         populateRemotePortOptions(portId, remoteSelect ? remoteSelect.value : '');
+        updatePoeUsageDisplay();
     };
 
     if (typeSelect) {
@@ -5005,6 +5090,10 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
     }
     if (poeRoleSelect) {
         poeRoleSelect.addEventListener('change', updatePoeStandardVisibility);
+        poeRoleSelect.addEventListener('change', updatePoeUsageDisplay);
+    }
+    if (poeStandardSelect) {
+        poeStandardSelect.addEventListener('change', updatePoeUsageDisplay);
     }
     if (remoteSelect) {
         // Refresh availability right before the dropdown opens
@@ -5023,6 +5112,7 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
     syncPortGotoButton(portId);
 
     updatePortsEmptyState();
+    updatePoeUsageDisplay();
 }
 
 // Number each port card by its position within its kind/direction group so the
@@ -5145,6 +5235,9 @@ function syncPortGotoButton(portId) {
         gotoBtn.classList.add('is-hidden');
         if (inputWrap) inputWrap.classList.remove('has-goto');
     }
+    // Connection state changed: a PSE port only counts toward PoE Power in
+    // Use once it is actually connected to a powered device.
+    updatePoeUsageDisplay();
 }
 
 function setupPortSearch(portId) {
@@ -5275,6 +5368,7 @@ function removePort(portId) {
         refreshPortLabels(container);
     }
     updatePortsEmptyState();
+    updatePoeUsageDisplay();
 }
 
 function getPortsData() {
@@ -5669,6 +5763,7 @@ async function createDevice(deviceData) {
         idleConsumption: Number.isFinite(deviceData.idleConsumption) ? deviceData.idleConsumption : null,
         meanConsumption: Number.isFinite(deviceData.meanConsumption) ? deviceData.meanConsumption : null,
         maxConsumption: Number.isFinite(deviceData.maxConsumption) ? deviceData.maxConsumption : null,
+        poeMaxPower: Number.isFinite(deviceData.poeMaxPower) ? deviceData.poeMaxPower : null,
         installationDate: deviceData.installationDate || '',
         serialNumber: deviceData.serialNumber ? deviceData.serialNumber.trim() : '',
         purchaseDate: deviceData.purchaseDate || '',
@@ -5775,6 +5870,7 @@ async function updateDevice(id, deviceData, options = {}) {
         device.idleConsumption = Number.isFinite(deviceData.idleConsumption) ? deviceData.idleConsumption : null;
         device.meanConsumption = Number.isFinite(deviceData.meanConsumption) ? deviceData.meanConsumption : null;
         device.maxConsumption = Number.isFinite(deviceData.maxConsumption) ? deviceData.maxConsumption : null;
+        device.poeMaxPower = Number.isFinite(deviceData.poeMaxPower) ? deviceData.poeMaxPower : null;
         device.installationDate = deviceData.installationDate || '';
         device.serialNumber = deviceData.serialNumber ? deviceData.serialNumber.trim() : '';
         device.purchaseDate = deviceData.purchaseDate || '';

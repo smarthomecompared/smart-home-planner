@@ -25,6 +25,8 @@
 - "Color by network" Map view that tints devices and links by VLAN, with a VLAN legend and spotlight
 - Quick "open connected device" button on each port's "Connected to" field in the device form
 - "More info" help on each port's "Cable type" field explaining the max speed every cable category (Cat1–Cat8) supports
+- Map now shows each device's network (Ethernet/SFP/SFP+) ports as speed chips
+- Max PoE Power Budget field and a "PoE Power in Use" meter in the device form's Power section
 
 ### Changed
 - Complete app redesign

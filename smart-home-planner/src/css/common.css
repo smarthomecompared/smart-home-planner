@@ -2096,6 +2096,50 @@ nav.site-nav a:focus-visible .site-nav-label {
     display: none;
 }
 
+/* PoE Power in Use meter (Power section of the device form) */
+.poe-usage-meter {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-secondary);
+}
+
+.poe-usage-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--card-bg);
+    overflow: hidden;
+}
+
+.poe-usage-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--success-color);
+    border-radius: 4px;
+    transition: width var(--transition-base);
+}
+
+.poe-usage-fill.poe-usage-warning {
+    background: var(--warning-color);
+}
+
+.poe-usage-fill.poe-usage-danger {
+    background: var(--danger-color);
+}
+
+.poe-usage-value {
+    flex: 0 0 auto;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .modal {
     position: fixed;
     inset: 0;

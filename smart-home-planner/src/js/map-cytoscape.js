@@ -514,6 +514,20 @@ window.DeviceMap = (() => {
         return { width, height };
     }
 
+    // The card size to persist: for a device grown to host port chips, the node's
+    // width/height include the chip bands, so save the pre-chip base instead —
+    // otherwise the bands would be re-added on top of the saved size on every
+    // reload and the card would keep growing.
+    function getDeviceBaseSize(node) {
+        if (!node) return null;
+        const baseWidth = Number(node.data('chipBaseWidth'));
+        const baseHeight = Number(node.data('chipBaseHeight'));
+        if (Number.isFinite(baseWidth) && Number.isFinite(baseHeight)) {
+            return { width: baseWidth, height: baseHeight };
+        }
+        return getDeviceNodeSize(node);
+    }
+
     function normalizeDeviceRotation(value) {
         const parsed = Number(value);
         if (!Number.isFinite(parsed)) return 0;
@@ -559,6 +573,17 @@ window.DeviceMap = (() => {
         const iconSvgContent = String(node.data('cardIconSvgContent') || '').trim() || null;
         const imageHref = String(node.data('cardImageUrl') || '').trim();
         const rotation = getDeviceNodeRotation(node);
+        // A rotated card can't host chips (its frame is rotated), so drop them
+        // while rotated and let the next full render rebuild the chip layout.
+        const chipLayout = rotation ? null : (node.data('cardChipLayout') || null);
+        // Without a live chip layout the node must shrink back to its pre-chip
+        // base, or a formerly-grown card would redraw at the banded size empty.
+        const baseWidth = Number(node.data('chipBaseWidth'));
+        const baseHeight = Number(node.data('chipBaseHeight'));
+        const hasChipBase = Number.isFinite(baseWidth) && Number.isFinite(baseHeight);
+        if (!chipLayout && hasChipBase && Number(node.data('width')) !== baseWidth) {
+            node.data({ width: baseWidth, height: baseHeight });
+        }
         const width = Number(node.data('width')) || DEVICE_BASE_METRICS.width;
         const height = Number(node.data('height')) || DEVICE_BASE_METRICS.height;
         const fontSize = Number(node.data('fontSize')) || DEVICE_BASE_METRICS.fontSize;
@@ -575,13 +600,18 @@ window.DeviceMap = (() => {
             height,
             fontSize,
             textMaxWidth,
-            padding
+            padding,
+            chips: chipLayout ? `${chipLayout.chips.length}:${chipLayout.nodeWidth}x${chipLayout.nodeHeight}` : ''
         });
         const lastSignature = String(node.data('cardSvgSignature') || '');
         if (lastSignature && lastSignature === signature) {
             return;
         }
         node.data('cardSvgTargetSignature', signature);
+        // When chips are present the node.data width/height are the grown node
+        // size; the builder derives the card size from the chip layout instead.
+        const cardWidth = chipLayout ? chipLayout.cardWidth : width;
+        const cardHeight = chipLayout ? chipLayout.cardHeight : height;
         const url = buildDeviceCardSvg({
             label,
             status,
@@ -589,11 +619,12 @@ window.DeviceMap = (() => {
             rotation,
             iconSvgContent,
             imageHref,
-            width,
-            height,
+            width: cardWidth,
+            height: cardHeight,
             fontSize,
             textMaxWidth,
-            padding
+            padding,
+            chipLayout
         });
         if (cardSvgCache.has(url)) {
             node.data('cardSvg', url);
@@ -1315,7 +1346,7 @@ window.DeviceMap = (() => {
 
     function serializeDevicePosition(node) {
         if (!node) return null;
-        const size = getDeviceNodeSize(node);
+        const size = getDeviceBaseSize(node);
         const rotation = getDeviceNodeRotation(node);
         const hasBackground = Boolean(diagramBackgroundFile && diagramBackgroundFile.path);
         if (!hasBackground) {
@@ -1359,7 +1390,7 @@ window.DeviceMap = (() => {
 
         normalizedPositions.forEach((position, deviceId) => {
             const node = cy ? cy.getElementById(deviceId) : null;
-            const size = node && !node.empty() ? getDeviceNodeSize(node) : null;
+            const size = node && !node.empty() ? getDeviceBaseSize(node) : null;
             const rotation = node && !node.empty() ? getDeviceNodeRotation(node) : 0;
             next[deviceId] = {
                 x: position.x,
@@ -2358,10 +2389,17 @@ function initializeCytoscape() {
                 style: {
                     'width': 2,
                     'line-color': '#006fff',
-                    'target-arrow-color': '#006fff',
-                    'target-arrow-shape': 'triangle',
+                    // No arrowheads on Ethernet/SFP links — the port chips at each
+                    // end already show the connection and its speed.
+                    'target-arrow-shape': 'none',
+                    'source-arrow-shape': 'none',
                     'curve-style': 'bezier',
                     'label': 'data(label)',
+                    // The link speed is drawn as a port chip inside each device
+                    // card; the chip pass sets a per-edge inline endpoint style
+                    // (an "x y" px offset from the node center) so the line ends
+                    // on that chip. Endpoint props can't be data()-mapped, hence
+                    // the inline style; ends without a chip keep the default.
                     'font-size': 10,
                     'color': '#f7f8fa',
                     'text-outline-width': 2,
@@ -2370,13 +2408,6 @@ function initializeCytoscape() {
                     'text-background-opacity': 1,
                     'text-background-padding': 2,
                     'text-background-shape': 'roundrectangle'
-                }
-            },
-            {
-                selector: 'edge[connectionType="ethernet"][?bidirectional]',
-                style: {
-                    'source-arrow-color': '#006fff',
-                    'source-arrow-shape': 'triangle'
                 }
             },
             {
@@ -3870,7 +3901,29 @@ async function renderNetwork(options = {}) {
 
     // Add edges for connections
     const processedConnections = new Set();
-    
+
+    // Ethernet edges keyed by device pair, so the port-chip pass can attach each
+    // edge end to the exact chip it should land on.
+    const ethernetPairEdges = new Map();
+
+    // Device positions/sizes as already placed above. devicePositionById is used
+    // to decide which card edge (top/bottom) each port chip sits on; the registry
+    // keeps the node element so the chip pass can widen it and redraw its card.
+    const devicePositionById = new Map();
+    const deviceRenderRegistry = new Map();
+    elements.forEach((element) => {
+        if (element.group === 'nodes' && element.data && element.data.type === 'device' && element.position) {
+            const id = String(element.data.id);
+            devicePositionById.set(id, {
+                x: element.position.x,
+                y: element.position.y,
+                width: Number(element.data.width) || DEVICE_BASE_METRICS.width,
+                height: Number(element.data.height) || DEVICE_BASE_METRICS.height
+            });
+            deviceRenderRegistry.set(id, element);
+        }
+    });
+
     filteredDevicesList.forEach(device => {
         if (!device.ports || !Array.isArray(device.ports)) return;
         
@@ -3927,20 +3980,45 @@ async function renderNetwork(options = {}) {
                 // Input/Output ports: arrows on both ends (bidirectional)
                 const isBidirectionalPort = port.type.endsWith('-io');
                 const isInputPort = !isBidirectionalPort && port.type.includes('input');
+                const sourceId = isInputPort ? port.connectedTo : device.id;
+                const targetId = isInputPort ? device.id : port.connectedTo;
 
-                elements.push({
+                const edgeEl = {
                     group: 'edges',
                     data: {
                         id: `${device.id}-${port.connectedTo}-${port.type}`,
-                        source: isInputPort ? port.connectedTo : device.id,
-                        target: isInputPort ? device.id : port.connectedTo,
+                        source: sourceId,
+                        target: targetId,
                         connectionType: connectionType,
                         label: label,
                         bidirectional: isBidirectionalPort
                     }
-                });
+                };
+                elements.push(edgeEl);
+                if (connectionType === 'ethernet') {
+                    // Endpoint properties can't be data()-mapped, so the chip pass
+                    // sets them as an inline per-edge style. Keyed by the sorted
+                    // device pair so each device can attach its end to the right chip.
+                    edgeEl.style = {};
+                    ethernetPairEdges.set(
+                        [String(device.id), String(port.connectedTo)].sort().join('|'),
+                        edgeEl
+                    );
+                }
             }
         });
+    });
+
+    // Layout of every device that grew chip bands, so non-ethernet edges can be
+    // re-clipped to the card body (not the band) once all edges exist.
+    const chipLayoutsByDevice = new Map();
+    applyPortSpeedChips({
+        filteredDevicesList,
+        devicePositionById,
+        deviceRenderRegistry,
+        ethernetPairEdges,
+        chipLayoutsByDevice,
+        showEthernet
     });
 
     if (showWifi) {
@@ -4081,6 +4159,10 @@ async function renderNetwork(options = {}) {
     } else {
         highlightedNetworkId = null;
     }
+
+    // Keep non-ethernet arrows (power, USB, HDMI, wireless) landing on the card
+    // body of chip-grown devices, not out on a speed chip.
+    reclipEdgesAroundChips({ elements, chipLayoutsByDevice, devicePositionById });
 
     // Update cytoscape
     hideEmptyMapMessage();
@@ -4771,8 +4853,17 @@ function getEthernetConnectionMeta(device, port, devicesList) {
     if (!meta.cableType && reversePort.cableType) {
         meta.cableType = reversePort.cableType;
     }
-    if (!meta.speed && reversePort.speed) {
-        meta.speed = reversePort.speed;
+    // The link only ever runs as fast as its slower end, so the badge shows
+    // whichever of the two port speeds is lower (not just whichever is set).
+    const reverseSpeed = reversePort.speed || '';
+    if (!meta.speed) {
+        meta.speed = reverseSpeed;
+    } else if (reverseSpeed) {
+        const ownMbps = parseEthernetSpeedMbps(meta.speed);
+        const otherMbps = parseEthernetSpeedMbps(reverseSpeed);
+        if (ownMbps != null && otherMbps != null && otherMbps < ownMbps) {
+            meta.speed = reverseSpeed;
+        }
     }
     // PoE only applies to the link when one end provides power (PSE) and the
     // other end is powered (PD) — mismatched or missing roles mean no PoE
@@ -4795,19 +4886,271 @@ function formatEthernetLabel(meta) {
     }
     const baseName = meta.kind === 'sfp' ? 'SFP' : (meta.kind === 'sfpplus' ? 'SFP+' : 'Ethernet');
     const cableLabel = meta.cableType ? formatCableTypeLabel(meta.cableType) : '';
-    const speedLabel = meta.speed || '';
     const poeLabel = meta.poe ? (POE_SHORT[meta.poe] || 'PoE') : '';
-    let base;
-    if (cableLabel && speedLabel) {
-        base = `${cableLabel} (${speedLabel})`;
-    } else if (cableLabel) {
-        base = cableLabel;
-    } else if (speedLabel) {
-        base = `${baseName} (${speedLabel})`;
-    } else {
-        base = baseName;
-    }
+    const base = cableLabel || baseName;
     return poeLabel ? `${base} · ${poeLabel}` : base;
+}
+
+// The link speed gets its own badge at the arrowhead (see the
+// edge[connectionType="ethernet"] target-label style), so it's formatted
+// separately from formatEthernetLabel's cable/PoE text to avoid showing it twice.
+function formatPortSpeedLabel(meta) {
+    if (!meta || !meta.speed) {
+        return '';
+    }
+    return String(meta.speed).replace(/([0-9])([A-Za-z])/, '$1 $2');
+}
+
+// Converts a stored network port speed (e.g. "1Gbps", "100Mbps") to Mbps so
+// the two ends of a link can be compared. Returns null when unparseable.
+function parseEthernetSpeedMbps(value) {
+    const match = /^([\d.]+)\s*([GgMm])/.exec(String(value || '').trim());
+    if (!match) {
+        return null;
+    }
+    const num = parseFloat(match[1]);
+    if (!Number.isFinite(num)) {
+        return null;
+    }
+    return match[2].toLowerCase() === 'g' ? num * 1000 : num;
+}
+
+// Port speed chips are drawn as a row of small tabs on the top/bottom edge of
+// the device card. These constants size a single chip.
+const PORT_CHIP_HEIGHT = 14;
+const PORT_CHIP_GAP = 5;
+const PORT_CHIP_SIDE_MARGIN = 7;
+const PORT_CHIP_FONT_SIZE = 7.5;
+
+// Width a chip needs for its text (Lato bold ~7.5px ≈ 4.7px/char) plus padding.
+function measurePortChipWidth(text) {
+    return Math.round(clampNumber(String(text || '').length * 4.7 + 12, 30, 92));
+}
+
+// Lays out a device's port-speed chips as a row hugging the top edge (chips for
+// links coming from above) and/or the bottom edge (links from below), widening
+// the card so a crowded row never overlaps and adding a thin band above/below
+// for the chips to sit in. Returns the grown node size, the card's offset/size
+// inside it, and each chip's center in node-local SVG coordinates. Mutates the
+// passed chip objects, setting cx/cy/w on each.
+function computeDeviceChipLayout(baseWidth, baseHeight, topChips, bottomChips, chipWidth) {
+    const chipH = PORT_CHIP_HEIGHT;
+    const gap = PORT_CHIP_GAP;
+    const band = chipH + gap;
+    // A device with a lot of ports would otherwise grow unboundedly wide; cap the
+    // card at the normal device max and shrink the chips to fit that busier side.
+    const maxCard = DEVICE_SIZE_LIMITS.maxWidth;
+    const maxPerSide = Math.max(topChips.length, bottomChips.length);
+    if (maxPerSide > 0) {
+        const fitWidth = Math.floor(
+            (maxCard - 2 * PORT_CHIP_SIDE_MARGIN - (maxPerSide - 1) * gap) / maxPerSide
+        );
+        chipWidth = Math.max(30, Math.min(chipWidth, fitWidth));
+    }
+    const rowWidth = (arr) => arr.length
+        ? arr.length * chipWidth + (arr.length - 1) * gap + 2 * PORT_CHIP_SIDE_MARGIN
+        : 0;
+    const cardWidth = clampNumber(
+        Math.max(baseWidth, rowWidth(topChips), rowWidth(bottomChips)),
+        DEVICE_SIZE_LIMITS.minWidth,
+        maxCard
+    );
+    const topBand = topChips.length ? band : 0;
+    const bottomBand = bottomChips.length ? band : 0;
+    const cardHeight = baseHeight;
+    const nodeWidth = cardWidth;
+    const nodeHeight = topBand + cardHeight + bottomBand;
+    const placeRow = (arr, cy) => {
+        const total = arr.length * chipWidth + (arr.length - 1) * gap;
+        const startX = (cardWidth - total) / 2;
+        arr.forEach((chip, index) => {
+            chip.w = chipWidth;
+            chip.cx = startX + index * (chipWidth + gap) + chipWidth / 2;
+            chip.cy = cy;
+        });
+    };
+    placeRow(topChips, chipH / 2);
+    placeRow(bottomChips, nodeHeight - chipH / 2);
+    return {
+        nodeWidth,
+        nodeHeight,
+        cardY: topBand,
+        cardWidth,
+        cardHeight,
+        chipHeight: chipH,
+        chips: [...topChips, ...bottomChips]
+    };
+}
+
+// A network (RJ45/SFP) data port is the only kind that carries a link speed and
+// therefore gets a chip.
+function isNetworkPortTypeForChip(type) {
+    const t = String(type || '');
+    return t.startsWith('ethernet') || t.startsWith('sfp');
+}
+
+// Draws every device's network ports as speed chips on its card: connected ports
+// show the negotiated link speed (min of both ends) with the ethernet arrow
+// landing on the chip; empty ports show their own speed, muted, with no cable.
+// The device card is widened and its edges reshaped in place, and each ethernet
+// edge end is re-pointed at the chip it belongs to. Runs only while the Ethernet
+// layer is visible.
+function applyPortSpeedChips({ filteredDevicesList, devicePositionById, deviceRenderRegistry, ethernetPairEdges, chipLayoutsByDevice, showEthernet }) {
+    if (!showEthernet) return;
+
+    filteredDevicesList.forEach((device) => {
+        const deviceId = String(device.id || '');
+        const element = deviceRenderRegistry.get(deviceId);
+        const dpos = devicePositionById.get(deviceId);
+        if (!element || !dpos) return;
+        // Rotated cards use a rotated SVG frame that the axis-aligned chip
+        // endpoints can't follow, so they keep the plain (chip-less) card.
+        if (normalizeDeviceRotation(element.data.rotation || 0) !== 0) return;
+
+        const networkPorts = (Array.isArray(device.ports) ? device.ports : [])
+            .filter((port) => port && isNetworkPortTypeForChip(port.type));
+        if (!networkPorts.length) return;
+
+        // All chips sit on a single row on the top edge (a port header), keeping
+        // the bottom edge clear so power/other lines coming from below never pass
+        // under a port chip.
+        const chips = networkPorts.map((port) => {
+            const connectedId = String(port.connectedTo || '');
+            const connectedDevice = connectedId
+                ? filteredDevicesList.find((d) => String(d.id) === connectedId)
+                : null;
+            if (connectedDevice) {
+                const meta = getEthernetConnectionMeta(device, port, filteredDevicesList);
+                const opos = devicePositionById.get(connectedId);
+                return {
+                    text: formatPortSpeedLabel(meta) || '—',
+                    connected: true,
+                    otherId: connectedId,
+                    otherX: opos ? opos.x : dpos.x
+                };
+            }
+            // No connection (or the peer is filtered out): a present-but-unused port.
+            return {
+                text: formatPortSpeedLabel({ speed: port.speed }) || '—',
+                connected: false,
+                otherId: '',
+                otherX: dpos.x
+            };
+        });
+
+        // Connected chips first (sorted by the peer's x to reduce crossings),
+        // then empty ports trailing on the right.
+        const topChips = chips
+            .slice()
+            .sort((a, b) => (a.connected === b.connected ? a.otherX - b.otherX : (a.connected ? -1 : 1)));
+        const bottomChips = [];
+
+        const chipWidth = Math.max(...chips.map((c) => measurePortChipWidth(c.text)));
+        const baseWidth = Number(element.data.width) || DEVICE_BASE_METRICS.width;
+        const baseHeight = Number(element.data.height) || DEVICE_BASE_METRICS.height;
+        const layout = computeDeviceChipLayout(baseWidth, baseHeight, topChips, bottomChips, chipWidth);
+
+        // Grow the node to the banded size and redraw its card with the chips.
+        // Keep the pre-chip base so save/serialize never bakes the bands in.
+        element.data.chipBaseWidth = baseWidth;
+        element.data.chipBaseHeight = baseHeight;
+        element.data.width = layout.nodeWidth;
+        element.data.height = layout.nodeHeight;
+        element.data.cardChipLayout = layout;
+        if (chipLayoutsByDevice) {
+            chipLayoutsByDevice.set(deviceId, {
+                nodeWidth: layout.nodeWidth,
+                nodeHeight: layout.nodeHeight,
+                cardWidth: layout.cardWidth,
+                cardHeight: layout.cardHeight,
+                cardY: layout.cardY
+            });
+        }
+        element.data.cardSvgSignature = '';
+        element.data.cardSvgTargetSignature = '';
+        element.data.cardSvg = buildDeviceCardSvg({
+            label: element.data.cardLabel || element.data.label,
+            status: element.data.cardStatus || element.data.status,
+            storageLabel: element.data.cardStorageLabel || '',
+            rotation: 0,
+            iconSvgContent: element.data.cardIconSvgContent || null,
+            imageHref: element.data.cardImageUrl || '',
+            width: baseWidth,
+            height: baseHeight,
+            fontSize: element.data.fontSize,
+            textMaxWidth: element.data.textMaxWidth,
+            padding: element.data.padding,
+            chipLayout: layout
+        });
+
+        // Re-point each connected chip's edge end at the chip via an inline
+        // per-edge endpoint style (endpoint props are not data()-mappable).
+        layout.chips.forEach((chip) => {
+            if (!chip.connected || !chip.otherId) return;
+            const edgeEl = ethernetPairEdges.get([deviceId, chip.otherId].sort().join('|'));
+            if (!edgeEl) return;
+            if (!edgeEl.style) edgeEl.style = {};
+            const offX = (chip.cx - layout.nodeWidth / 2).toFixed(1);
+            const offY = (chip.cy - layout.nodeHeight / 2).toFixed(1);
+            const endpoint = `${offX}px ${offY}px`;
+            if (String(edgeEl.data.source) === deviceId) {
+                edgeEl.style['source-endpoint'] = endpoint;
+            } else {
+                edgeEl.style['target-endpoint'] = endpoint;
+            }
+        });
+    });
+}
+
+// Endpoint (as an offset-from-node-center px string) where a line coming from
+// `farWorld` should meet the card body of a chip-grown device, so the arrow ends
+// on the card rectangle rather than out in the chip band.
+function computeCardBoundaryEndpoint(farWorld, deviceWorld, layout) {
+    const nodeCenterX = layout.nodeWidth / 2;
+    const nodeCenterY = layout.nodeHeight / 2;
+    // Card is horizontally centered in the node; vertically it sits below the top
+    // band. Card center offset from node center is (0, cardY + cardHeight/2 - nodeH/2).
+    const cardCenterOffsetY = layout.cardY + layout.cardHeight / 2 - nodeCenterY;
+    const dx = farWorld.x - deviceWorld.x;
+    const dy = farWorld.y - deviceWorld.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    const halfW = layout.cardWidth / 2;
+    const halfH = layout.cardHeight / 2;
+    const t = Math.min(
+        ux !== 0 ? halfW / Math.abs(ux) : Infinity,
+        uy !== 0 ? halfH / Math.abs(uy) : Infinity
+    );
+    const offX = ux * t;
+    const offY = cardCenterOffsetY + uy * t;
+    return `${offX.toFixed(1)}px ${offY.toFixed(1)}px`;
+}
+
+// Non-ethernet edges (power, USB, HDMI, wireless) clip to the whole node box by
+// default, which now includes the chip bands — so their arrows would land on a
+// chip and read as if plugged into a port. Re-point each such end that touches a
+// chip-grown device at the card body instead. Only device–device ends are
+// adjusted; ends at ISP/cloud nodes keep the default.
+function reclipEdgesAroundChips({ elements, chipLayoutsByDevice, devicePositionById }) {
+    if (!chipLayoutsByDevice || !chipLayoutsByDevice.size) return;
+    elements.forEach((el) => {
+        if (el.group !== 'edges' || !el.data) return;
+        if (el.data.connectionType === 'ethernet') return;
+        const sourceId = String(el.data.source);
+        const targetId = String(el.data.target);
+        const reEnd = (endId, farId, endKey) => {
+            const layout = chipLayoutsByDevice.get(endId);
+            if (!layout) return;
+            const devPos = devicePositionById.get(endId);
+            const farPos = devicePositionById.get(farId);
+            if (!devPos || !farPos) return;
+            if (!el.style) el.style = {};
+            el.style[endKey] = computeCardBoundaryEndpoint(farPos, devPos, layout);
+        };
+        reEnd(sourceId, targetId, 'source-endpoint');
+        reEnd(targetId, sourceId, 'target-endpoint');
+    });
 }
 
 function isWifiConnectionDevice(device) {
@@ -4952,9 +5295,17 @@ function buildSvgTextLines(text, maxWidth, fontSize, maxLines = 2) {
     return trimmed;
 }
 
-function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref, width, height, fontSize, textMaxWidth, padding }) {
-    const safeWidth = clampNumber(Number(width), DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
-    const safeHeight = clampNumber(Number(height), DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
+function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgContent, imageHref, width, height, fontSize, textMaxWidth, padding, chipLayout }) {
+    // With a chipLayout the node grows a band above/below the card to hold the
+    // port-speed chips; the card itself keeps its own (possibly widened) size and
+    // is drawn offset down by the top band. Without one, node === card.
+    const cardOuterWidth = chipLayout ? chipLayout.cardWidth : width;
+    const cardOuterHeight = chipLayout ? chipLayout.cardHeight : height;
+    const canvasWidth = chipLayout ? chipLayout.nodeWidth : clampNumber(Number(width), DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
+    const canvasHeight = chipLayout ? chipLayout.nodeHeight : clampNumber(Number(height), DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
+    const cardOffsetY = chipLayout ? chipLayout.cardY : 0;
+    const safeWidth = clampNumber(Number(cardOuterWidth), DEVICE_SIZE_LIMITS.minWidth, DEVICE_SIZE_LIMITS.maxWidth);
+    const safeHeight = clampNumber(Number(cardOuterHeight), DEVICE_SIZE_LIMITS.minHeight, DEVICE_SIZE_LIMITS.maxHeight);
     const statusColor = getDeviceStatusColor(status);
     const rx = 10;
     const safeFontSize = clampNumber(
@@ -4997,8 +5348,12 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
     const scale = angle
         ? Math.min(safeWidth / rotatedWidth, safeHeight / rotatedHeight, 1)
         : 1;
-    const transform = angle
-        ? `transform="translate(${safeWidth / 2} ${safeHeight / 2}) rotate(${angle}) scale(${scale}) translate(${-safeWidth / 2} ${-safeHeight / 2})"`
+    const rotateTransform = angle
+        ? `translate(${safeWidth / 2} ${safeHeight / 2}) rotate(${angle}) scale(${scale}) translate(${-safeWidth / 2} ${-safeHeight / 2})`
+        : '';
+    // Shift the whole card down by the top chip band (if any), then rotate.
+    const groupTransform = (cardOffsetY || rotateTransform)
+        ? `transform="translate(0 ${cardOffsetY})${rotateTransform ? ' ' + rotateTransform : ''}"`
         : '';
 
     const textMarkup = lines.map((line, index) => {
@@ -5068,15 +5423,21 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
         }
     }
 
+    const chipsMarkup = chipLayout ? buildPortChipsMarkup(chipLayout) : '';
+
     const svg = [
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}" viewBox="0 0 ${canvasWidth} ${canvasHeight}">`,
         '<defs>',
         `<linearGradient id="cardBgGrad" x1="0" y1="0" x2="0" y2="${safeHeight}" gradientUnits="userSpaceOnUse">`,
         '<stop offset="0" stop-color="#293039"/>',
         '<stop offset="1" stop-color="#1a1e25"/>',
         '</linearGradient>',
+        '<linearGradient id="chipGrad" x1="0" y1="0" x2="0" y2="1">',
+        '<stop offset="0" stop-color="#293039"/>',
+        '<stop offset="1" stop-color="#1a1e25"/>',
+        '</linearGradient>',
         '</defs>',
-        `<g ${transform}>`,
+        `<g ${groupTransform}>`,
         `<rect x="0.5" y="0.5" width="${safeWidth - 1}" height="${safeHeight - 1}" rx="${rx}" ry="${rx}" fill="url(#cardBgGrad)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`,
         `<path d="M ${rx} 1.5 H ${safeWidth - rx}" stroke="rgba(255,255,255,0.08)" stroke-width="1" fill="none"/>`,
         statusDotMarkup,
@@ -5084,9 +5445,34 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
         `<text x="${textX}" y="${safeHeight / 2}" text-anchor="${textAnchor}" font-size="${safeFontSize}" font-weight="600" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="#f4f5f7">${textMarkup}</text>`,
         storageMarkup,
         '</g>',
+        chipsMarkup,
         '</svg>'
     ].join('');
     return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+// Draws the row(s) of port-speed chips as small tabs on the device card's top
+// and/or bottom edge. Connected ports get a solid blue-bordered chip (the
+// ethernet arrow lands on it); empty ports get a muted, dashed chip so it reads
+// as "port present, nothing plugged in".
+function buildPortChipsMarkup(chipLayout) {
+    const chipH = chipLayout.chipHeight;
+    const rx = 4;
+    const fontSize = PORT_CHIP_FONT_SIZE;
+    return chipLayout.chips.map((chip) => {
+        const w = chip.w;
+        const x = chip.cx - w / 2;
+        const y = chip.cy - chipH / 2;
+        const connected = chip.connected !== false;
+        const stroke = connected ? 'rgba(0,111,255,0.55)' : 'rgba(255,255,255,0.14)';
+        const dash = connected ? '' : ' stroke-dasharray="3 2"';
+        const textFill = connected ? '#f4f5f7' : '#7e8595';
+        const fillOpacity = connected ? '1' : '0.55';
+        return [
+            `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w}" height="${chipH}" rx="${rx}" ry="${rx}" fill="url(#chipGrad)" fill-opacity="${fillOpacity}" stroke="${stroke}" stroke-width="1"${dash}/>`,
+            `<text x="${chip.cx.toFixed(1)}" y="${(chip.cy + fontSize * 0.35).toFixed(1)}" text-anchor="middle" font-size="${fontSize}" font-weight="600" font-family="'Lato', 'Helvetica Neue', Arial, sans-serif" fill="${textFill}">${escapeSvgText(chip.text)}</text>`
+        ].join('');
+    }).join('');
 }
 
 function escapeSvgText(text) {

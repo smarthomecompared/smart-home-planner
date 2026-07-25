@@ -307,7 +307,24 @@
                                 <input type="number" id="device-max-consumption" step="0.01" min="0" placeholder="e.g., 5.0">
                             </div>
                         </div>
-                        
+
+                        <!-- PoE budget & usage — only shown once a Data Port is set to provide PoE (PSE) -->
+                        <div class="form-row is-hidden" id="poe-power-row">
+                            <div class="form-group" id="poe-max-power-group">
+                                <label for="device-poe-max-power">Max PoE Power Budget (W)</label>
+                                <input type="number" id="device-poe-max-power" step="1" min="0" placeholder="e.g., 180">
+                            </div>
+                            <div class="form-group" id="poe-power-usage-group">
+                                <label>PoE Power in Use</label>
+                                <div class="poe-usage-meter">
+                                    <div class="poe-usage-track">
+                                        <div class="poe-usage-fill" id="poe-usage-fill"></div>
+                                    </div>
+                                    <span class="poe-usage-value" id="poe-usage-value">0 W</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Power Ports (only for wired devices) -->
                         <div id="power-ports-section" class="is-hidden">
                             <div class="device-ports-section-head">
