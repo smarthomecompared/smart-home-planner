@@ -1074,6 +1074,35 @@
             </div>
         </div>
     </div>
+    <div class="modal is-hidden" id="cable-type-help-modal" aria-hidden="true">
+        <div class="modal-overlay" id="cable-type-help-overlay"></div>
+        <div class="modal-content help-modal-content" role="dialog" aria-modal="true" aria-labelledby="cable-type-help-title">
+            <div class="modal-header">
+                <div class="modal-title" id="cable-type-help-title">Cable Type</div>
+                <button class="btn btn-secondary btn-sm btn-icon" type="button" id="cable-type-help-close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="help-modal-body">
+                <p>The cable category caps the maximum link speed a connection can carry. Higher categories are backward compatible, so a newer cable also supports every slower speed. Speeds assume a standard 100 m run unless noted.</p>
+                <ul class="help-modal-list cable-help-list">
+                    <li><span class="cable-help-cat">Cat1</span><span>Up to 1 Mbps — telephone/POTS wiring, not rated for Ethernet data.</span></li>
+                    <li><span class="cable-help-cat">Cat2</span><span>Up to 4 Mbps — legacy Token Ring.</span></li>
+                    <li><span class="cable-help-cat">Cat3</span><span>Up to 10 Mbps — 10BASE-T Ethernet.</span></li>
+                    <li><span class="cable-help-cat">Cat4</span><span>Up to 16 Mbps — legacy Token Ring.</span></li>
+                    <li><span class="cable-help-cat">Cat5</span><span>Officially 100 Mbps (Fast Ethernet), but usually carries 1 Gbps on short runs.</span></li>
+                    <li><span class="cable-help-cat">Cat5e</span><span>Up to 1 Gbps — Gigabit Ethernet (1000BASE-T).</span></li>
+                    <li><span class="cable-help-cat">Cat6</span><span>Up to 10 Gbps on short runs (≤55 m); 1 Gbps at the full 100 m.</span></li>
+                    <li><span class="cable-help-cat">Cat6a</span><span>Up to 10 Gbps (10GBASE-T) over the full 100 m.</span></li>
+                    <li><span class="cable-help-cat">Cat7</span><span>Up to 10 Gbps, with heavier shielding than Cat6a.</span></li>
+                    <li><span class="cable-help-cat">Cat8</span><span>Up to 40 Gbps on short runs (≤30 m) — data-center use.</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
     <div class="modal is-hidden" id="power-help-modal" aria-hidden="true">
         <div class="modal-overlay" id="power-help-overlay"></div>
         <div class="modal-content help-modal-content help-modal-wide" role="dialog" aria-modal="true" aria-labelledby="power-help-title">

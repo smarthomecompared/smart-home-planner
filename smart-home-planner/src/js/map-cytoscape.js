@@ -4755,11 +4755,8 @@ function getEthernetConnectionMeta(device, port, devicesList) {
         kind: kind === 'sfp' || kind === 'sfpplus' ? kind : 'ethernet',
         cableType: port.cableType || '',
         speed: port.speed || '',
-        poe: port.poeStandard || ''
+        poe: ''
     };
-    if (meta.cableType && meta.speed && meta.poe) {
-        return meta;
-    }
     const connectedDevice = devicesList.find(d => d.id === port.connectedTo);
     if (!connectedDevice || !connectedDevice.ports) {
         return meta;
@@ -4777,10 +4774,13 @@ function getEthernetConnectionMeta(device, port, devicesList) {
     if (!meta.speed && reversePort.speed) {
         meta.speed = reversePort.speed;
     }
-    // PoE is declared on one end (usually the PSE/switch side); pick it up from
-    // whichever port carries it
-    if (!meta.poe && reversePort.poeStandard) {
-        meta.poe = reversePort.poeStandard;
+    // PoE only applies to the link when one end provides power (PSE) and the
+    // other end is powered (PD) — mismatched or missing roles mean no PoE
+    const pseSide = port.poeRole === 'pse' && reversePort.poeRole === 'pd' ? port
+        : (port.poeRole === 'pd' && reversePort.poeRole === 'pse' ? reversePort : null);
+    if (pseSide) {
+        const pdSide = pseSide === port ? reversePort : port;
+        meta.poe = pseSide.poeStandard || pdSide.poeStandard || '';
     }
     return meta;
 }

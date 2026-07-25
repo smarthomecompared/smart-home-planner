@@ -172,11 +172,12 @@ function validateDeviceForSave(device, selfId) {
 // just incomplete or suspicious. The device form surfaces them inline while you
 // edit, and the dashboard card sweeps every saved device with the same rules.
 
-// Maximum link speed each cable category can carry, in Mbps. Cat6 is listed at
-// 10G because home runs are short enough for 10GBASE-T; rating it at 1G would
-// flag the very common "Cat6 + multi-gig" setup as wrong.
+// Maximum link speed each cable category can carry, in Mbps. Ratings lean on the
+// short home runs this tool targets rather than the guaranteed-at-100m spec: Cat6
+// is listed at 10G (10GBASE-T runs fine under ~55m), and Cat5 at 1G because
+// 1000BASE-T was designed to run over Cat5 and short runs carry Gigabit reliably.
 const CABLE_MAX_MBPS = {
-    cat1: 1, cat2: 4, cat3: 10, cat4: 16, cat5: 100, cat5e: 1000,
+    cat1: 1, cat2: 4, cat3: 10, cat4: 16, cat5: 1000, cat5e: 1000,
     cat6: 10000, cat6a: 10000, cat7: 10000, cat8: 40000
 };
 

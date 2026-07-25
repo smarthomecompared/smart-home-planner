@@ -422,7 +422,11 @@ function isFieldVisible(control) {
 function markFieldWarning(fieldId, message) {
     const control = document.getElementById(fieldId);
     if (!control) return;
-    const container = control.closest('.form-group, .port-field') || control.parentElement;
+    // Port controls sit in horizontal rows, so appending a note next to the field
+    // would grow it and shove the dropdown out of alignment. Anchor the note to the
+    // bottom of the port card instead; elsewhere it sits right under the field.
+    const container = control.closest('.port-item') ||
+        control.closest('.form-group') || control.parentElement;
     if (!container) return;
     const note = document.createElement('div');
     note.className = 'field-warning';
@@ -756,6 +760,21 @@ function initializeEventListeners() {
     if (matterBridgeHelpOverlay) {
         matterBridgeHelpOverlay.addEventListener('click', closeMatterBridgeHelpModal);
     }
+    // Port rows (and their "Cable type" help buttons) are created dynamically, so
+    // the open handler is delegated while the modal's own controls are static.
+    document.addEventListener('click', (event) => {
+        if (event.target.closest('.cable-type-help-btn')) {
+            openCableTypeHelpModal();
+        }
+    });
+    const cableTypeHelpClose = document.getElementById('cable-type-help-close');
+    if (cableTypeHelpClose) {
+        cableTypeHelpClose.addEventListener('click', closeCableTypeHelpModal);
+    }
+    const cableTypeHelpOverlay = document.getElementById('cable-type-help-overlay');
+    if (cableTypeHelpOverlay) {
+        cableTypeHelpOverlay.addEventListener('click', closeCableTypeHelpModal);
+    }
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             closeDeviceFilePreviewModal();
@@ -779,6 +798,7 @@ function initializeEventListeners() {
             closeZwaveControllerHelpModal();
             closeBluetoothProxyHelpModal();
             closeMatterBridgeHelpModal();
+            closeCableTypeHelpModal();
         }
     });
 }
@@ -3499,6 +3519,26 @@ function closeMatterBridgeHelpModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
+// Shared across every port row: the "Cable type" help buttons are created
+// dynamically by addPort(), so they open this single modal via delegation.
+function openCableTypeHelpModal() {
+    const modal = document.getElementById('cable-type-help-modal');
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    const closeBtn = document.getElementById('cable-type-help-close');
+    if (closeBtn) {
+        closeBtn.focus();
+    }
+}
+
+function closeCableTypeHelpModal() {
+    const modal = document.getElementById('cable-type-help-modal');
+    if (!modal || modal.classList.contains('is-hidden')) return;
+    modal.classList.add('is-hidden');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 function handleConnectivityChange() {
     const connectivity = document.getElementById('device-connectivity').value;
     const normalizedConnectivity = normalizeOptionValue(connectivity);
@@ -4581,13 +4621,15 @@ function getPortLabel(portType) {
     const labels = {
         'ethernet-input': 'Ethernet Input',
         'ethernet-output': 'Ethernet Output',
-        'ethernet-io': 'Ethernet Input/Output',
+        // Network ports are bidirectional (no Direction field), so the header drops
+        // the redundant "Input/Output" suffix
+        'ethernet-io': 'Ethernet',
         'sfp-input': 'SFP Input',
         'sfp-output': 'SFP Output',
-        'sfp-io': 'SFP Input/Output',
+        'sfp-io': 'SFP',
         'sfpplus-input': 'SFP+ Input',
         'sfpplus-output': 'SFP+ Output',
-        'sfpplus-io': 'SFP+ Input/Output',
+        'sfpplus-io': 'SFP+',
         'hdmi-input': 'HDMI Input',
         'hdmi-output': 'HDMI Output',
         // USB is a host/peripheral bus, not a directional signal, so it reads
@@ -4656,7 +4698,16 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
     const usbType = port.usbType || '';
     const cableTypeMarkup = `
         <div class="port-field">
-            <label for="${portId}-cable-type">Cable type</label>
+            <div class="form-label-row port-field-label-row">
+                <label for="${portId}-cable-type">Cable type</label>
+                <button class="btn btn-secondary btn-sm btn-icon form-help-btn cable-type-help-btn" type="button" aria-label="Cable type guidance" title="More Info">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-1 2-2 2"></path>
+                        <circle cx="12" cy="17" r="1"></circle>
+                    </svg>
+                </button>
+            </div>
             <select id="${portId}-cable-type" class="port-select"${isEthernetPort ? '' : ' disabled'}>
                 <option value="">Select cable type</option>
                 ${ETHERNET_CABLE_OPTIONS.map(option => `
@@ -4790,15 +4841,32 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
                 <div class="port-connection-row">
                     <div class="port-search-wrapper">
                         <label for="${portId}-search">Connected to</label>
-                        <input
-                            type="text"
-                            id="${portId}-search"
-                            class="port-device-search"
-                            placeholder="Search device..."
-                            autocomplete="off"
-                            value="${escapeHtml(connectedDeviceName)}"
-                            data-device-id="${connectedTo}"
-                        />
+                        <div class="port-search-input-wrap${connectedTo ? ' has-goto' : ''}">
+                            <input
+                                type="text"
+                                id="${portId}-search"
+                                class="port-device-search"
+                                placeholder="Search device..."
+                                autocomplete="off"
+                                value="${escapeHtml(connectedDeviceName)}"
+                                data-device-id="${connectedTo}"
+                            />
+                            <a
+                                id="${portId}-goto"
+                                class="port-goto-btn${connectedTo ? '' : ' is-hidden'}"
+                                ${connectedTo ? `href="device-edit.html?id=${encodeURIComponent(connectedTo)}"` : ''}
+                                target="_blank"
+                                rel="noopener"
+                                title="Open connected device"
+                                aria-label="Open connected device"
+                            >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M15 3h6v6"></path>
+                                    <path d="M10 14L21 3"></path>
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"></path>
+                                </svg>
+                            </a>
+                        </div>
                         <div id="${portId}-results" class="port-search-results is-hidden"></div>
                     </div>
                     <div class="port-field port-remote-port-field">
@@ -4820,7 +4888,6 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
     const typeSelect = document.getElementById(`${portId}-type`);
     const directionSelect = document.getElementById(`${portId}-direction`);
     const directionField = portEl.querySelector('[data-direction-field]');
-    const labelEl = portEl.querySelector('.port-label');
     const ethernetFields = portEl.querySelector('[data-ethernet-fields]');
     const speedField = portEl.querySelector('[data-speed-field]');
     const usbTypeField = portEl.querySelector('[data-usb-type-field]');
@@ -4881,9 +4948,9 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
         portEl.dataset.portDirection = direction;
         const newPortType = buildPortType(kind, direction);
         portEl.dataset.portType = newPortType;
-        if (labelEl) {
-            labelEl.textContent = getPortLabel(newPortType);
-        }
+        // Renumber the whole container so headers stay sequential per type when a
+        // port's kind changes (the old group loses one, the new group gains one)
+        refreshPortLabels(container);
         if (ethernetFields) {
             ethernetFields.classList.toggle('is-hidden', !isEthernet);
         }
@@ -4953,7 +5020,25 @@ function addPort(portType, portData = {}, containerId = 'ports-container') {
         populateRemotePortOptions(portId, connectedToPort);
     }
 
+    syncPortGotoButton(portId);
+
     updatePortsEmptyState();
+}
+
+// Number each port card by its position within its kind/direction group so the
+// header reads "Ethernet 1", "Ethernet 2", "Power Out 1"… and stays in sync with
+// the remote-port dropdown (which uses the same getPortDisplayLabel numbering).
+// Runs on add, remove and type/direction changes.
+function refreshPortLabels(container) {
+    if (!container) return;
+    const counts = {};
+    container.querySelectorAll(':scope > .port-item').forEach(item => {
+        const portType = item.dataset.portType;
+        const group = getPortNameGroup(portType);
+        counts[group] = (counts[group] || 0) + 1;
+        const labelEl = item.querySelector('.port-label');
+        if (labelEl) labelEl.textContent = defaultPortName(portType, counts[group]);
+    });
 }
 
 function updatePortsEmptyState() {
@@ -4969,19 +5054,15 @@ function updatePortsEmptyState() {
 }
 
 // Option label for a remote port: position-derived number plus the port's
-// direction and speed (e.g. "Ethernet 2 · Input/Output · 1Gbps")
+// direction and speed (e.g. "Ethernet 2 · 1Gbps", "HDMI 1 · Output")
 function formatRemotePortOptionLabel(device, port) {
     const parts = [getPortDisplayLabel(device, port)];
     const kind = getPortKindFromType(port.type);
-    if (kind !== 'power') {
-        // Power labels already encode the direction ("Power Out 2")
-        const direction = getPortDirectionFromType(port.type);
-        if (direction === 'io') {
-            parts.push('Input/Output');
-        } else {
-            // USB reads Host/Device instead of Input/Output
-            parts.push(getDirectionOptionLabel(kind, direction));
-        }
+    // Network ports are bidirectional and have no Direction field, so their label
+    // omits it. Only directional kinds keep it: HDMI as Input/Output, USB as
+    // Host/Device. Power labels already encode direction ("Power Out 2").
+    if (kind !== 'power' && !isNetworkPortKind(kind)) {
+        parts.push(getDirectionOptionLabel(kind, getPortDirectionFromType(port.type)));
     }
     if (isNetworkPortKind(kind) && port.speed) {
         parts.push(String(port.speed));
@@ -5047,10 +5128,29 @@ function populateRemotePortOptions(portId, preferredPortId = '') {
     select.value = (previousValue && options.some(p => String(p.id) === previousValue)) ? previousValue : '';
 }
 
+// Show/hide and retarget the "open connected device" button next to a port's
+// search box, based on whichever device is currently selected for that port.
+function syncPortGotoButton(portId) {
+    const searchInput = document.getElementById(`${portId}-search`);
+    const gotoBtn = document.getElementById(`${portId}-goto`);
+    if (!searchInput || !gotoBtn) return;
+    const deviceId = String(searchInput.dataset.deviceId || '').trim();
+    const inputWrap = gotoBtn.closest('.port-search-input-wrap');
+    if (deviceId) {
+        gotoBtn.href = `device-edit.html?id=${encodeURIComponent(deviceId)}`;
+        gotoBtn.classList.remove('is-hidden');
+        if (inputWrap) inputWrap.classList.add('has-goto');
+    } else {
+        gotoBtn.removeAttribute('href');
+        gotoBtn.classList.add('is-hidden');
+        if (inputWrap) inputWrap.classList.remove('has-goto');
+    }
+}
+
 function setupPortSearch(portId) {
     const searchInput = document.getElementById(`${portId}-search`);
     const resultsDiv = document.getElementById(`${portId}-results`);
-    
+
     if (!searchInput || !resultsDiv) return;
     
     // Search on input
@@ -5068,6 +5168,7 @@ function setupPortSearch(portId) {
                 this.dataset.deviceId = '';
                 this.classList.remove('port-search-valid');
                 populateRemotePortOptions(portId);
+                syncPortGotoButton(portId);
             }
         }
 
@@ -5077,6 +5178,7 @@ function setupPortSearch(portId) {
             this.dataset.deviceId = '';
             this.classList.remove('port-search-valid');
             populateRemotePortOptions(portId);
+            syncPortGotoButton(portId);
             return;
         }
         
@@ -5129,6 +5231,7 @@ function setupPortSearch(portId) {
                 resultsDiv.classList.add('is-hidden');
                 resultsDiv.innerHTML = '';
                 populateRemotePortOptions(portId);
+                syncPortGotoButton(portId);
             });
         });
     });
@@ -5141,6 +5244,7 @@ function setupPortSearch(portId) {
                 this.value = '';
                 this.classList.remove('port-search-valid');
                 populateRemotePortOptions(portId);
+                syncPortGotoButton(portId);
             }
         }, 200); // Small delay to allow clicking on results
     });
@@ -5164,7 +5268,11 @@ function setupPortSearch(portId) {
 function removePort(portId) {
     const portEl = document.querySelector(`[data-port-id="${portId}"]`);
     if (portEl) {
+        const container = portEl.parentElement;
         portEl.remove();
+        // Close the gap left in the sequence (e.g. removing Ethernet 1 renumbers
+        // the former Ethernet 2 to Ethernet 1)
+        refreshPortLabels(container);
     }
     updatePortsEmptyState();
 }

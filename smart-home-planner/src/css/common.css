@@ -1458,6 +1458,20 @@ nav.site-nav a:focus-visible .site-nav-label {
     max-width: min(240px, 80vw);
 }
 
+/* Help button sitting next to a port field's small uppercase label */
+.port-field-label-row {
+    margin-bottom: 0;
+    justify-content: flex-start;
+    gap: 0.4rem;
+}
+
+.port-field-label-row .form-help-btn {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    padding: 0.15rem;
+}
+
 .tooltip-measure {
     position: absolute;
     left: -9999px;
@@ -2170,6 +2184,18 @@ nav.site-nav a:focus-visible .site-nav-label {
     margin-top: 0.05rem;
 }
 
+/* Cable-type reference: fixed-width category chip so the speeds line up */
+.cable-help-list li {
+    align-items: baseline;
+}
+
+.cable-help-cat {
+    flex: 0 0 3.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+
 .help-modal-body a {
     color: var(--primary-color);
     text-decoration: none;
@@ -2668,6 +2694,60 @@ button.form-warning-item:hover {
 
 .port-search-wrapper {
     position: relative;
+}
+
+/* Wraps the connection search input so the "open device" button can overlay it */
+.port-search-input-wrap {
+    position: relative;
+    display: flex;
+}
+
+.port-search-input-wrap .port-device-search {
+    width: 100%;
+}
+
+/* Reserve space on the right so the device name never runs under the button */
+.port-search-input-wrap.has-goto .port-device-search {
+    padding-right: 2.5rem;
+}
+
+/* Ghost icon button that opens the connected device in a new tab */
+.port-goto-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.35rem;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.port-goto-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+
+.port-goto-btn.is-hidden {
+    display: none;
+}
+
+.port-goto-btn svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .port-ethernet-fields {
