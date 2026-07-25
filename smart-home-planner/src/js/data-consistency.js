@@ -243,12 +243,26 @@ function detectDeviceInconsistencies(device, ctx = {}) {
     ports.forEach(port => {
         if (!port || typeof port !== 'object') return;
 
-        // #1 — the cable category cannot carry the declared link speed.
+        // #1 — the cable category cannot carry the actual link speed. A link
+        // negotiates down to whichever end is slower, so if the remote port caps
+        // it below this port's own speed, that lower speed — not the one configured
+        // here — is what the cable has to carry.
         const cableMax = CABLE_MAX_MBPS[normalizeText(port.cableType)];
-        const speedMbps = parseLinkSpeedToMbps(port.speed);
-        if (cableMax && speedMbps && speedMbps > cableMax) {
+        const localSpeedMbps = parseLinkSpeedToMbps(port.speed);
+        let linkSpeedMbps = localSpeedMbps;
+        let linkSpeedLabel = port.speed;
+        if (devicesById && localSpeedMbps) {
+            const remoteDevice = devicesById.get(normalizeRefId(port.connectedTo));
+            const remotePort = findPortById(remoteDevice, port.connectedToPort);
+            const remoteSpeedMbps = remotePort ? parseLinkSpeedToMbps(remotePort.speed) : 0;
+            if (remoteSpeedMbps && remoteSpeedMbps < localSpeedMbps) {
+                linkSpeedMbps = remoteSpeedMbps;
+                linkSpeedLabel = remotePort.speed;
+            }
+        }
+        if (cableMax && linkSpeedMbps && linkSpeedMbps > cableMax) {
             push('CAP_CABLE_SPEED', 'warning',
-                `${String(port.cableType).replace(/^cat/i, 'Cat')} cable cannot carry ${port.speed}.`,
+                `${String(port.cableType).replace(/^cat/i, 'Cat')} cable cannot carry ${linkSpeedLabel}.`,
                 { field: 'port.cableType', portId: normalizeRefId(port.id) });
         }
 

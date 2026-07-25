@@ -711,7 +711,11 @@ async function exportData() {
         const a = document.createElement('a');
         a.href = url;
         const now = new Date();
-        const datePart = now.toISOString().split('T')[0];
+        const datePart = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, '0'),
+            String(now.getDate()).padStart(2, '0')
+        ].join('-');
         const timePart = [
             String(now.getHours()).padStart(2, '0'),
             String(now.getMinutes()).padStart(2, '0'),
