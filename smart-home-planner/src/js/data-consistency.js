@@ -181,8 +181,48 @@ const CABLE_MAX_MBPS = {
     cat6: 10000, cat6a: 10000, cat7: 10000, cat8: 40000
 };
 
+// Watts each PoE standard reserves on the sourcing (PSE) port — the counterpart
+// of the device form's POE_STANDARD_OPTIONS, which reads this table too. Passive
+// PoE has no fixed wattage (it varies by injector), so it is not counted.
+const POE_STANDARD_WATTS = {
+    'poe': 15,
+    'poe-plus': 30,
+    'poe-pp-60': 60,
+    'poe-pp-90': 90
+};
+
 function normalizeText(value) {
     return String(value == null ? '' : value).trim().toLowerCase();
+}
+
+function positiveNumberOrNull(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+// Watts drawn from a device's PoE-sourcing ports — the same math as the device
+// form's "PoE Power in Use" meter. A PSE port only counts when it is actually
+// linked to a port marked Powered (PD) on the other device. The draw is that
+// powered device's Max Consumption when recorded, since that is the real load;
+// without it, the rated wattage of the sourcing port's standard is used, which
+// is what the switch has to reserve for an unknown load.
+function calculatePoePowerInUse(device, devicesById) {
+    if (!device || !devicesById || !Array.isArray(device.ports)) return 0;
+    return device.ports.reduce((used, port) => {
+        if (!port || normalizeText(port.poeRole) !== 'pse') return used;
+        const remoteDevice = devicesById.get(normalizeRefId(port.connectedTo));
+        const remotePort = findPortById(remoteDevice, port.connectedToPort);
+        if (!remotePort || normalizeText(remotePort.poeRole) !== 'pd') return used;
+        const maxConsumption = positiveNumberOrNull(remoteDevice.maxConsumption);
+        return used + (maxConsumption != null
+            ? maxConsumption
+            : (POE_STANDARD_WATTS[normalizeText(port.poeStandard)] || 0));
+    }, 0);
+}
+
+function formatWattsValue(watts) {
+    return Number.isInteger(watts) ? String(watts) : watts.toFixed(1);
 }
 
 // '2.5Gbps' -> 2500, '100Mbps' -> 100. Returns 0 when unparseable.
@@ -313,6 +353,17 @@ function detectDeviceInconsistencies(device, ctx = {}) {
     if (hasConsumption && !normalizeText(device.power)) {
         push('CONSUMPTION_NO_POWER', 'warning', 'Power consumption set but no power type selected.',
             { field: 'power' });
+    }
+
+    // #12 — the devices powered over PoE draw more than the switch can deliver.
+    const poeBudget = positiveNumberOrNull(device.poeMaxPower);
+    if (devicesById && poeBudget != null) {
+        const poeUsed = calculatePoePowerInUse(device, devicesById);
+        if (poeUsed > poeBudget) {
+            push('POE_BUDGET_EXCEEDED', 'warning',
+                `PoE power in use (${formatWattsValue(poeUsed)} W) exceeds the ${formatWattsValue(poeBudget)} W budget.`,
+                { field: 'poeMaxPower' });
+        }
     }
 
     // #15 — dates that cannot have happened yet.

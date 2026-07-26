@@ -368,6 +368,7 @@ function buildDeviceDraftForWarnings() {
         idleConsumption: value('device-idle-consumption'),
         meanConsumption: value('device-mean-consumption'),
         maxConsumption: value('device-max-consumption'),
+        poeMaxPower: value('device-poe-max-power'),
         purchaseDate: value('device-purchase-date'),
         lastBatteryChange: value('device-last-battery-change'),
         ports: getPortsData()
@@ -385,6 +386,7 @@ const WARNING_FIELD_INPUT_IDS = {
     bluetoothProxyId: 'device-bluetooth-proxy',
     batteryType: 'device-battery-type',
     power: 'device-power',
+    poeMaxPower: 'device-poe-max-power',
     purchaseDate: 'device-purchase-date',
     lastBatteryChange: 'device-last-battery-change'
 };
@@ -3045,10 +3047,21 @@ function formatPoeWatts(watts) {
 }
 
 // A device "supports PoE" once at least one Ethernet port in its Data Ports
-// is configured to provide power (PSE). PoE Power in Use sums the rated
-// wattage of each PSE port that is actually linked to a port marked Powered
-// (PD) on the other device — the same PSE↔PD pairing the diagram uses. A PSE
-// port that is unconnected, or linked to a non-PD remote, draws nothing.
+// is configured to provide power (PSE). PoE Power in Use adds up what each PSE
+// port actually delivers to a port marked Powered (PD) on the other device —
+// the same PSE↔PD pairing the diagram uses. A PSE port that is unconnected, or
+// linked to a non-PD remote, draws nothing.
+//
+// The draw of each link is the powered device's Max Consumption when it is
+// recorded, since that is the real load. Without that figure we fall back to
+// the rated wattage of the sourcing port's PoE standard, which is the budget
+// the switch has to reserve for an unknown load.
+function poeLinkWatts(remoteDevice, poeStandard) {
+    const maxConsumption = remoteDevice ? Number(remoteDevice.maxConsumption) : NaN;
+    if (Number.isFinite(maxConsumption) && maxConsumption > 0) return maxConsumption;
+    return POE_STANDARD_WATTS[poeStandard] || 0;
+}
+
 function updatePoeUsageDisplay() {
     const row = document.getElementById('poe-power-row');
     const fill = document.getElementById('poe-usage-fill');
@@ -3081,7 +3094,7 @@ function updatePoeUsageDisplay() {
             if (!remotePort || remotePort.poeRole !== 'pd') return;
             const poeStandardSelect = document.getElementById(`${portId}-poe-standard`);
             const standard = poeStandardSelect ? poeStandardSelect.value : '';
-            usedW += POE_STANDARD_WATTS[standard] || 0;
+            usedW += poeLinkWatts(remoteDevice, standard);
         });
     }
 
@@ -4657,15 +4670,9 @@ const POE_STANDARD_OPTIONS = [
     { value: 'poe-pp-90', text: 'PoE++ (802.3bt Type 4 · 90 W)' },
     { value: 'passive',   text: 'Passive PoE (24V)' }
 ];
-// Rated power budget each standard reserves on the sourcing (PSE) port.
-// Passive PoE has no fixed wattage (it varies by injector), so it is not
-// counted toward the device's PoE Power in Use total.
-const POE_STANDARD_WATTS = {
-    'poe': 15,
-    'poe-plus': 30,
-    'poe-pp-60': 60,
-    'poe-pp-90': 90
-};
+// The rated power budget each standard reserves on the sourcing (PSE) port
+// lives in data-consistency.js as POE_STANDARD_WATTS — that module is loaded
+// first and the dashboard rules share the same table.
 
 // Selectable kinds for the Data Ports section
 const DATA_PORT_KINDS = ['ethernet', 'sfp', 'sfpplus', 'hdmi', 'usb'];

@@ -2556,14 +2556,19 @@ function _buildPortIndex(devices) {
     return index;
 }
 
-/** Watts reserved by this device's PoE-sourcing ports — same math as the form's meter. */
+/** Watts drawn from this device's PoE-sourcing ports — same math as the form's meter. */
 function _mdPoePowerInUse(device, portIndex) {
     let used = 0;
     (Array.isArray(device.ports) ? device.ports : []).forEach((port) => {
         if (!port || port.poeRole !== 'pse' || !port.connectedTo || !port.connectedToPort) return;
         const remote = portIndex.get(`${String(port.connectedTo)}::${String(port.connectedToPort)}`);
         if (!remote || remote.port.poeRole !== 'pd') return;
-        used += _MD_POE_WATTS[port.poeStandard] || 0;
+        // The powered device's Max Consumption is the real load; without it,
+        // fall back to the wattage the sourcing port's standard reserves.
+        const maxConsumption = Number(remote.device.maxConsumption);
+        used += (Number.isFinite(maxConsumption) && maxConsumption > 0)
+            ? maxConsumption
+            : (_MD_POE_WATTS[port.poeStandard] || 0);
     });
     return used;
 }
@@ -2868,7 +2873,9 @@ function _mdDevicesSection(lines, data, maps) {
             add('Max PoE Power Budget', device.poeMaxPower + ' W', 'poeMaxPower');
         } else { skip('poeMaxPower'); }
         const poeUsed = _mdPoePowerInUse(device, portIndex);
-        if (poeUsed > 0) add('PoE Power in Use', `${poeUsed} W`);
+        if (poeUsed > 0) {
+            add('PoE Power in Use', `${Number.isInteger(poeUsed) ? poeUsed : poeUsed.toFixed(1)} W`);
+        }
 
         // ── Battery ───────────────────────────────────────────────────────────
         add('Battery Type', device.batteryType, 'batteryType');
