@@ -250,17 +250,170 @@ function normalizeModelKey(value) {
   return normalizeString(value).toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// Mirrors normalizeOptionValue() in src/js/common.js — the slug the UI uses to
+// match a device value against its configured option list. Keep both in sync.
+function normalizeOptionSlug(value) {
+  const normalized = normalizeString(value)
+    .toLowerCase()
+    .replace(/\s*&\s*/g, "-")
+    .replace(/\//g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized === "wi-fi" ? "wifi" : normalized;
+}
+
+// Mirrors the frontend fallback for values that were stored as their own slug:
+// "intel" is shown as "Intel". Anything already written as a label is kept.
+function formatOptionLabel(value) {
+  const label = normalizeString(value);
+  if (!label || label !== normalizeOptionSlug(label)) return label;
+  return label
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+// Home Assistant reports the manufacturer as registered by the integration, so
+// it arrives decorated with trademark symbols and legal forms ("Aqara™",
+// "Google Inc.", "Shenzhen Neo Electronics Co., Ltd."). Devices are tagged with
+// the trimmed name instead, which is what a user would type by hand.
+const BRAND_SYMBOL_PATTERN = /[™®©℠]/g;
+const BRAND_LEGAL_SUFFIXES = new Set([
+  "inc", "incorporated", "corp", "corporation", "co", "company",
+  "ltd", "ltda", "limited", "llc", "llp", "plc",
+  "gmbh", "mbh", "ag", "kg", "kgaa", "ug",
+  "sa", "sas", "sarl", "sl", "srl", "spa",
+  "ab", "aps", "as", "bv", "nv", "oy", "oyj",
+  "kk", "pte", "pty",
+]);
+const BRAND_MAX_SUFFIX_PASSES = 4;
+// Applied to the cleaned name, so "Google Inc." needs no entry here.
+const BRAND_ALIASES = new Map([
+  ["googlenest", "Google"],
+  ["raspberrypitrading", "Raspberry Pi"],
+]);
+
+function stripBrandLegalSuffixes(value) {
+  let result = value;
+  // "Co., Ltd." peels one suffix per pass.
+  for (let pass = 0; pass < BRAND_MAX_SUFFIX_PASSES; pass += 1) {
+    const match = result.match(/^(.+?)[\s,]+([^\s,]+)$/);
+    if (!match) break;
+    const head = match[1].replace(/[\s,]+$/, "");
+    const tail = match[2].toLowerCase().replace(/[./]/g, "");
+    if (!head || !BRAND_LEGAL_SUFFIXES.has(tail)) break;
+    result = head;
+  }
+  return result;
+}
+
+function cleanBrandName(value) {
+  const collapsed = normalizeString(value)
+    .replace(BRAND_SYMBOL_PATTERN, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!collapsed) return "";
+  const stripped = stripBrandLegalSuffixes(collapsed).replace(/[\s,]+$/, "").trim();
+  // A manufacturer named after its legal form alone keeps its original name.
+  return stripped || collapsed;
+}
+
 function normalizeBrand(value) {
-  const raw = normalizeString(value);
-  if (!raw) return "";
-  const key = normalizeManufacturerKey(raw);
-  if (key === "googleinc" || key === "googlenest") {
-    return "Google";
-  }
-  if (key === "raspberrypitradingltd") {
-    return "Raspberry Pi";
-  }
-  return raw;
+  const cleaned = cleanBrandName(value);
+  if (!cleaned) return "";
+  return BRAND_ALIASES.get(normalizeManufacturerKey(cleaned)) || cleaned;
+}
+
+// A brand assigned by the sync must also exist in the device option list, or it
+// never shows up in Settings > Device Options and cannot be renamed or reused —
+// an orphan brand nobody created by hand.
+//
+// The default brands live in the frontend (src/js/metadata.js) and are not
+// readable from here, so one that happens to be a default is still added as a
+// custom; normalizeCustomOptionValues() in common.js drops the duplicate on the
+// next settings load. Hidden defaults are un-hidden instead, otherwise the
+// option would stay invisible while a device points at it.
+function createBrandOptionRegistry(settings) {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const storedCustoms = Array.isArray(source.customOptions?.brands)
+    ? source.customOptions.brands
+    : null;
+  // Pre-1.8.0 storage keeps one flat list per group. Writing customOptions here
+  // would make the frontend migration skip it and drop the user's own brands,
+  // so the legacy list is extended in place until the frontend migrates it.
+  const legacyList = storedCustoms === null && Array.isArray(source.brands) ? source.brands : null;
+  const values = [...(storedCustoms || legacyList || [])];
+  const hiddenSlugs = Array.isArray(source.hiddenDefaults?.brands)
+    ? [...source.hiddenDefaults.brands]
+    : [];
+  const bySlug = new Map();
+  const byKey = new Map();
+  let addedCount = 0;
+  let unhiddenCount = 0;
+
+  const index = (label) => {
+    const slug = normalizeOptionSlug(label);
+    if (slug && !bySlug.has(slug)) bySlug.set(slug, label);
+    const key = normalizeManufacturerKey(label);
+    if (key && !byKey.has(key)) byKey.set(key, label);
+  };
+  values.forEach(index);
+
+  const unhide = (slug) => {
+    const position = hiddenSlugs.findIndex((hidden) => normalizeOptionSlug(hidden) === slug);
+    if (position < 0) return;
+    hiddenSlugs.splice(position, 1);
+    unhiddenCount += 1;
+  };
+
+  const add = (label) => {
+    values.push(label);
+    index(label);
+    addedCount += 1;
+  };
+
+  return {
+    // For devices created by the sync: reuses the configured label when the
+    // brand is already known ("TPLink" -> "TP-Link"), registers it otherwise.
+    resolve(brand) {
+      const label = normalizeString(brand);
+      const slug = normalizeOptionSlug(label);
+      if (!slug) return "";
+      unhide(slug);
+      const known = bySlug.get(slug) || byKey.get(normalizeManufacturerKey(label));
+      if (known) return known;
+      add(label);
+      return label;
+    },
+    // For devices the user already owns: their brand is never rewritten, it is
+    // only registered as an option when it is missing from the list.
+    register(brand) {
+      const label = normalizeString(brand);
+      const slug = normalizeOptionSlug(label);
+      if (!slug) return "";
+      unhide(slug);
+      if (!bySlug.has(slug)) add(formatOptionLabel(label));
+      return label;
+    },
+    getAddedCount() {
+      return addedCount;
+    },
+    // Returns the settings to persist, or null when nothing changed.
+    buildNextSettings() {
+      if (!addedCount && !unhiddenCount) return null;
+      const next = { ...source };
+      if (legacyList !== null) {
+        next.brands = values;
+      } else {
+        next.customOptions = { ...(next.customOptions || {}), brands: values };
+      }
+      if (unhiddenCount) {
+        next.hiddenDefaults = { ...(next.hiddenDefaults || {}), brands: hiddenSlugs };
+      }
+      return next;
+    },
+  };
 }
 
 function shouldAutoExcludeOnCreate(haDevice) {
@@ -314,7 +467,7 @@ function getExcludedDeviceIds(storage) {
   return new Set(source.map((value) => normalizeString(value)).filter(Boolean));
 }
 
-function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLabels) {
+function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry) {
   const id = normalizeString(haDevice?.id);
   const areaId = normalizeString(haDevice?.area_id);
   const manufacturer = normalizeBrand(haDevice?.manufacturer);
@@ -340,7 +493,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLa
     ...base,
     id: deviceId,
     name: pickDeviceName(haDevice) || normalizeString(base.name) || id,
-    brand: hasExistingDevice ? normalizeString(base.brand) : manufacturer,
+    brand: hasExistingDevice ? brandRegistry.register(base.brand) : brandRegistry.resolve(manufacturer),
     model: hasExistingDevice ? normalizeString(base.model) : model,
     homeAssistant: linkedHaIds.length > 0,
     haDeviceIds: linkedHaIds,
@@ -368,6 +521,7 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLa
 async function syncStorageDevicesFromRegistry(haDevices) {
   const storage = await readStorageJson();
   const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
+  const brandRegistry = createBrandOptionRegistry(storage.settings);
   const allowedLabels = await readLabelsRegistry();
   const excludedDeviceIds = getExcludedDeviceIds(storage);
   const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
@@ -451,7 +605,9 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     }
 
     if (sourceDevice) {
-      nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels));
+      nextDevices.push(
+        buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry)
+      );
       if (directSource) {
         syncedIds.add(id);
       }
@@ -480,7 +636,9 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     const id = normalizeString(sourceDevice?.id);
     if (!id || syncedIds.has(id)) continue;
     const existingDevice = existingById.get(id) || existingByHaId.get(id);
-    nextDevices.push(buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels));
+    nextDevices.push(
+      buildSyncedDevice(sourceDevice, existingDevice, haAreaSyncTarget, allowedLabels, brandRegistry)
+    );
     createdDevicesCount += 1;
   }
 
@@ -496,6 +654,11 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     devices: nextDevices,
     excluded_devices: nextExcludedDevices,
   };
+
+  const nextSettings = brandRegistry.buildNextSettings();
+  if (nextSettings) {
+    nextStorage.settings = nextSettings;
+  }
 
   await writeStorageJson(nextStorage);
   log(`data.json devices synced (${nextDevices.length})`);
@@ -513,6 +676,9 @@ async function syncStorageDevicesFromRegistry(haDevices) {
   }
   if (createdDevicesCount > 0) {
     log(`Created ${createdDevicesCount} new device(s) from Home Assistant.`);
+  }
+  if (brandRegistry.getAddedCount() > 0) {
+    log(`Registered ${brandRegistry.getAddedCount()} new brand option(s) in use by devices.`);
   }
 }
 

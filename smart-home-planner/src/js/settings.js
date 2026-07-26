@@ -393,10 +393,54 @@ function getExcludedDeviceIds(storage) {
     return source.map(normalizeExcludedDeviceId).filter(Boolean);
 }
 
+// Manufacturers come from Home Assistant decorated with trademark symbols and
+// legal forms ("Aqara™", "Google Inc.", "Shenzhen Neo Electronics Co., Ltd.").
+// Keep this in sync with normalizeBrand() in registry-sync.js, which cleans the
+// same values on the sync worker side.
+const HA_BRAND_SYMBOL_PATTERN = /[™®©℠]/g;
+const HA_BRAND_LEGAL_SUFFIXES = new Set([
+    'inc', 'incorporated', 'corp', 'corporation', 'co', 'company',
+    'ltd', 'ltda', 'limited', 'llc', 'llp', 'plc',
+    'gmbh', 'mbh', 'ag', 'kg', 'kgaa', 'ug',
+    'sa', 'sas', 'sarl', 'sl', 'srl', 'spa',
+    'ab', 'aps', 'as', 'bv', 'nv', 'oy', 'oyj',
+    'kk', 'pte', 'pty'
+]);
+const HA_BRAND_MAX_SUFFIX_PASSES = 4;
+// Applied to the cleaned name, so "Google Inc." needs no entry here.
+const HA_BRAND_ALIASES = new Map([
+    ['googlenest', 'Google'],
+    ['raspberrypitrading', 'Raspberry Pi']
+]);
+
+function normalizeHaManufacturerKey(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function stripHaBrandLegalSuffixes(value) {
+    let result = value;
+    // "Co., Ltd." peels one suffix per pass.
+    for (let pass = 0; pass < HA_BRAND_MAX_SUFFIX_PASSES; pass += 1) {
+        const match = result.match(/^(.+?)[\s,]+([^\s,]+)$/);
+        if (!match) break;
+        const head = match[1].replace(/[\s,]+$/, '');
+        const tail = match[2].toLowerCase().replace(/[./]/g, '');
+        if (!head || !HA_BRAND_LEGAL_SUFFIXES.has(tail)) break;
+        result = head;
+    }
+    return result;
+}
+
 function normalizeHaBrandName(value) {
-    const raw = String(value || '').trim();
-    if (!raw) return '';
-    return raw === 'Google Inc.' ? 'Google' : raw;
+    const collapsed = String(value || '')
+        .replace(HA_BRAND_SYMBOL_PATTERN, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!collapsed) return '';
+    const stripped = stripHaBrandLegalSuffixes(collapsed).replace(/[\s,]+$/, '').trim();
+    // A manufacturer named after its legal form alone keeps its original name.
+    const cleaned = stripped || collapsed;
+    return HA_BRAND_ALIASES.get(normalizeHaManufacturerKey(cleaned)) || cleaned;
 }
 
 function pickHaDeviceName(device) {
@@ -679,8 +723,9 @@ async function restoreExcludedDevice(deviceId) {
         const data = await loadData();
         const nextDevices = Array.isArray(data.devices) ? [...data.devices] : [];
         const alreadyExists = nextDevices.some(device => normalizeExcludedDeviceId(device?.id) === normalizedId);
-        if (!alreadyExists) {
-            nextDevices.push(buildRestoredDeviceFromHa(haDevice));
+        const restoredDevice = alreadyExists ? null : buildRestoredDeviceFromHa(haDevice);
+        if (restoredDevice) {
+            nextDevices.push(restoredDevice);
         }
 
         const nextExcluded = excludedIds.filter(id => id !== normalizedId);
@@ -689,6 +734,12 @@ async function restoreExcludedDevice(deviceId) {
             devices: nextDevices,
             excluded_devices: nextExcluded
         });
+
+        // Without this the brand would only exist on the device, never in
+        // Settings > Device Options, so it could not be renamed or reused.
+        if (restoredDevice?.brand) {
+            await addCustomOptionValue('brands', restoredDevice.brand);
+        }
 
         await renderExcludedDevicesManagement();
         showMessage('Device restored successfully.', 'success');

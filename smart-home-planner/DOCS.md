@@ -251,6 +251,8 @@ Networks manages the VLANs (or plain network names) used in device connectivity 
 
 Device Options control the selectable lists used throughout the app. Keep these tidy to speed up device entry and maintain consistency across the inventory.
 
+Brands coming from Home Assistant are added to the Brands list automatically, so a device imported from Home Assistant never ends up with a brand you cannot find here. The manufacturer name is trimmed before being used: trademark symbols and legal forms are dropped ("Aqara™" becomes "Aqara", "Ubiquiti Inc." becomes "Ubiquiti", "Shenzhen Neo Electronics Co., Ltd." becomes "Shenzhen Neo Electronics"), and a brand already on the list is reused instead of being duplicated ("TPLink" matches an existing "TP-Link").
+
 ### Test Cases
 
 Test Cases settings lets you manage the category list used in the Test Cases page. You can add, rename, or remove categories to match your operational check workflows.
