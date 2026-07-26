@@ -2390,12 +2390,13 @@ function initializeCytoscape() {
                     'width': 2,
                     'line-color': '#006fff',
                     // No arrowheads on Ethernet/SFP links — the port chips at each
-                    // end already show the connection and its speed.
+                    // end already show where the cable lands.
                     'target-arrow-shape': 'none',
                     'source-arrow-shape': 'none',
                     'curve-style': 'bezier',
+                    // Cable type, negotiated speed and PoE (see formatEthernetLabel).
                     'label': 'data(label)',
-                    // The link speed is drawn as a port chip inside each device
+                    // Each end's port speed is drawn as a chip inside its device
                     // card; the chip pass sets a per-edge inline endpoint style
                     // (an "x y" px offset from the node center) so the line ends
                     // on that chip. Endpoint props can't be data()-mapped, hence
@@ -2807,7 +2808,7 @@ function initializeCytoscape() {
             if (normalizeDeviceRotation(node.data('rotation') || 0) !== 0) return;
             const device = devices.find((d) => String(d.id) === String(id));
             if (!device) return;
-            const lists = buildDeviceChipList(device, getPos, isVisible, devices);
+            const lists = buildDeviceChipList(device, getPos, isVisible);
             if (!lists) return;
             const { topChips, bottomChips, allChips } = lists;
 
@@ -4997,20 +4998,23 @@ function formatCableTypeLabel(cableType) {
     return cableType.replace(/^cat/i, 'Cat');
 }
 
+// The label that rides on the link itself: cable type, the negotiated speed and
+// PoE. The negotiated speed (the slower of the two ends) is a property of the
+// link, so it belongs here — each end's own port speed is the chip drawn inside
+// its device card.
 function formatEthernetLabel(meta) {
     if (!meta) {
         return 'Ethernet';
     }
     const baseName = meta.kind === 'sfp' ? 'SFP' : (meta.kind === 'sfpplus' ? 'SFP+' : 'Ethernet');
     const cableLabel = meta.cableType ? formatCableTypeLabel(meta.cableType) : '';
+    const speedLabel = formatPortSpeedLabel(meta);
     const poeLabel = meta.poe ? (POE_SHORT[meta.poe] || 'PoE') : '';
-    const base = cableLabel || baseName;
-    return poeLabel ? `${base} · ${poeLabel}` : base;
+    return [cableLabel || baseName, speedLabel, poeLabel].filter(Boolean).join(' · ');
 }
 
-// The link speed gets its own badge at the arrowhead (see the
-// edge[connectionType="ethernet"] target-label style), so it's formatted
-// separately from formatEthernetLabel's cable/PoE text to avoid showing it twice.
+// Formats a stored speed ("1Gbps") for display ("1 Gbps"). Used both for the
+// link's negotiated speed on the edge label and for a port's own speed chip.
 function formatPortSpeedLabel(meta) {
     if (!meta || !meta.speed) {
         return '';
@@ -5106,9 +5110,9 @@ function isNetworkPortTypeForChip(type) {
     return t.startsWith('ethernet') || t.startsWith('sfp');
 }
 
-// Draws every device's network ports as speed chips on its card: connected ports
-// show the negotiated link speed (min of both ends) with the ethernet arrow
-// landing on the chip; empty ports show their own speed, muted, with no cable.
+// Draws every device's network ports as speed chips on its card: every chip
+// shows that port's own speed, with the ethernet arrow landing on the chip for
+// connected ports; empty ports show the same speed, muted, with no cable.
 // The device card is widened and its edges reshaped in place, and each ethernet
 // edge end is re-pointed at the chip it belongs to. Runs only while the Ethernet
 // layer is visible.
@@ -5120,7 +5124,7 @@ function isNetworkPortTypeForChip(type) {
 // ({x,y}) or null; `isVisible(id)` says whether a peer is drawn on the map.
 // Returns { topChips, bottomChips, allChips } or null when the device has no
 // network ports. Shared by the full render and the live drag recompute.
-function buildDeviceChipList(device, getPos, isVisible, devicesList) {
+function buildDeviceChipList(device, getPos, isVisible) {
     const dpos = getPos(device.id);
     if (!dpos) return null;
     const ports = Array.isArray(device.ports) ? device.ports : [];
@@ -5138,11 +5142,13 @@ function buildDeviceChipList(device, getPos, isVisible, devicesList) {
     const chips = networkPorts.map((port) => {
         const connectedId = String(port.connectedTo || '');
         if (connectedId && isVisible(connectedId)) {
-            const meta = getEthernetConnectionMeta(device, port, devicesList);
             const opos = getPos(connectedId);
             const peerBelow = Boolean(opos && opos.y > dpos.y + 1);
             return {
-                text: formatPortSpeedLabel(meta) || '—',
+                // The chip describes this device's own port, so it always shows
+                // that port's speed — not the link's negotiated speed (which is
+                // the slower of the two ends and belongs on the edge label).
+                text: formatPortSpeedLabel({ speed: port.speed }) || '—',
                 connected: true,
                 otherId: connectedId,
                 otherX: opos ? opos.x : dpos.x,
@@ -5188,7 +5194,7 @@ function applyPortSpeedChips({ filteredDevicesList, devicePositionById, deviceRe
         // endpoints can't follow, so they keep the plain (chip-less) card.
         if (normalizeDeviceRotation(element.data.rotation || 0) !== 0) return;
 
-        const lists = buildDeviceChipList(device, getPos, isVisible, filteredDevicesList);
+        const lists = buildDeviceChipList(device, getPos, isVisible);
         if (!lists) return;
         const { topChips, bottomChips, allChips } = lists;
 

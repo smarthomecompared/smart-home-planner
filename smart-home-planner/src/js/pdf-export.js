@@ -2476,8 +2476,147 @@ function _mdDistTable(lines, title, columnLabel, entries, total) {
     lines.push('');
 }
 
+// ── Port helpers ──────────────────────────────────────────────────────────────
+// Ports are a full inventory (1.8): every row exists whether it is connected or
+// not, and connected pairs are mirrored on both devices.
+
+const _MD_POE_ROLE_LABELS = {
+    'pse': 'PoE out (PSE)',
+    'pd':  'PoE in (PD)',
+};
+
+// Rated budget each standard reserves on the sourcing port. Passive PoE has no
+// fixed wattage, so it is not counted — mirrors the device form's meter.
+const _MD_POE_WATTS = {
+    'poe':       15,
+    'poe-plus':  30,
+    'poe-pp-60': 60,
+    'poe-pp-90': 90,
+};
+
+/** `#3 Ethernet In/Out` — stable per-device port label used on both link ends. */
+function _mdPortLabel(port, index) {
+    return `#${index + 1} ${_PORT_LABELS[port.type] || port.type || 'Port'}`;
+}
+
+/** Every capability recorded on a port: cable, speed, USB connector/version, PoE. */
+function _mdPortSpecs(port) {
+    const specs = [];
+    if (port.cableType)  specs.push(String(port.cableType).replace(/^cat/i, 'Cat'));
+    if (port.speed)      specs.push(String(port.speed));
+    if (port.usbType)    specs.push(_USB_TYPE_LABELS[port.usbType] || port.usbType);
+    if (port.usbVersion) specs.push(_USB_VERSION_LABELS[port.usbVersion] || port.usbVersion);
+    if (port.poeRole) {
+        const std  = port.poeStandard ? (_POE_SHORT[port.poeStandard] || 'PoE') : '';
+        const role = _MD_POE_ROLE_LABELS[port.poeRole] || 'PoE';
+        specs.push(std ? `${role} · ${std}` : role);
+    }
+    return specs;
+}
+
+/**
+ * Cable/link details for a connected pair. The cable is mirrored on both ports,
+ * but speed and PoE role belong to each end, so differing values are shown for
+ * both and the PoE direction is spelled out (who powers whom).
+ */
+function _mdLinkDetails(port, remotePort, deviceName, targetName) {
+    const details = [];
+    if (port.cableType) details.push(String(port.cableType).replace(/^cat/i, 'Cat'));
+
+    const speeds = [port.speed, remotePort && remotePort.speed].filter(Boolean).map(String);
+    const uniqueSpeeds = [...new Set(speeds)];
+    if (uniqueSpeeds.length) details.push(uniqueSpeeds.join(' ↔ '));
+
+    if (port.usbType)    details.push(_USB_TYPE_LABELS[port.usbType] || port.usbType);
+    if (port.usbVersion) details.push(_USB_VERSION_LABELS[port.usbVersion] || port.usbVersion);
+
+    if (port.poeRole || (remotePort && remotePort.poeRole)) {
+        const std = _POE_SHORT[port.poeStandard] ||
+            (remotePort && _POE_SHORT[remotePort.poeStandard]) || 'PoE';
+        if (port.poeRole === 'pse')      details.push(`${std}: ${deviceName} → ${targetName}`);
+        else if (port.poeRole === 'pd')  details.push(`${std}: ${targetName} → ${deviceName}`);
+        else                             details.push(std);
+    }
+    return details.join(', ');
+}
+
+/** Index every port by `deviceId::portId` so a link can be resolved from either end. */
+function _buildPortIndex(devices) {
+    const index = new Map();
+    (devices || []).forEach((device) => {
+        (Array.isArray(device.ports) ? device.ports : []).forEach((port, i) => {
+            if (!port || !port.id) return;
+            index.set(`${String(device.id)}::${String(port.id)}`, {
+                device,
+                port,
+                label: _mdPortLabel(port, i),
+            });
+        });
+    });
+    return index;
+}
+
+/** Watts reserved by this device's PoE-sourcing ports — same math as the form's meter. */
+function _mdPoePowerInUse(device, portIndex) {
+    let used = 0;
+    (Array.isArray(device.ports) ? device.ports : []).forEach((port) => {
+        if (!port || port.poeRole !== 'pse' || !port.connectedTo || !port.connectedToPort) return;
+        const remote = portIndex.get(`${String(port.connectedTo)}::${String(port.connectedToPort)}`);
+        if (!remote || remote.port.poeRole !== 'pd') return;
+        used += _MD_POE_WATTS[port.poeStandard] || 0;
+    });
+    return used;
+}
+
+// ── ISP helpers ───────────────────────────────────────────────────────────────
+
+function _mdIspSpeedLabel(isp) {
+    const num  = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+    const down = num(isp.downloadSpeed);
+    const up   = num(isp.uploadSpeed);
+    if (down && up) return `${down}/${up} Mbps`;
+    if (down)       return `${down} Mbps down`;
+    if (up)         return `${up} Mbps up`;
+    return '';
+}
+
+// Explicit gateway wins; otherwise fall back to a modem/ONT, then to the
+// most-connected router — same resolution the diagram uses.
+function _mdResolveIspGateway(isp, devices) {
+    const explicitId = String(isp && isp.gatewayDeviceId || '').trim();
+    if (explicitId) {
+        return { device: (devices || []).find((d) => String(d.id) === explicitId) || null, auto: false };
+    }
+    const eligible = (devices || []).filter((d) =>
+        typeof isIspGatewayEligibleDevice === 'function' && isIspGatewayEligibleDevice(d));
+    if (!eligible.length) return { device: null, auto: true };
+
+    const isDemarcation = (d) => {
+        const t = String(d && d.type || '').trim().toLowerCase();
+        return t === 'modems' || t === 'modems-ont';
+    };
+    const connectedPorts = (d) =>
+        (Array.isArray(d.ports) ? d.ports : []).filter((p) => p && p.connectedTo).length;
+
+    const sorted = [...eligible].sort((a, b) => {
+        const demarcation = Number(isDemarcation(b)) - Number(isDemarcation(a));
+        return demarcation !== 0 ? demarcation : connectedPorts(b) - connectedPorts(a);
+    });
+    return { device: sorted[0], auto: true };
+}
+
+// The last mile is only labeled with its physical medium when it lands on a
+// modem/ONT; behind a plain router the real cable would be Ethernet.
+const _MD_ISP_LAST_MILE = { fiber: 'Fiber', cable: 'Coax', dsl: 'Phone line' };
+
+function _mdIspLastMile(isp, gateway) {
+    const t = String(gateway && gateway.type || '').trim().toLowerCase();
+    if (t !== 'modems' && t !== 'modems-ont') return '';
+    return _MD_ISP_LAST_MILE[String(isp && isp.technology || '').trim().toLowerCase()] || '';
+}
+
 function _mdSummarySection(lines, data, config) {
-    const { devices, areas, floors, labels } = data;
+    const { devices, areas, floors, labels, networks, isps } = data;
     const areaMap = new Map((areas || []).map((a) => [a.id, a]));
     const total   = devices.length;
 
@@ -2485,6 +2624,8 @@ function _mdSummarySection(lines, data, config) {
     lines.push(`- **Total devices:** ${total}`);
     lines.push(`- **Areas:** ${(areas || []).length}`);
     lines.push(`- **Floors:** ${(floors || []).length}`);
+    lines.push(`- **Networks (VLANs):** ${(networks || []).length}`);
+    lines.push(`- **Internet providers:** ${(isps || []).length}`);
     lines.push(`- **Working:** ${config.stats.working}  ·  **Pending:** ${config.stats.pending}  ·  **Not working:** ${config.stats.notWorking}`);
     lines.push('');
 
@@ -2538,6 +2679,16 @@ function _mdSummarySection(lines, data, config) {
     _mdDistTable(lines, 'By Controlled Area', 'Controlled Area',
         areaEntries((d) => d.controlledArea, 'No Controlled Area'), total);
 
+    // By Network (VLAN)
+    const netMap = new Map((networks || []).map((n) => [n.id, n]));
+    const netCount = {};
+    devices.forEach((d) => {
+        const net  = d.networkId ? netMap.get(d.networkId) : null;
+        const name = d.networkId ? ((net && (net.name || net.id)) || d.networkId) : 'No Network';
+        netCount[name] = (netCount[name] || 0) + 1;
+    });
+    _mdDistTable(lines, 'By Network', 'Network', Object.entries(netCount).sort((a, b) => b[1] - a[1]), total);
+
     // By Battery Type
     const battDevices = devices.filter((d) => d.power === 'battery' && d.batteryType);
     const byBatt = _groupBy(battDevices, (d) => d.batteryType);
@@ -2559,26 +2710,48 @@ function _mdSummarySection(lines, data, config) {
 
 function _mdDevicesSection(lines, data, maps) {
     const { devices } = data;
-    const { areaMap, floorMap, labelMap, netMap, devMap } = maps;
+    const { areaMap, floorMap, labelMap, netMap, devMap, portIndex, ispsByGateway } = maps;
 
-    // Wireless relationships are stored one-way: the child/client keeps a pointer
-    // to its parent (wifiAccessPointId / zigbeeParentId / zwaveControllerId). Build
-    // reverse indexes so a parent device (access point / coordinator / controller)
-    // also lists the devices that connect to it.
-    const wirelessChildren = new Map(); // parentId -> ['Name (Wi-Fi)', …]
-    const pushChild = (parentId, label) => {
-        if (!parentId) return;
-        const key = String(parentId);
-        const arr = wirelessChildren.get(key) || [];
+    // Wireless relationships are stored on the child/client (wifiAccessPointId /
+    // zigbeeParentId / zwaveControllerId / bluetoothProxyId) and mirrored on the
+    // parent (*LinkedDeviceIds). Build a reverse index from both sides — deduped
+    // by parent+child+kind — so a parent device (access point / coordinator /
+    // proxy) also lists the devices that connect to it even if only one side of
+    // the pair was recorded.
+    const wirelessChildren = new Map(); // parentId -> ['Name — Wi-Fi', …]
+    const seenChild        = new Set(); // `${parentId}::${childId}::${kind}`
+    const pushChild = (parentId, childId, kind, label) => {
+        if (!parentId || !childId) return;
+        const key = `${String(parentId)}::${String(childId)}::${kind}`;
+        if (seenChild.has(key)) return;
+        seenChild.add(key);
+        const arr = wirelessChildren.get(String(parentId)) || [];
         arr.push(label);
-        wirelessChildren.set(key, arr);
+        wirelessChildren.set(String(parentId), arr);
     };
     (devices || []).forEach((d) => {
         const nm = d.name || 'Unnamed';
-        if (d.wifiAccessPointId) pushChild(d.wifiAccessPointId, `${nm} — Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`);
-        if (d.zigbeeParentId)    pushChild(d.zigbeeParentId, `${nm} — Zigbee`);
-        if (d.zwaveControllerId) pushChild(d.zwaveControllerId, `${nm} — Z-Wave`);
-        if (d.bluetoothProxyId) pushChild(d.bluetoothProxyId, `${nm} — Bluetooth`);
+        if (d.wifiAccessPointId) pushChild(d.wifiAccessPointId, d.id, 'wifi', `${nm} — Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`);
+        if (d.zigbeeParentId)    pushChild(d.zigbeeParentId, d.id, 'zigbee', `${nm} — Zigbee`);
+        if (d.zwaveControllerId) pushChild(d.zwaveControllerId, d.id, 'zwave', `${nm} — Z-Wave`);
+        if (d.bluetoothProxyId)  pushChild(d.bluetoothProxyId, d.id, 'bluetooth', `${nm} — Bluetooth`);
+    });
+    // Parent-side lists (a coordinator may link devices that reach it through
+    // USB/Ethernet instead of the protocol itself, so they carry no back-pointer)
+    const linkedFields = [
+        ['wifiLinkedDeviceIds',      'wifi',      'Wi-Fi'],
+        ['zigbeeLinkedDeviceIds',    'zigbee',    'Zigbee'],
+        ['zwaveLinkedDeviceIds',     'zwave',     'Z-Wave'],
+        ['bluetoothLinkedDeviceIds', 'bluetooth', 'Bluetooth'],
+    ];
+    (devices || []).forEach((parent) => {
+        linkedFields.forEach(([field, kind, protocolLabel]) => {
+            (Array.isArray(parent[field]) ? parent[field] : []).forEach((childId) => {
+                const child = devMap.get(String(childId));
+                const nm    = child ? (child.name || 'Unnamed') : String(childId);
+                pushChild(parent.id, childId, kind, `${nm} — ${protocolLabel}`);
+            });
+        });
     });
 
     const sorted = [...devices].sort((a, b) => {
@@ -2638,7 +2811,10 @@ function _mdDevicesSection(lines, data, maps) {
             const ap   = devMap.get(String(device.wifiAccessPointId));
             const band = device.wifiBand ? ` (${device.wifiBand})` : '';
             add('Wi-Fi Access Point', `${ap ? ap.name : device.wifiAccessPointId}${band}`, 'wifiAccessPointId', 'wifiBand');
-        } else { skip('wifiAccessPointId', 'wifiBand'); }
+        } else {
+            // No access point assigned: the band would otherwise be dropped
+            add('Wi-Fi Band', device.wifiBand, 'wifiAccessPointId', 'wifiBand');
+        }
         if (device.wifiDownloadSpeed !== null && device.wifiDownloadSpeed !== undefined && device.wifiDownloadSpeed !== '') {
             add('Wi-Fi Download', device.wifiDownloadSpeed + ' Mbps', 'wifiDownloadSpeed');
         } else { skip('wifiDownloadSpeed'); }
@@ -2657,6 +2833,22 @@ function _mdDevicesSection(lines, data, maps) {
             const bt = devMap.get(String(device.bluetoothProxyId));
             add('Bluetooth Proxy', bt ? bt.name : device.bluetoothProxyId, 'bluetoothProxyId');
         } else { skip('bluetoothProxyId'); }
+        // Internet providers terminated by this device (WAN gateway role)
+        const deviceIsps = ispsByGateway.get(String(device.id)) || [];
+        skip('ispGatewayIds');
+        if (deviceIsps.length) {
+            add('Internet Provider (WAN)', deviceIsps.map(({ isp, auto }) => {
+                const parts = [isp.name || 'Internet'];
+                const tech  = typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
+                if (tech) parts.push(tech);
+                const speed = _mdIspSpeedLabel(isp);
+                if (speed) parts.push(speed);
+                if (isp.role === 'backup') parts.push('backup');
+                if (auto) parts.push('auto-detected gateway');
+                return parts.join(' · ');
+            }).join('; '));
+        }
+        skip('wifiLinkedDeviceIds', 'zigbeeLinkedDeviceIds', 'zwaveLinkedDeviceIds', 'bluetoothLinkedDeviceIds');
 
         // ── Storage ───────────────────────────────────────────────────────────
         const storageSummary = formatDeviceStorageSummary(device, ', ');
@@ -2672,6 +2864,11 @@ function _mdDevicesSection(lines, data, maps) {
         if (device.idleConsumption !== null && device.idleConsumption !== undefined) add('Idle Consumption', device.idleConsumption + ' W', 'idleConsumption'); else skip('idleConsumption');
         if (device.meanConsumption !== null && device.meanConsumption !== undefined) add('Mean Consumption', device.meanConsumption + ' W', 'meanConsumption'); else skip('meanConsumption');
         if (device.maxConsumption  !== null && device.maxConsumption  !== undefined) add('Max Consumption',  device.maxConsumption  + ' W', 'maxConsumption');  else skip('maxConsumption');
+        if (device.poeMaxPower !== null && device.poeMaxPower !== undefined && device.poeMaxPower !== '') {
+            add('Max PoE Power Budget', device.poeMaxPower + ' W', 'poeMaxPower');
+        } else { skip('poeMaxPower'); }
+        const poeUsed = _mdPoePowerInUse(device, portIndex);
+        if (poeUsed > 0) add('PoE Power in Use', `${poeUsed} W`);
 
         // ── Battery ───────────────────────────────────────────────────────────
         add('Battery Type', device.batteryType, 'batteryType');
@@ -2753,21 +2950,25 @@ function _mdDevicesSection(lines, data, maps) {
             lines.push('');
         }
 
-        // ── Physical connections (Ethernet / USB / Power ports) ───────────────
-        const conns = (Array.isArray(device.ports) ? device.ports : []).filter((p) => p.connectedTo);
-        if (conns.length) {
-            lines.push('**Connections:**', '');
-            conns.forEach((p) => {
-                const target    = devMap.get(String(p.connectedTo));
-                const tName     = target ? target.name : String(p.connectedTo);
-                const portLabel = _PORT_LABELS[p.type] || p.type || 'Port';
-                const details   = [];
-                if (p.cableType) details.push(String(p.cableType).replace(/^cat/i, 'Cat'));
-                if (p.speed)     details.push(String(p.speed));
-                if (p.usbType)   details.push(_USB_TYPE_LABELS[p.usbType] || p.usbType);
-                if (p.usbVersion) details.push(_USB_VERSION_LABELS[p.usbVersion] || p.usbVersion);
-                if (p.poeStandard) details.push(_POE_SHORT[p.poeStandard] || 'PoE');
-                lines.push(`- ${portLabel} → ${_mdInline(tName)}${details.length ? ` (${details.join(', ')})` : ''}`);
+        // ── Port inventory (Ethernet / SFP / SFP+ / HDMI / USB / Power) ───────
+        // Every port is listed, connected or not, so free capacity is visible.
+        const ports = Array.isArray(device.ports) ? device.ports : [];
+        if (ports.length) {
+            const used = ports.filter((p) => p && p.connectedTo).length;
+            lines.push(`**Ports:** ${ports.length} total · ${used} connected · ${ports.length - used} free`, '');
+            lines.push('| Port | Specs | Connected To |', '| --- | --- | --- |');
+            ports.forEach((p, i) => {
+                const specs = _mdPortSpecs(p);
+                let target  = '_Free_';
+                if (p.connectedTo) {
+                    const dev      = devMap.get(String(p.connectedTo));
+                    const devName  = dev ? (dev.name || 'Unnamed') : String(p.connectedTo);
+                    const remote   = p.connectedToPort
+                        ? portIndex.get(`${String(p.connectedTo)}::${String(p.connectedToPort)}`)
+                        : null;
+                    target = remote ? `${devName} — ${remote.label}` : devName;
+                }
+                lines.push(`| ${_mdCell(_mdPortLabel(p, i))} | ${_mdCell(specs.join(', ') || '-')} | ${_mdCell(target)} |`);
             });
             lines.push('');
         }
@@ -2789,56 +2990,163 @@ function _mdDevicesSection(lines, data, maps) {
     });
 }
 
-function _mdConnectionsSection(lines, data, devMap) {
-    const { devices } = data;
+function _mdConnectionsSection(lines, data, maps) {
+    const { devices, networks, isps } = data;
+    const { devMap, portIndex } = maps;
     lines.push('## Network Connections', '');
 
-    // Physical (port-based) links
+    // ── Networks (VLANs) ─────────────────────────────────────────────────────
+    lines.push('### Networks (VLANs)', '');
+    if ((networks || []).length) {
+        lines.push('| Network | VLAN ID | Subnet | Wi-Fi SSID | Gateway | Flags | Devices | Color | Notes |');
+        lines.push('| --- | --- | --- | --- | --- | --- | ---: | --- | --- |');
+        (networks || []).forEach((net) => {
+            const gw     = net.gatewayDeviceId ? devMap.get(String(net.gatewayDeviceId)) : null;
+            const flags  = [
+                net.isolated   ? 'Isolated'    : '',
+                net.noInternet ? 'No internet' : '',
+            ].filter(Boolean).join(', ');
+            const count  = (devices || []).filter((d) => String(d.networkId || '') === String(net.id)).length;
+            const color  = typeof getNetworkColor === 'function' ? getNetworkColor(networks, net.id) : (net.color || '');
+            lines.push(`| ${[
+                net.name || net.id,
+                net.vlanId === null || net.vlanId === undefined || net.vlanId === '' ? '-' : net.vlanId,
+                net.subnet || '-',
+                net.ssid || '-',
+                gw ? (gw.name || gw.id) : (net.gatewayDeviceId || '-'),
+                flags || '-',
+                count,
+                color || '-',
+                net.notes || '-',
+            ].map(_mdCell).join(' | ')} |`);
+        });
+    } else {
+        lines.push('_No networks defined._');
+    }
+    lines.push('');
+
+    // ── Internet providers (ISPs) ────────────────────────────────────────────
+    lines.push('### Internet Providers', '');
+    const wanLinks = [];
+    if ((isps || []).length) {
+        lines.push('| Provider | Technology | Role | Download | Upload | Gateway | Notes |');
+        lines.push('| --- | --- | --- | ---: | ---: | --- | --- |');
+        (isps || []).forEach((isp) => {
+            const { device: gw, auto } = _mdResolveIspGateway(isp, devices);
+            const gwLabel = gw
+                ? `${gw.name || gw.id}${auto ? ' (auto-detected)' : ''}`
+                : (auto ? 'Auto-detect (none found)' : String(isp.gatewayDeviceId || '-'));
+            const tech = typeof getIspTechnologyLabel === 'function' ? getIspTechnologyLabel(isp.technology) : '';
+            lines.push(`| ${[
+                isp.name || 'Internet',
+                tech || '-',
+                isp.role === 'backup' ? 'Backup' : 'Primary',
+                isp.downloadSpeed ? `${isp.downloadSpeed} Mbps` : '-',
+                isp.uploadSpeed   ? `${isp.uploadSpeed} Mbps`   : '-',
+                gwLabel,
+                isp.notes || '-',
+            ].map(_mdCell).join(' | ')} |`);
+
+            if (gw) {
+                const medium = _mdIspLastMile(isp, gw) || 'WAN';
+                const wireless = typeof isWirelessIspTechnology === 'function' && isWirelessIspTechnology(isp.technology);
+                wanLinks.push([
+                    isp.name || 'Internet',
+                    gw.name || gw.id,
+                    `${medium}${wireless ? ' (over the air)' : ''}`,
+                    _mdIspSpeedLabel(isp) || '-',
+                ]);
+            }
+        });
+    } else {
+        lines.push('_No internet providers defined._');
+    }
+    lines.push('');
+
+    lines.push('### Internet (WAN) Links', '');
+    if (wanLinks.length) {
+        lines.push('| Provider | Gateway Device | Last Mile | Contracted Speed |');
+        lines.push('| --- | --- | --- | --- |');
+        wanLinks.forEach((r) => lines.push(`| ${r.map(_mdCell).join(' | ')} |`));
+    } else {
+        lines.push('_No WAN links defined._');
+    }
+    lines.push('');
+
+    // ── Physical (port-based) links ──────────────────────────────────────────
+    // Connections are mirrored on both devices, so each cable is emitted once,
+    // keyed by the normalized pair of endpoints.
     const physical = [];
+    const seenLink = new Set();
     (devices || []).forEach((device) => {
         if (!Array.isArray(device.ports)) return;
-        device.ports.forEach((port) => {
-            if (!port.connectedTo) return;
+        device.ports.forEach((port, i) => {
+            if (!port || !port.connectedTo) return;
+            const localKey  = `${String(device.id)}::${String(port.id || i)}`;
+            const remoteKey = `${String(port.connectedTo)}::${String(port.connectedToPort || '')}`;
+            const pairKey   = [localKey, remoteKey].sort().join('|');
+            if (seenLink.has(pairKey)) return;
+            seenLink.add(pairKey);
+
             const target     = devMap.get(String(port.connectedTo));
-            const targetName = target ? target.name : port.connectedTo;
-            const portLabel  = _PORT_LABELS[port.type] || port.type || '-';
-            const cable      = [
-                port.cableType ? String(port.cableType).toUpperCase() : '',
-                port.speed     ? String(port.speed) : '',
-            ].filter(Boolean).join(' ');
-            physical.push([device.name || 'Unnamed', targetName, portLabel, cable || '-']);
+            const targetName = target ? (target.name || 'Unnamed') : String(port.connectedTo);
+            const remote     = port.connectedToPort ? portIndex.get(remoteKey) : null;
+            physical.push([
+                device.name || 'Unnamed',
+                _mdPortLabel(port, i),
+                targetName,
+                remote ? remote.label : '-',
+                _mdLinkDetails(port, remote && remote.port, device.name || 'Unnamed', targetName) || '-',
+            ]);
         });
     });
 
     lines.push('### Physical Connections', '');
     if (physical.length) {
-        lines.push('| Device | Connected To | Connection Type | Cable Details |');
-        lines.push('| --- | --- | --- | --- |');
+        lines.push('| Device | Port | Connected To | Remote Port | Cable / Port Details |');
+        lines.push('| --- | --- | --- | --- | --- |');
         physical.forEach((r) => lines.push(`| ${r.map(_mdCell).join(' | ')} |`));
     } else {
         lines.push('_No physical connections defined._');
     }
     lines.push('');
 
-    // Wireless links (Wi-Fi / Zigbee / Z-Wave / Bluetooth)
-    const wireless = [];
+    // ── Wireless links (Wi-Fi / Zigbee / Z-Wave / Bluetooth) ─────────────────
+    // Recorded on the client (parent pointer) and on the parent (*LinkedDeviceIds);
+    // both sides are read and deduped so no link is missed or listed twice.
+    const wireless    = [];
+    const seenWireless = new Set();
+    const pushWireless = (childId, parentId, kind, typeLabel) => {
+        if (!childId || !parentId) return;
+        const key = `${String(childId)}::${String(parentId)}::${kind}`;
+        if (seenWireless.has(key)) return;
+        seenWireless.add(key);
+        const child  = devMap.get(String(childId));
+        const parent = devMap.get(String(parentId));
+        wireless.push([
+            child ? (child.name || 'Unnamed') : String(childId),
+            parent ? (parent.name || 'Unnamed') : String(parentId),
+            typeLabel,
+        ]);
+    };
     (devices || []).forEach((d) => {
-        if (d.wifiAccessPointId) {
-            const ap = devMap.get(String(d.wifiAccessPointId));
-            wireless.push([d.name || 'Unnamed', ap ? ap.name : d.wifiAccessPointId, `Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`]);
-        }
-        if (d.zigbeeParentId) {
-            const p = devMap.get(String(d.zigbeeParentId));
-            wireless.push([d.name || 'Unnamed', p ? p.name : d.zigbeeParentId, 'Zigbee']);
-        }
-        if (d.zwaveControllerId) {
-            const p = devMap.get(String(d.zwaveControllerId));
-            wireless.push([d.name || 'Unnamed', p ? p.name : d.zwaveControllerId, 'Z-Wave']);
-        }
-        if (d.bluetoothProxyId) {
-            const p = devMap.get(String(d.bluetoothProxyId));
-            wireless.push([d.name || 'Unnamed', p ? p.name : d.bluetoothProxyId, 'Bluetooth']);
-        }
+        if (d.wifiAccessPointId) pushWireless(d.id, d.wifiAccessPointId, 'wifi', `Wi-Fi${d.wifiBand ? ` (${d.wifiBand})` : ''}`);
+        if (d.zigbeeParentId)    pushWireless(d.id, d.zigbeeParentId, 'zigbee', 'Zigbee');
+        if (d.zwaveControllerId) pushWireless(d.id, d.zwaveControllerId, 'zwave', 'Z-Wave');
+        if (d.bluetoothProxyId)  pushWireless(d.id, d.bluetoothProxyId, 'bluetooth', 'Bluetooth');
+    });
+    const linkedFields = [
+        ['wifiLinkedDeviceIds',      'wifi',      'Wi-Fi'],
+        ['zigbeeLinkedDeviceIds',    'zigbee',    'Zigbee'],
+        ['zwaveLinkedDeviceIds',     'zwave',     'Z-Wave'],
+        ['bluetoothLinkedDeviceIds', 'bluetooth', 'Bluetooth'],
+    ];
+    (devices || []).forEach((parent) => {
+        linkedFields.forEach(([field, kind, typeLabel]) => {
+            (Array.isArray(parent[field]) ? parent[field] : []).forEach((childId) => {
+                pushWireless(childId, parent.id, kind, typeLabel);
+            });
+        });
     });
 
     lines.push('### Wireless Links', '');
@@ -2865,6 +3173,16 @@ function _mdTestCasesSection(lines, data) {
         return ca !== 0 ? ca : (a.name || '').localeCompare(b.name || '');
     });
 
+    // Latest run per test case, so the report shows the last known result
+    const lastRunByTest = new Map();
+    (data.testCaseRuns || []).forEach((run) => {
+        if (!run || !run.testCaseId) return;
+        const current = lastRunByTest.get(String(run.testCaseId));
+        if (!current || String(run.executedAt || '') > String(current.executedAt || '')) {
+            lastRunByTest.set(String(run.testCaseId), run);
+        }
+    });
+
     let lastCategory = null;
     sorted.forEach((tc) => {
         const cat = tc.category || 'General';
@@ -2876,9 +3194,16 @@ function _mdTestCasesSection(lines, data) {
         const priority = p.charAt(0).toUpperCase() + p.slice(1);
         lines.push(`#### ${_mdInline(tc.name)}`, '');
         lines.push(`- **Priority:** ${priority}`);
+        lines.push(`- **Enabled:** ${tc.enabled === false ? 'No' : 'Yes'}`);
+        if (tc.frequencyDays) lines.push(`- **Frequency:** every ${tc.frequencyDays} days`);
         if (tc.description)    lines.push(`- **Description:** ${_mdInline(tc.description).replace(/\r?\n+/g, ' ')}`);
         if (tc.steps)          lines.push(`- **Steps:** ${_mdInline(tc.steps).replace(/\r?\n+/g, ' ')}`);
         if (tc.expectedResult) lines.push(`- **Expected Result:** ${_mdInline(tc.expectedResult).replace(/\r?\n+/g, ' ')}`);
+        const lastRun = lastRunByTest.get(String(tc.id));
+        if (lastRun) {
+            const status = String(lastRun.status || '').replace(/\b\w/g, (c) => c.toUpperCase());
+            lines.push(`- **Last Run:** ${_mdInline(lastRun.executedAt || '-')}${status ? ` — ${status}` : ''}${lastRun.notes ? ` (${_mdInline(lastRun.notes).replace(/\r?\n+/g, ' ')})` : ''}`);
+        }
         lines.push('');
     });
 }
@@ -2889,6 +3214,18 @@ function _buildMarkdownReport(data, config, sections) {
     const labelMap = new Map((data.labels   || []).map((l) => [l.id, l]));
     const netMap   = new Map((data.networks || []).map((n) => [n.id, n]));
     const devMap   = new Map((data.devices  || []).map((d) => [String(d.id), d]));
+    const portIndex = _buildPortIndex(data.devices);
+
+    // ISPs indexed by the device that terminates them (explicit or auto-detected)
+    const ispsByGateway = new Map();
+    (data.isps || []).forEach((isp) => {
+        const { device, auto } = _mdResolveIspGateway(isp, data.devices);
+        if (!device) return;
+        const key = String(device.id);
+        ispsByGateway.set(key, [...(ispsByGateway.get(key) || []), { isp, auto }]);
+    });
+
+    const maps = { areaMap, floorMap, labelMap, netMap, devMap, portIndex, ispsByGateway };
 
     const lines = [];
     lines.push(`# Smart Home Inventory — ${_mdInline(config.houseName)}`, '');
@@ -2903,8 +3240,8 @@ function _buildMarkdownReport(data, config, sections) {
     if (toc.length) lines.push('## Contents', '', ...toc, '');
 
     if (sections.summary)   _mdSummarySection(lines, data, config);
-    if (sections.devices)   _mdDevicesSection(lines, data, { areaMap, floorMap, labelMap, netMap, devMap });
-    if (sections.diagram)   _mdConnectionsSection(lines, data, devMap);
+    if (sections.devices)   _mdDevicesSection(lines, data, maps);
+    if (sections.diagram)   _mdConnectionsSection(lines, data, maps);
     if (sections.testCases) _mdTestCasesSection(lines, data);
 
     return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
