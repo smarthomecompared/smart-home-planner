@@ -194,21 +194,9 @@ function parseLinkSpeedToMbps(speed) {
     return match[2] === 'g' ? amount * 1000 : amount;
 }
 
-function isZigbeeConnectivityValue(value) {
-    return normalizeText(value).includes('zigbee');
-}
-
 function isZwaveConnectivityValue(value) {
     const text = normalizeText(value);
     return text.includes('zwave') || text.includes('z-wave');
-}
-
-function isBluetoothConnectivityValue(value) {
-    // Kept in sync with isBluetoothConnectivity in device-form.js, so a custom
-    // option like "Bluetooth LE" is never flagged here without the form
-    // offering the proxy field to fix it.
-    const text = normalizeText(value);
-    return text.startsWith('bluetooth') || text === 'ble';
 }
 
 function todayIsoDate() {
@@ -282,21 +270,11 @@ function detectDeviceInconsistencies(device, ctx = {}) {
         }
     });
 
-    // #4 — wireless device with no parent assigned.
+    // #4 — wireless device with no controller assigned.
     const connectivity = normalizeText(device.connectivity);
-    if (isZigbeeConnectivityValue(connectivity) && !normalizeRefId(device.zigbeeParentId)) {
-        push('ASSIGN_NO_ZIGBEE_PARENT', 'warning', 'Zigbee device with no parent assigned.',
-            { field: 'zigbeeParentId' });
-    }
     if (isZwaveConnectivityValue(connectivity) && !normalizeRefId(device.zwaveControllerId)) {
         push('ASSIGN_NO_ZWAVE_CTRL', 'warning', 'Z-Wave device with no controller assigned.',
             { field: 'zwaveControllerId' });
-    }
-    // A proxy is the coverage itself, so it never needs one assigned.
-    if (isBluetoothConnectivityValue(connectivity) && !device.bluetoothProxy &&
-        !normalizeRefId(device.bluetoothProxyId)) {
-        push('ASSIGN_NO_BT_PROXY', 'warning', 'Bluetooth device with no proxy assigned.',
-            { field: 'bluetoothProxyId' });
     }
 
     // #7 — the assigned parent cannot actually route for this protocol. Only
