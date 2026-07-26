@@ -2757,9 +2757,126 @@ function initializeCytoscape() {
         showIspTooltip(evt.target);
     });
 
+    // While editing the layout, moving a device re-evaluates which card edge each
+    // port chip sits on (top/bottom) so links stay pretty in real time. Only the
+    // moved device and its wired neighbours can change, and rebuilds are batched
+    // per frame and skipped when the chip layout is unchanged.
+    let pendingChipRecompute = new Set();
+    let chipRecomputeRaf = null;
+
+    function getPortNeighborIds(deviceId) {
+        const device = devices.find((d) => String(d.id) === String(deviceId));
+        const ids = new Set();
+        if (device && Array.isArray(device.ports)) {
+            device.ports.forEach((port) => {
+                if (port && port.connectedTo) ids.add(String(port.connectedTo));
+            });
+        }
+        return ids;
+    }
+
+    function scheduleChipRecompute(deviceId) {
+        if (!isLayoutEditable) return;
+        pendingChipRecompute.add(String(deviceId));
+        getPortNeighborIds(deviceId).forEach((id) => pendingChipRecompute.add(id));
+        if (chipRecomputeRaf) return;
+        chipRecomputeRaf = requestAnimationFrame(() => {
+            chipRecomputeRaf = null;
+            const ids = pendingChipRecompute;
+            pendingChipRecompute = new Set();
+            recomputePortChipsForDevices(ids);
+        });
+    }
+
+    function recomputePortChipsForDevices(ids) {
+        if (!cy || !ids || !ids.size) return;
+        const showEthernet = document.getElementById('show-ethernet-connections')?.checked ?? true;
+        if (!showEthernet) return;
+        const visible = new Set(cy.nodes('node[type="device"]').map((n) => n.id()));
+        const getPos = (id) => {
+            const n = cy.getElementById(String(id));
+            if (!n || n.empty() || n.data('type') !== 'device') return null;
+            const p = n.position();
+            return { x: p.x, y: p.y };
+        };
+        const isVisible = (id) => visible.has(String(id));
+
+        ids.forEach((id) => {
+            const node = cy.getElementById(String(id));
+            if (!node || node.empty() || node.data('type') !== 'device') return;
+            if (normalizeDeviceRotation(node.data('rotation') || 0) !== 0) return;
+            const device = devices.find((d) => String(d.id) === String(id));
+            if (!device) return;
+            const lists = buildDeviceChipList(device, getPos, isVisible, devices);
+            if (!lists) return;
+            const { topChips, bottomChips, allChips } = lists;
+
+            const chipWidth = Math.max(...allChips.map((c) => measurePortChipWidth(c.text)));
+            const baseWidth = Number(node.data('chipBaseWidth')) || Number(node.data('width')) || DEVICE_BASE_METRICS.width;
+            const baseHeight = Number(node.data('chipBaseHeight')) || Number(node.data('height')) || DEVICE_BASE_METRICS.height;
+            const layout = computeDeviceChipLayout(baseWidth, baseHeight, topChips, bottomChips, chipWidth);
+            const sig = portChipSignature(allChips);
+
+            if (node.data('chipLayoutSig') !== sig) {
+                node.data('chipBaseWidth', baseWidth);
+                node.data('chipBaseHeight', baseHeight);
+                node.data('width', layout.nodeWidth);
+                node.data('height', layout.nodeHeight);
+                node.data('cardChipLayout', layout);
+                node.data('chipLayoutSig', sig);
+                node.data('cardSvgSignature', '');
+                node.data('cardSvgTargetSignature', '');
+                node.data('cardSvg', buildDeviceCardSvg({
+                    label: node.data('cardLabel') || node.data('label'),
+                    status: node.data('cardStatus') || node.data('status'),
+                    storageLabel: node.data('cardStorageLabel') || '',
+                    rotation: 0,
+                    iconSvgContent: node.data('cardIconSvgContent') || null,
+                    imageHref: node.data('cardImageUrl') || '',
+                    width: baseWidth,
+                    height: baseHeight,
+                    fontSize: node.data('fontSize'),
+                    textMaxWidth: node.data('textMaxWidth'),
+                    padding: node.data('padding'),
+                    chipLayout: layout
+                }));
+                // Ethernet endpoints follow the chip they land on (layout changed).
+                layout.chips.forEach((chip) => {
+                    if (!chip.connected || !chip.otherId) return;
+                    const other = cy.getElementById(String(chip.otherId));
+                    if (!other || other.empty()) return;
+                    const offX = (chip.cx - layout.nodeWidth / 2).toFixed(1);
+                    const offY = (chip.cy - layout.nodeHeight / 2).toFixed(1);
+                    const ep = `${offX}px ${offY}px`;
+                    node.edgesWith(other).forEach((edge) => {
+                        if (edge.data('connectionType') !== 'ethernet') return;
+                        if (edge.source().id() === String(id)) edge.style('source-endpoint', ep);
+                        else edge.style('target-endpoint', ep);
+                    });
+                });
+            }
+
+            // Non-ethernet ends clip to the card body and depend on live positions,
+            // so refresh them every move.
+            node.connectedEdges().forEach((edge) => {
+                if (edge.data('connectionType') === 'ethernet') return;
+                const other = edge.source().id() === String(id) ? edge.target() : edge.source();
+                if (!other || other.empty() || other.data('type') !== 'device') return;
+                const ep = computeCardBoundaryEndpoint(
+                    { x: other.position().x, y: other.position().y },
+                    { x: node.position().x, y: node.position().y },
+                    layout
+                );
+                if (edge.source().id() === String(id)) edge.style('source-endpoint', ep);
+                else edge.style('target-endpoint', ep);
+            });
+        });
+    }
+
     // Clouds follow their gateway while it is dragged in layout edit mode
     cy.on('position', 'node[type="device"]', (event) => {
         repositionIspNodesForGateway(event.target.id());
+        scheduleChipRecompute(event.target.id());
     });
 
     cy.on('drag', 'node[type="device"]', (event) => {
@@ -4995,57 +5112,87 @@ function isNetworkPortTypeForChip(type) {
 // The device card is widened and its edges reshaped in place, and each ethernet
 // edge end is re-pointed at the chip it belongs to. Runs only while the Ethernet
 // layer is visible.
+// Computes a device's port chips and which card edge (top/bottom) each sits on,
+// from live geometry: a connected chip faces its peer (top if the peer is above,
+// bottom if below) so the link runs straight into it; empty ports go on top. The
+// bottom edge is reserved (all chips forced up) when a wired non-ethernet line
+// reaches this device from below. `getPos(id)` returns a device's map center
+// ({x,y}) or null; `isVisible(id)` says whether a peer is drawn on the map.
+// Returns { topChips, bottomChips, allChips } or null when the device has no
+// network ports. Shared by the full render and the live drag recompute.
+function buildDeviceChipList(device, getPos, isVisible, devicesList) {
+    const dpos = getPos(device.id);
+    if (!dpos) return null;
+    const ports = Array.isArray(device.ports) ? device.ports : [];
+    const networkPorts = ports.filter((port) => port && isNetworkPortTypeForChip(port.type));
+    if (!networkPorts.length) return null;
+
+    const reserveBottom = ports.some((port) => {
+        if (!port || !port.connectedTo) return false;
+        const t = String(port.type || '');
+        if (!(t.startsWith('power') || t.startsWith('usb') || t.startsWith('hdmi'))) return false;
+        const opos = getPos(port.connectedTo);
+        return opos && opos.y > dpos.y + 1;
+    });
+
+    const chips = networkPorts.map((port) => {
+        const connectedId = String(port.connectedTo || '');
+        if (connectedId && isVisible(connectedId)) {
+            const meta = getEthernetConnectionMeta(device, port, devicesList);
+            const opos = getPos(connectedId);
+            const peerBelow = Boolean(opos && opos.y > dpos.y + 1);
+            return {
+                text: formatPortSpeedLabel(meta) || '—',
+                connected: true,
+                otherId: connectedId,
+                otherX: opos ? opos.x : dpos.x,
+                side: !reserveBottom && peerBelow ? 'bottom' : 'top'
+            };
+        }
+        // No connection (or the peer is not on the map): a present-but-unused port.
+        return {
+            text: formatPortSpeedLabel({ speed: port.speed }) || '—',
+            connected: false,
+            otherId: '',
+            otherX: dpos.x,
+            side: 'top'
+        };
+    });
+
+    // Connected chips first (sorted by the peer's x to reduce crossings), then
+    // empty ports trailing on the right.
+    const bySide = (side) => chips
+        .filter((c) => c.side === side)
+        .sort((a, b) => (a.connected === b.connected ? a.otherX - b.otherX : (a.connected ? -1 : 1)));
+    return { topChips: bySide('top'), bottomChips: bySide('bottom'), allChips: chips };
+}
+
+// A stable signature of a device's chip layout, so a live recompute can skip the
+// (expensive) card SVG rebuild when nothing about the chips actually changed.
+function portChipSignature(allChips) {
+    return allChips.map((c) => `${c.side}:${c.text}`).join('|');
+}
+
 function applyPortSpeedChips({ filteredDevicesList, devicePositionById, deviceRenderRegistry, ethernetPairEdges, chipLayoutsByDevice, showEthernet }) {
     if (!showEthernet) return;
+
+    const visibleSet = new Set(filteredDevicesList.map((d) => String(d.id)));
+    const getPos = (id) => devicePositionById.get(String(id)) || null;
+    const isVisible = (id) => visibleSet.has(String(id));
 
     filteredDevicesList.forEach((device) => {
         const deviceId = String(device.id || '');
         const element = deviceRenderRegistry.get(deviceId);
-        const dpos = devicePositionById.get(deviceId);
-        if (!element || !dpos) return;
+        if (!element) return;
         // Rotated cards use a rotated SVG frame that the axis-aligned chip
         // endpoints can't follow, so they keep the plain (chip-less) card.
         if (normalizeDeviceRotation(element.data.rotation || 0) !== 0) return;
 
-        const networkPorts = (Array.isArray(device.ports) ? device.ports : [])
-            .filter((port) => port && isNetworkPortTypeForChip(port.type));
-        if (!networkPorts.length) return;
+        const lists = buildDeviceChipList(device, getPos, isVisible, filteredDevicesList);
+        if (!lists) return;
+        const { topChips, bottomChips, allChips } = lists;
 
-        // All chips sit on a single row on the top edge (a port header), keeping
-        // the bottom edge clear so power/other lines coming from below never pass
-        // under a port chip.
-        const chips = networkPorts.map((port) => {
-            const connectedId = String(port.connectedTo || '');
-            const connectedDevice = connectedId
-                ? filteredDevicesList.find((d) => String(d.id) === connectedId)
-                : null;
-            if (connectedDevice) {
-                const meta = getEthernetConnectionMeta(device, port, filteredDevicesList);
-                const opos = devicePositionById.get(connectedId);
-                return {
-                    text: formatPortSpeedLabel(meta) || '—',
-                    connected: true,
-                    otherId: connectedId,
-                    otherX: opos ? opos.x : dpos.x
-                };
-            }
-            // No connection (or the peer is filtered out): a present-but-unused port.
-            return {
-                text: formatPortSpeedLabel({ speed: port.speed }) || '—',
-                connected: false,
-                otherId: '',
-                otherX: dpos.x
-            };
-        });
-
-        // Connected chips first (sorted by the peer's x to reduce crossings),
-        // then empty ports trailing on the right.
-        const topChips = chips
-            .slice()
-            .sort((a, b) => (a.connected === b.connected ? a.otherX - b.otherX : (a.connected ? -1 : 1)));
-        const bottomChips = [];
-
-        const chipWidth = Math.max(...chips.map((c) => measurePortChipWidth(c.text)));
+        const chipWidth = Math.max(...allChips.map((c) => measurePortChipWidth(c.text)));
         const baseWidth = Number(element.data.width) || DEVICE_BASE_METRICS.width;
         const baseHeight = Number(element.data.height) || DEVICE_BASE_METRICS.height;
         const layout = computeDeviceChipLayout(baseWidth, baseHeight, topChips, bottomChips, chipWidth);
@@ -5057,6 +5204,7 @@ function applyPortSpeedChips({ filteredDevicesList, devicePositionById, deviceRe
         element.data.width = layout.nodeWidth;
         element.data.height = layout.nodeHeight;
         element.data.cardChipLayout = layout;
+        element.data.chipLayoutSig = portChipSignature(allChips);
         if (chipLayoutsByDevice) {
             chipLayoutsByDevice.set(deviceId, {
                 nodeWidth: layout.nodeWidth,
