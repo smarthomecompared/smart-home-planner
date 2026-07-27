@@ -1,4 +1,4 @@
-## 1.8.0
+## 1.8.0 - 2026-07-26
 
 ### Added
 - Dedicated Map page with its own filters in the navigation rail (no longer a tab inside Devices)
