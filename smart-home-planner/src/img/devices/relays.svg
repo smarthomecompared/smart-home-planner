@@ -1,9 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-  <rect x="6" y="7" width="12" height="10" rx="2"/>
-  <line x1="1" y1="12" x2="6" y2="12"/>
-  <line x1="18" y1="12" x2="23" y2="12"/>
-  <circle cx="9.5" cy="12" r="1.5"/>
-  <line x1="11" y1="12" x2="13" y2="9.5"/>
-  <circle cx="14.5" cy="9.5" r="1"/>
-  <circle cx="14.5" cy="14.5" r="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g stroke="none">
+  <ellipse cx="24" cy="38.6" rx="13" ry="2" fill="#000" opacity=".32"/>
+  <rect x="10" y="12" width="28" height="25" rx="2.4" fill="#dbe1ea"/>
+  <path d="M10.03 14 A2.4 2.4 0 0 1 12.4 12 H35.6 A2.4 2.4 0 0 1 37.97 14 Z" fill="#eef1f6"/>
+  <path d="M10.14 35.4 A2.4 2.4 0 0 0 12.4 37 H35.6 A2.4 2.4 0 0 0 37.86 35.4 Z" fill="#bcc4d1"/>
+  <rect x="13.6" y="16" width="9" height="7" rx="1" fill="#39414d"/>
+  <circle cx="30.4" cy="19.5" r="3.4" fill="#0a84ff" opacity=".85"/>
+  <circle cx="30.4" cy="19.5" r="1.4" fill="#eef1f6"/>
+  <rect x="12.6" y="30" width="3.4" height="5.4" rx="0.8" fill="#f5a524"/>
+  <rect x="18.4" y="30" width="3.4" height="5.4" rx="0.8" fill="#f5a524"/>
+  <rect x="24.2" y="30" width="3.4" height="5.4" rx="0.8" fill="#f5a524"/>
+  <rect x="30" y="30" width="3.4" height="5.4" rx="0.8" fill="#f5a524"/>
+  </g>
 </svg>

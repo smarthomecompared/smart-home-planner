@@ -1114,7 +1114,8 @@ body.map-fullscreen .map-legend {
     height: 30px;
     flex: 0 0 auto;
     border-radius: 6px;
-    background: linear-gradient(160deg, #e7eaef, #d3d7df);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     display: inline-flex;
     align-items: center;
     justify-content: center;

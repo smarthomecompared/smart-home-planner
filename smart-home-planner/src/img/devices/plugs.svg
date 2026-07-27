@@ -1,5 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 21V13M7 7V3M17 7V3"/>
-  <rect x="5" y="7" width="14" height="6" rx="1"/>
-  <path d="M9 13v2a3 3 0 0 0 6 0v-2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g stroke="none">
+  <ellipse cx="24" cy="40.6" rx="12" ry="2" fill="#000" opacity=".32"/>
+  <rect x="11" y="10" width="26" height="28" rx="6" fill="#dbe1ea"/>
+  <path d="M12.53 12 A6 6 0 0 1 17 10 H31 A6 6 0 0 1 35.47 12 Z" fill="#eef1f6"/>
+  <path d="M12.92 36.4 A6 6 0 0 0 17 38 H31 A6 6 0 0 0 35.08 36.4 Z" fill="#bcc4d1"/>
+  <circle cx="24" cy="21.5" r="7.4" fill="#eef1f6"/>
+  <circle cx="24" cy="21.5" r="5.8" fill="#bcc4d1"/>
+  <rect x="20.4" y="19" width="2.2" height="5" rx="1.1" fill="#39414d"/>
+  <rect x="25.4" y="19" width="2.2" height="5" rx="1.1" fill="#39414d"/>
+  <rect x="18.6" y="31" width="10.8" height="3.4" rx="1.7" fill="#39414d"/>
+  <circle cx="21.4" cy="32.7" r="1" fill="#38cc65"/>
+  </g>
 </svg>

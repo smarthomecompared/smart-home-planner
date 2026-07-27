@@ -332,8 +332,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(160deg, #e7eaef, #d3d7df);
-    border-bottom: 1px solid var(--border-color-light, #dfe2e8);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
     border-radius: 8px 14px 0 0;
     overflow: hidden;
     flex-shrink: 0;
@@ -410,8 +410,8 @@
     border-radius: 6px;
     object-fit: contain;
     flex-shrink: 0;
-    background: linear-gradient(160deg, #e7eaef, #d3d7df);
-    border: 1px solid var(--border-color-light, #dfe2e8);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     padding: 4px;
     box-sizing: border-box;
     align-self: center;

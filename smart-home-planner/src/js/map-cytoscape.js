@@ -29,6 +29,8 @@ window.DeviceMap = (() => {
         minPadding: 3,
         maxPadding: 10
     };
+    // Device type icons (img/devices/*.svg) are authored on a 48x48 grid
+    const DEVICE_ICON_VIEWBOX = 48;
     const DEVICE_TEXT_MAX_LINES = 5;
     const DEVICE_ROTATION_OFFSET = 90;
     const DEVICE_ROTATION_MAX = 359;
@@ -5566,13 +5568,15 @@ function buildDeviceCardSvg({ label, status, storageLabel, rotation, iconSvgCont
                 `<image href="${escapeSvgAttr(imageHref)}" x="${mediaX + 1}" y="${mediaY + 1}" width="${mediaSize - 2}" height="${mediaSize - 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${mediaClipId})"/>`
             ].join('');
         } else if (hasIcon) {
-            const iconSize = 20;
+            const iconSize = 22;
             const ix = mediaX + Math.round((mediaSize - iconSize) / 2);
             const iy = mediaY + Math.round((mediaSize - iconSize) / 2);
-            const iconScale = (iconSize / 24).toFixed(4);
+            // Device type icons are drawn on a 48x48 grid as filled product art;
+            // they carry their own <g stroke="none"> so nothing is stroked here.
+            const iconScale = (iconSize / DEVICE_ICON_VIEWBOX).toFixed(4);
             mediaMarkup = [
                 mediaFrame,
-                `<g transform="translate(${ix},${iy}) scale(${iconScale})" fill="none" stroke="#c6cbd6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${iconSvgContent}</g>`
+                `<g transform="translate(${ix},${iy}) scale(${iconScale})">${iconSvgContent}</g>`
             ].join('');
         }
     }

@@ -1,4 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 2c-5.33 8-8 13.3-8 16a8 8 0 0 0 16 0c0-2.7-2.67-8-8-16z"/>
-  <path d="M7.5 14.5S8 17 11 17"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g stroke="none">
+  <ellipse cx="24" cy="41.6" rx="11" ry="2.1" fill="#000" opacity=".32"/>
+  <path d="M14 16h20a2.4 2.4 0 0 1 2.4 2.4v19.2a2.4 2.4 0 0 1-2.4 2.4H14a2.4 2.4 0 0 1-2.4-2.4V18.4A2.4 2.4 0 0 1 14 16z" fill="#dbe1ea"/>
+  <path d="M14 16h7.4v24H14a2.4 2.4 0 0 1-2.4-2.4V18.4A2.4 2.4 0 0 1 14 16z" fill="#eef1f6"/>
+  <path d="M14.6 26h18.8v11.4a1.4 1.4 0 0 1-1.4 1.4H16a1.4 1.4 0 0 1-1.4-1.4z" fill="#22c1d6" opacity=".3"/>
+  <rect x="19.6" y="12.6" width="8.8" height="3.4" rx="1" fill="#99a3b3"/>
+  <path d="M20 11.4c-1.8-1.8-1.8-3.6 0-5.4s1.8-3.6 0-5.4" fill="none" stroke="#22c1d6" stroke-width="1.7" stroke-linecap="round" opacity=".75"/>
+  <path d="M28 11.4c-1.8-1.8-1.8-3.6 0-5.4s1.8-3.6 0-5.4" fill="none" stroke="#22c1d6" stroke-width="1.7" stroke-linecap="round" opacity=".75"/>
+  <circle cx="24" cy="33" r="1.4" fill="#22c1d6"/>
+  </g>
 </svg>

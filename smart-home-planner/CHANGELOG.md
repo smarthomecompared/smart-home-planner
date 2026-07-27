@@ -30,6 +30,7 @@
 
 ### Changed
 - Complete app redesign
+- Redesigned device type icons
 - Internal cleanup of unused JavaScript and CSS (no functional change)
 
 ### Fixed
