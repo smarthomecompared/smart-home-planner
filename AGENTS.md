@@ -159,7 +159,6 @@ smart-home-planner/
 │   ├── js/              # JavaScript modules
 │   ├── css/             # Stylesheets
 │   └── img/             # Images and icons
-└── website/             # Marketing website (Firebase hosted)
 ```
 
 ## Home Assistant Integration
