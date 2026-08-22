@@ -2888,8 +2888,8 @@
       "auto_update": 13,
       "install_rank": 928,
       "total_rank": 9689,
-      "stars": 48,
-      "forks": 2,
+      "stars": null,
+      "forks": null,
       "versions": {
         "1.8.0": 32,
         "1.2.0": 1,
