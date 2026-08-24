@@ -610,12 +610,29 @@ nav.site-nav a:focus-visible .site-nav-label {
     min-width: 0;
 }
 
+.app-footer-brand-title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
 .app-footer-brand-name {
     font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0;
     line-height: 1.1;
     color: var(--text-color);
+}
+
+.app-footer-version {
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background-color: rgba(0, 111, 255, 0.15);
+    color: var(--primary-text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.3;
 }
 
 .app-footer-brand-tag {

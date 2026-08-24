@@ -14,6 +14,7 @@ COPY src/ /srv/
 COPY server.py /app/server.py
 COPY registry-sync.js /app/registry-sync.js
 COPY ha-device-update.js /app/ha-device-update.js
+COPY config.yaml /app/config.yaml
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 

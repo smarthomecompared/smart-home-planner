@@ -8,10 +8,16 @@ globalThis.WebSocket = WebSocket;
 
 const SUPERVISOR_WS_URL = "ws://supervisor/core/websocket";
 const DATA_DIR = "/data";
-const STORAGE_FILE = path.join(DATA_DIR, "data.json");
 const LABELS_FILE = path.join(DATA_DIR, "labels.json");
 const DEVICES_FILE = path.join(DATA_DIR, "devices.json");
 const SUPERVISOR_TOKEN = process.env.SUPERVISOR_TOKEN;
+// data.json is written through the app server instead of the file system, so a
+// single process owns it: writes go through the same ETag check, safety guards
+// and rolling snapshots the browser uses, and neither side can silently
+// overwrite the other.
+const SERVER_BASE_URL = process.env.SHP_SERVER_URL || `http://127.0.0.1:${process.env.SHP_PORT || "80"}`;
+const STORAGE_API_URL = `${SERVER_BASE_URL}/api/storage`;
+const STORAGE_WRITE_ATTEMPTS = 3;
 
 const registries = [
   {
@@ -165,24 +171,45 @@ function sanitizeRegistryDataForFile(registryName, data) {
   return data.map((item) => omitFieldsFromObject(item, fieldsToOmit));
 }
 
-async function readStorageJson() {
-  try {
-    const raw = await fs.readFile(STORAGE_FILE, "utf8");
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (error) {
-    if (error && error.code === "ENOENT") {
-      return {};
-    }
-    throw error;
+async function readStorage() {
+  const response = await fetch(STORAGE_API_URL, { headers: { "Cache-Control": "no-store" } });
+  if (!response.ok) {
+    throw new Error(`Storage read failed: HTTP ${response.status}`);
   }
+  const payload = await response.json();
+  const etag = response.headers.get("etag") || "";
+  if (!etag) {
+    // Without it the write carries no If-Match and the server cannot tell a
+    // concurrent change apart, which is exactly what this path must prevent.
+    throw new Error("Storage read failed: the server returned no ETag.");
+  }
+  return {
+    storage: payload && typeof payload === "object" ? payload : {},
+    etag,
+  };
 }
 
-async function writeStorageJson(payload) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const temp = `${STORAGE_FILE}.tmp`;
-  await fs.writeFile(temp, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  await fs.rename(temp, STORAGE_FILE);
+// Returns false when the storage changed under us, so the caller can rebuild
+// the update from fresh data instead of overwriting someone else's write.
+async function writeStorage(payload, etag) {
+  const response = await fetch(STORAGE_API_URL, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "If-Match": etag },
+    body: JSON.stringify(payload),
+  });
+  if (response.status === 409) {
+    const body = await response.json().catch(() => null);
+    // A rejected write is not a concurrent change: rebuilding would produce
+    // the same payload, so it must surface instead of looping.
+    if (body?.code === "storage_empty_rejected") {
+      throw new Error(`Storage write rejected: ${body.error || "it would have removed every device."}`);
+    }
+    return false;
+  }
+  if (!response.ok) {
+    throw new Error(`Storage write failed: HTTP ${response.status}`);
+  }
+  return true;
 }
 
 function normalizeString(value) {
@@ -518,11 +545,9 @@ function buildSyncedDevice(haDevice, existingDevice, haAreaSyncTarget, allowedLa
   return synced;
 }
 
-async function syncStorageDevicesFromRegistry(haDevices) {
-  const storage = await readStorageJson();
+function buildStorageDevicesUpdate(storage, haDevices, allowedLabels) {
   const haAreaSyncTarget = getHaAreaSyncTarget(storage.settings);
   const brandRegistry = createBrandOptionRegistry(storage.settings);
-  const allowedLabels = await readLabelsRegistry();
   const excludedDeviceIds = getExcludedDeviceIds(storage);
   const existingDevices = Array.isArray(storage.devices) ? storage.devices : [];
   const existingById = new Map(
@@ -660,26 +685,58 @@ async function syncStorageDevicesFromRegistry(haDevices) {
     nextStorage.settings = nextSettings;
   }
 
-  await writeStorageJson(nextStorage);
-  log(`data.json devices synced (${nextDevices.length})`);
-  log(`Home Assistant area sync target: ${haAreaSyncTarget}`);
-  if (excludedDevicesCount > 0) {
-    log(`Ignored ${excludedDevicesCount} device(s) by excluded_devices.`);
+  return {
+    nextStorage,
+    stats: {
+      deviceCount: nextDevices.length,
+      haAreaSyncTarget,
+      excludedDevicesCount,
+      autoExcludedCount: autoExcludedOnCreateIds.size,
+      unlinkedDevicesCount,
+      createdDevicesCount,
+      addedBrandCount: brandRegistry.getAddedCount(),
+    },
+  };
+}
+
+function logDeviceSyncSummary(stats) {
+  log(`data.json devices synced (${stats.deviceCount})`);
+  log(`Home Assistant area sync target: ${stats.haAreaSyncTarget}`);
+  if (stats.excludedDevicesCount > 0) {
+    log(`Ignored ${stats.excludedDevicesCount} device(s) by excluded_devices.`);
   }
-  if (autoExcludedOnCreateIds.size > 0) {
-    log(`Auto-excluded ${autoExcludedOnCreateIds.size} new device(s) by sync exclusion rules.`);
+  if (stats.autoExcludedCount > 0) {
+    log(`Auto-excluded ${stats.autoExcludedCount} new device(s) by sync exclusion rules.`);
   }
-  if (unlinkedDevicesCount > 0) {
+  if (stats.unlinkedDevicesCount > 0) {
     log(
-      `Marked ${unlinkedDevicesCount} device(s) as unlinked from Home Assistant (homeAssistant=false).`
+      `Marked ${stats.unlinkedDevicesCount} device(s) as unlinked from Home Assistant (homeAssistant=false).`
     );
   }
-  if (createdDevicesCount > 0) {
-    log(`Created ${createdDevicesCount} new device(s) from Home Assistant.`);
+  if (stats.createdDevicesCount > 0) {
+    log(`Created ${stats.createdDevicesCount} new device(s) from Home Assistant.`);
   }
-  if (brandRegistry.getAddedCount() > 0) {
-    log(`Registered ${brandRegistry.getAddedCount()} new brand option(s) in use by devices.`);
+  if (stats.addedBrandCount > 0) {
+    log(`Registered ${stats.addedBrandCount} new brand option(s) in use by devices.`);
   }
+}
+
+async function syncStorageDevicesFromRegistry(haDevices) {
+  const allowedLabels = await readLabelsRegistry();
+
+  for (let attempt = 1; attempt <= STORAGE_WRITE_ATTEMPTS; attempt += 1) {
+    const { storage, etag } = await readStorage();
+    const { nextStorage, stats } = buildStorageDevicesUpdate(storage, haDevices, allowedLabels);
+    if (await writeStorage(nextStorage, etag)) {
+      logDeviceSyncSummary(stats);
+      return;
+    }
+    log(
+      `data.json changed while syncing (attempt ${attempt}/${STORAGE_WRITE_ATTEMPTS}). Rebuilding from fresh data.`
+    );
+  }
+
+  throw new Error("Device sync aborted: data.json kept changing while writing.");
 }
 
 async function fetchRegistry(conn, registry) {

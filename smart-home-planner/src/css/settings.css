@@ -721,11 +721,13 @@
     display: none;
 }
 
-.excluded-table-container {
+.excluded-table-container,
+.snapshots-table-container {
     margin-bottom: 0.75rem;
 }
 
-.excluded-devices-table {
+.excluded-devices-table,
+.snapshots-table {
     width: 100%;
     border-collapse: collapse;
     table-layout: auto;
@@ -733,12 +735,15 @@
 }
 
 .excluded-devices-table th,
-.excluded-devices-table td {
+.excluded-devices-table td,
+.snapshots-table th,
+.snapshots-table td {
     padding: 0.85rem 0.95rem;
     white-space: nowrap;
 }
 
-.excluded-devices-table th {
+.excluded-devices-table th,
+.snapshots-table th {
     background-color: var(--bg-secondary);
     border-bottom: 2px solid var(--border-color);
     color: var(--text-color);
@@ -785,12 +790,14 @@
     color: var(--primary-color);
 }
 
-.excluded-devices-table tbody tr {
+.excluded-devices-table tbody tr,
+.snapshots-table tbody tr {
     border-bottom: 1px solid var(--border-color);
     transition: background-color var(--transition-fast);
 }
 
-.excluded-devices-table tbody tr:hover {
+.excluded-devices-table tbody tr:hover,
+.snapshots-table tbody tr:hover {
     background-color: var(--bg-secondary);
 }
 
@@ -1275,7 +1282,9 @@
     }
 
     .excluded-devices-table th,
-    .excluded-devices-table td {
+    .excluded-devices-table td,
+    .snapshots-table th,
+    .snapshots-table td {
         padding: 0.75rem 0.7rem;
     }
 
@@ -1454,4 +1463,41 @@
 
 .notif-save-feedback.is-error {
     color: var(--danger-color);
+}
+
+/* Local snapshots (table rules are shared with .excluded-devices-table) */
+.snapshot-kind {
+    display: inline-block;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: rgba(126, 133, 149, 0.18);
+    color: var(--text-secondary);
+}
+
+.snapshot-kind.is-daily {
+    background-color: rgba(0, 111, 255, 0.18);
+    color: var(--primary-text);
+}
+
+.snapshot-kind.is-unreadable {
+    background-color: rgba(245, 165, 36, 0.18);
+    color: var(--warning-color);
+}
+
+.snapshots-empty {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.snapshots-empty.is-hidden {
+    display: none;
+}
+
+.snapshots-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
 }

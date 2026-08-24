@@ -13,8 +13,9 @@ import subprocess
 import tarfile
 import tempfile
 import threading
+import time
 from functools import partial
-from http.server import HTTPServer, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 from urllib.request import Request, urlopen
 
@@ -26,6 +27,7 @@ FLOORS_FILE = os.path.join(DATA_DIR, "floors.json")
 DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 LABELS_FILE = os.path.join(DATA_DIR, "labels.json")
 BACKUPS_DEBUG_FILE = os.path.join(DATA_DIR, "backups.json")
+SNAPSHOTS_DIR = os.path.join(DATA_DIR, "snapshots")
 WEB_ROOT = os.environ.get("SHP_WEB_ROOT", "/srv")
 HOST = os.environ.get("SHP_HOST", "")
 PORT = int(os.environ.get("SHP_PORT", "80"))
@@ -41,19 +43,234 @@ MAX_DEBUG_FILE_BYTES = 1024 * 1024 * 2
 MAX_UPLOAD_FILE_BYTES = int(os.environ.get("SHP_MAX_UPLOAD_FILE_BYTES", str(20 * 1024 * 1024)))
 MAX_IMPORT_ARCHIVE_BYTES = int(os.environ.get("SHP_MAX_IMPORT_ARCHIVE_BYTES", str(300 * 1024 * 1024)))
 FILENAME_SAFE_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
+SNAPSHOT_PREFIX = "data-"
+SNAPSHOT_DAILY_PREFIX = "data-daily-"
+SNAPSHOT_UNREADABLE_PREFIX = "data-unreadable-"
+SNAPSHOT_NAME_PATTERN = re.compile(r"^data-[0-9A-Za-z][0-9A-Za-z._-]*\.json$")
+MAX_ROLLING_SNAPSHOTS = 10
+MAX_DAILY_SNAPSHOTS = 7
+MAX_UNREADABLE_SNAPSHOTS = 5
+SNAPSHOT_MIN_INTERVAL_SECONDS = 300
+ADDON_CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
+ADDON_VERSION_PATTERN = re.compile(r"^version:\s*[\"']?([^\"'\s]+)")
 SMART_HOME_PLANNER_ADDON_SLUG = "1750ef26_smart-home-planner"
 
 _lock = threading.Lock()
 
 
+class StorageUnreadableError(Exception):
+    """The data file exists but cannot be parsed, so its content is unknown."""
+
+
+def _read_addon_version():
+    try:
+        with open(ADDON_CONFIG_FILE, "r", encoding="utf-8") as handle:
+            for line in handle:
+                match = ADDON_VERSION_PATTERN.match(line)
+                if match:
+                    return match.group(1)
+    except OSError:
+        pass
+    return ""
+
+
+ADDON_VERSION = _read_addon_version()
+
+
+def _file_digest(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _quarantine_unreadable_storage():
+    """Keep a copy of an unparsable data file so it can still be recovered.
+
+    Every read of an unreadable file lands here, and the sync worker retries
+    for as long as it stays unreadable, so an identical copy is never made
+    twice and the folder is pruned on the way out.
+    """
+    try:
+        os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
+        current_size = os.path.getsize(DATA_FILE)
+        current_digest = None
+        for entry in _list_snapshot_entries():
+            if entry["kind"] != "unreadable" or entry["size"] != current_size:
+                continue
+            if current_digest is None:
+                current_digest = _file_digest(DATA_FILE)
+            if _file_digest(entry["path"]) == current_digest:
+                return
+        _copy_file_atomically(DATA_FILE, _unique_snapshot_path(SNAPSHOT_UNREADABLE_PREFIX))
+        _prune_snapshots()
+    except OSError:
+        pass
+
+
 def _read_storage():
+    """Return the stored payload.
+
+    Raises StorageUnreadableError when the file exists but cannot be parsed.
+    Returning an empty payload in that case would let the next write wipe a
+    recoverable file, so callers must handle the error instead.
+    """
     if not os.path.exists(DATA_FILE):
         return {}
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as handle:
-            return json.load(handle)
-    except Exception:
-        return {}
+            payload = json.load(handle)
+    except (OSError, ValueError) as error:
+        _quarantine_unreadable_storage()
+        raise StorageUnreadableError(str(error)) from error
+    if not isinstance(payload, dict):
+        _quarantine_unreadable_storage()
+        raise StorageUnreadableError("Stored payload is not an object")
+    return payload
+
+
+def _count_storage_devices(payload):
+    devices = payload.get("devices") if isinstance(payload, dict) else None
+    return len(devices) if isinstance(devices, list) else 0
+
+
+def _list_snapshot_entries():
+    """Existing snapshots, newest first."""
+    try:
+        names = os.listdir(SNAPSHOTS_DIR)
+    except OSError:
+        return []
+
+    entries = []
+    for name in names:
+        if not SNAPSHOT_NAME_PATTERN.match(name):
+            continue
+        full_path = os.path.join(SNAPSHOTS_DIR, name)
+        try:
+            stats = os.stat(full_path)
+        except OSError:
+            continue
+        if not os.path.isfile(full_path):
+            continue
+        if name.startswith(SNAPSHOT_DAILY_PREFIX):
+            kind = "daily"
+        elif name.startswith(SNAPSHOT_UNREADABLE_PREFIX):
+            kind = "unreadable"
+        else:
+            kind = "rolling"
+        entries.append(
+            {
+                "name": name,
+                "path": full_path,
+                "size": stats.st_size,
+                "modified": stats.st_mtime,
+                "kind": kind,
+            }
+        )
+    entries.sort(key=lambda item: item["modified"], reverse=True)
+    return entries
+
+
+def _prune_snapshots():
+    entries = _list_snapshot_entries()
+    limits = {
+        "rolling": MAX_ROLLING_SNAPSHOTS,
+        "daily": MAX_DAILY_SNAPSHOTS,
+        "unreadable": MAX_UNREADABLE_SNAPSHOTS,
+    }
+    for kind, limit in limits.items():
+        for entry in [item for item in entries if item["kind"] == kind][limit:]:
+            try:
+                os.remove(entry["path"])
+            except OSError:
+                pass
+
+
+def _copy_file_atomically(source_path, target_path):
+    tmp_path = f"{target_path}.tmp"
+    shutil.copyfile(source_path, tmp_path)
+    os.replace(tmp_path, target_path)
+
+
+def _unique_snapshot_path(prefix):
+    """Timestamped snapshot path that never overwrites an existing copy.
+
+    Forced snapshots skip the throttle, so several can land within the same
+    second; without the suffix the later one would overwrite the state the
+    earlier one was taken to preserve.
+    """
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    candidate = os.path.join(SNAPSHOTS_DIR, f"{prefix}{stamp}.json")
+    attempt = 2
+    while os.path.exists(candidate):
+        candidate = os.path.join(SNAPSHOTS_DIR, f"{prefix}{stamp}-{attempt}.json")
+        attempt += 1
+    return candidate
+
+
+def _create_storage_snapshot(force=False):
+    """Copy the current data file aside before it gets overwritten.
+
+    One snapshot per day is always kept; the rolling ones are throttled so a
+    burst of edits does not fill the folder. `force` bypasses the throttle and
+    is used for writes that can destroy data (imports, shrinking writes).
+    """
+    if not os.path.isfile(DATA_FILE):
+        return None
+    try:
+        os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        daily_path = os.path.join(SNAPSHOTS_DIR, f"{SNAPSHOT_DAILY_PREFIX}{today}.json")
+        if not os.path.exists(daily_path):
+            _copy_file_atomically(DATA_FILE, daily_path)
+
+        rolling = [entry for entry in _list_snapshot_entries() if entry["kind"] == "rolling"]
+        if not force and rolling and (time.time() - rolling[0]["modified"]) < SNAPSHOT_MIN_INTERVAL_SECONDS:
+            _prune_snapshots()
+            return None
+
+        target = _unique_snapshot_path(SNAPSHOT_PREFIX)
+        _copy_file_atomically(DATA_FILE, target)
+        _prune_snapshots()
+        return target
+    except OSError:
+        return None
+
+
+def _count_snapshot_devices(path):
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return _count_storage_devices(json.load(handle))
+    except (OSError, ValueError):
+        return None
+
+
+def _restore_snapshot(name):
+    """Replace the data file with a snapshot, snapshotting the current one first."""
+    full_path = _resolve_snapshot_path(name)
+    try:
+        with open(full_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+    except (OSError, ValueError) as error:
+        raise ValueError("Snapshot file is not readable") from error
+    if not isinstance(payload, dict):
+        raise ValueError("Snapshot file is not readable")
+    _write_storage(payload, force_snapshot=True)
+    return {"devices": _count_storage_devices(payload)}
+
+
+def _resolve_snapshot_path(name):
+    normalized = str(name or "").strip()
+    if not SNAPSHOT_NAME_PATTERN.match(normalized):
+        raise ValueError("Invalid snapshot name")
+    full_path = os.path.realpath(os.path.join(SNAPSHOTS_DIR, normalized))
+    root = os.path.realpath(SNAPSHOTS_DIR)
+    if not full_path.startswith(f"{root}{os.sep}"):
+        raise ValueError("Invalid snapshot name")
+    if not os.path.isfile(full_path):
+        raise FileNotFoundError("Snapshot not found")
+    return full_path
 
 
 def _read_registry(path):
@@ -67,7 +284,9 @@ def _read_registry(path):
     return payload if isinstance(payload, list) else []
 
 
-def _write_storage(payload):
+def _write_storage(payload, snapshot=True, force_snapshot=False):
+    if snapshot:
+        _create_storage_snapshot(force=force_snapshot)
     os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     tmp_path = f"{DATA_FILE}.tmp"
     with open(tmp_path, "w", encoding="utf-8") as handle:
@@ -375,7 +594,7 @@ def _import_archive_bytes(archive_bytes):
         if imported_storage is None:
             raise ValueError("Archive must contain data.json")
 
-        _write_storage(imported_storage)
+        _write_storage(imported_storage, force_snapshot=True)
 
         staged_device_files = os.path.join(stage_root, "device-files")
         if os.path.isdir(DEVICE_FILES_DIR):
@@ -824,7 +1043,10 @@ NOTIFICATION_CHECK_INTERVAL_SECONDS = 24 * 60 * 60
 
 def _run_notification_checks():
     with _lock:
-        storage = _read_storage()
+        try:
+            storage = _read_storage()
+        except StorageUnreadableError:
+            return {"skipped": True}
     notif_settings = (storage.get("settings") or {}).get("notifications") or {}
     if not notif_settings.get("enabled", True):
         return {"skipped": True}
@@ -859,7 +1081,10 @@ def _run_notification_checks():
 
     if state_changed:
         with _lock:
-            current = _read_storage()
+            try:
+                current = _read_storage()
+            except StorageUnreadableError:
+                return results
             s = current.setdefault("settings", {})
             n = s.setdefault("notifications", {})
             n["state"] = new_state
@@ -1252,10 +1477,44 @@ class AppHandler(SimpleHTTPRequestHandler):
         query = parse_qs(parsed.query)
 
         if path == "/api/storage":
-            with _lock:
-                payload = _read_storage()
-                etag = _build_storage_etag(payload)
+            try:
+                with _lock:
+                    payload = _read_storage()
+                    etag = _build_storage_etag(payload)
+            except StorageUnreadableError as error:
+                self._send_json(
+                    503,
+                    {
+                        "error": (
+                            "The app data file could not be read, so it was left untouched. "
+                            "A copy was saved for recovery. Restore a snapshot from Settings > "
+                            f"Backup, or a Home Assistant backup. Details: {error}"
+                        ),
+                        "code": "storage_unreadable",
+                    },
+                )
+                return
             self._send_json(200, payload, headers={"ETag": etag})
+            return
+
+        if path == "/api/storage/snapshots":
+            with _lock:
+                entries = _list_snapshot_entries()
+            self._send_json(
+                200,
+                {
+                    "snapshots": [
+                        {
+                            "name": entry["name"],
+                            "size": entry["size"],
+                            "modified": datetime.datetime.fromtimestamp(entry["modified"]).isoformat(timespec="seconds"),
+                            "kind": entry["kind"],
+                            "devices": _count_snapshot_devices(entry["path"]),
+                        }
+                        for entry in entries
+                    ]
+                },
+            )
             return
 
         if path == "/api/runtime":
@@ -1265,6 +1524,7 @@ class AppHandler(SimpleHTTPRequestHandler):
                     "hostname": HOSTNAME,
                     "isLocalRuntime": IS_LOCAL_RUNTIME,
                     "isAddonRuntime": not IS_LOCAL_RUNTIME,
+                    "version": ADDON_VERSION,
                 },
             )
             return
@@ -1455,6 +1715,34 @@ class AppHandler(SimpleHTTPRequestHandler):
                 return
             except OSError as error:
                 self._send_json(500, {"error": f"Unable to import archive: {error}"})
+                return
+
+            self._send_json(200, {"ok": True, "result": result})
+            return
+
+        if parsed.path == "/api/storage/snapshots/restore":
+            content_length = int(self.headers.get("Content-Length", "0") or "0")
+            body = self.rfile.read(content_length) if content_length else b"{}"
+            try:
+                request = json.loads(body.decode("utf-8") or "{}")
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                self._send_json(400, {"error": "Invalid JSON"})
+                return
+            if not isinstance(request, dict):
+                self._send_json(400, {"error": "Invalid JSON"})
+                return
+
+            try:
+                with _lock:
+                    result = _restore_snapshot(request.get("name"))
+            except ValueError as error:
+                self._send_json(400, {"error": str(error)})
+                return
+            except FileNotFoundError:
+                self._send_json(404, {"error": "Snapshot not found"})
+                return
+            except OSError as error:
+                self._send_json(500, {"error": f"Unable to restore snapshot: {error}"})
                 return
 
             self._send_json(200, {"ok": True, "result": result})
@@ -1652,24 +1940,53 @@ class AppHandler(SimpleHTTPRequestHandler):
             return
 
         if_match_header = self.headers.get("If-Match")
+        allow_empty = str(self.headers.get("X-SHP-Allow-Empty") or "").strip() == "1"
         conflict_payload = None
         conflict_etag = None
+        conflict_code = "storage_conflict"
+        conflict_message = "Storage was modified by another session. Reload and try again."
         next_etag = None
-        with _lock:
-            current = _read_storage()
-            current_etag = _build_storage_etag(current)
-            if not _if_match_allows_current(if_match_header, current_etag):
-                conflict_payload = current
-                conflict_etag = current_etag
-            else:
-                _write_storage(payload)
-                next_etag = _build_storage_etag(payload)
+        try:
+            with _lock:
+                current = _read_storage()
+                current_etag = _build_storage_etag(current)
+                current_devices = _count_storage_devices(current)
+                next_devices = _count_storage_devices(payload)
+                if not _if_match_allows_current(if_match_header, current_etag):
+                    conflict_payload = current
+                    conflict_etag = current_etag
+                elif current_devices > 0 and next_devices == 0 and not allow_empty:
+                    # A write that drops every device is almost always a client
+                    # that failed to load the data rather than a real deletion.
+                    conflict_payload = current
+                    conflict_etag = current_etag
+                    conflict_code = "storage_empty_rejected"
+                    conflict_message = (
+                        f"This save would have removed all {current_devices} devices, so it was blocked "
+                        "and your data was left untouched. Reload the page and try again."
+                    )
+                else:
+                    _write_storage(payload, force_snapshot=next_devices < current_devices)
+                    next_etag = _build_storage_etag(payload)
+        except StorageUnreadableError as error:
+            self._send_json(
+                503,
+                {
+                    "error": (
+                        "The app data file could not be read, so nothing was saved and your data was "
+                        "left untouched. A copy was saved for recovery. Restore a snapshot from "
+                        f"Settings > Backup, or a Home Assistant backup. Details: {error}"
+                    ),
+                    "code": "storage_unreadable",
+                },
+            )
+            return
         if conflict_payload is not None:
             self._send_json(
                 409,
                 {
-                    "error": "Storage was modified by another session. Reload and try again.",
-                    "code": "storage_conflict",
+                    "error": conflict_message,
+                    "code": conflict_code,
                     "storage": conflict_payload,
                 },
                 headers={"ETag": conflict_etag},
@@ -1720,7 +2037,8 @@ def main():
     mode_label = "LOCAL DEVELOPMENT" if IS_LOCAL_RUNTIME else "PRODUCTION"
     print(f"[runtime] HOSTNAME={HOSTNAME} | Mode: {mode_label}", flush=True)
     handler = partial(AppHandler, directory=WEB_ROOT)
-    server = HTTPServer((HOST, PORT), handler)
+    server = ThreadingHTTPServer((HOST, PORT), handler)
+    server.daemon_threads = True
     init_timer = threading.Timer(60, _schedule_notification_check)
     init_timer.daemon = True
     init_timer.start()

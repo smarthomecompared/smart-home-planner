@@ -561,7 +561,7 @@ async function deleteDevice(id) {
     // Drop the device as any ISP's gateway too (ISPs live in their own
     // collection, so clearReferencesToDevice can't reach them).
     const data = await getAllData();
-    await saveData({ ...data, isps: clearDeviceFromIspGateways(data.isps, id) });
+    await saveData({ ...data, isps: clearDeviceFromIspGateways(data.isps, id) }, { allowEmpty: true });
     deviceFilters.updateData(devices, areas, floors, networks, settings, labels);
     deviceFilters.applyFilters(); // Reapply filters to update filteredDevices
 }

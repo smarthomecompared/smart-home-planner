@@ -36,19 +36,137 @@ const OPTION_GROUPS_BY_KEY = new Map(OPTION_GROUPS.map((group) => [group.key, gr
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
     const deepLink = readSettingsDeepLink();
-    settings = await loadSettings();
     initializeGithubSocialLink();
     initializeSettingsSubmenu(deepLink.panel || 'general');
     initializeEventListeners();
-    renderHaIntegrationSettings();
-    renderNotificationSettings();
-    await renderExcludedDevicesManagement();
-    await renderNetworksManagement();
-    await renderIspsManagement();
-    renderOptionsManagement();
-    renderTestCaseCategoriesManagement();
-    applySettingsDeepLink(deepLink);
+    // Snapshots don't need the stored data, and they are exactly what's needed
+    // when it cannot be read, so they render first either way.
+    void renderSnapshotsManagement();
+    try {
+        settings = await loadSettings();
+        renderHaIntegrationSettings();
+        renderNotificationSettings();
+        await renderExcludedDevicesManagement();
+        await renderNetworksManagement();
+        await renderIspsManagement();
+        renderOptionsManagement();
+        renderTestCaseCategoriesManagement();
+        applySettingsDeepLink(deepLink);
+    } catch (error) {
+        // loadStorage already alerted the user about the failure.
+        console.error('Failed to load settings:', error);
+    }
 });
+
+// Local Snapshots
+const SNAPSHOT_KIND_LABELS = {
+    daily: 'Daily',
+    unreadable: 'Unreadable file',
+    rolling: 'Recent'
+};
+
+function formatSnapshotTimestamp(value) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return String(value || '');
+    return parsed.toLocaleString();
+}
+
+async function renderSnapshotsManagement() {
+    const tbody = document.getElementById('snapshots-table-body');
+    const empty = document.getElementById('snapshots-empty');
+    const container = document.getElementById('snapshots-table-container');
+    if (!tbody || !empty || !container) return;
+
+    let snapshots = [];
+    try {
+        const url = typeof window.buildAppUrl === 'function'
+            ? window.buildAppUrl('api/storage/snapshots')
+            : '/api/storage/snapshots';
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error(`Snapshots request failed: ${response.status}`);
+        }
+        const payload = await response.json();
+        snapshots = Array.isArray(payload?.snapshots) ? payload.snapshots : [];
+    } catch (error) {
+        console.error('Failed to load snapshots:', error);
+        snapshots = [];
+    }
+
+    if (snapshots.length === 0) {
+        container.style.display = 'none';
+        empty.classList.remove('is-hidden');
+        tbody.innerHTML = '';
+        return;
+    }
+
+    container.style.display = '';
+    empty.classList.add('is-hidden');
+    tbody.innerHTML = snapshots.map((snapshot) => {
+        const name = String(snapshot?.name || '');
+        const kind = String(snapshot?.kind || 'rolling');
+        const kindLabel = SNAPSHOT_KIND_LABELS[kind] || SNAPSHOT_KIND_LABELS.rolling;
+        const deviceCount = Number.isFinite(snapshot?.devices) ? snapshot.devices : null;
+        const restoreDisabled = deviceCount === null ? ' disabled' : '';
+        return `
+            <tr>
+                <td>${escapeHtml(formatSnapshotTimestamp(snapshot?.modified))}</td>
+                <td>${deviceCount === null ? '—' : deviceCount}</td>
+                <td><span class="snapshot-kind is-${escapeHtml(kind)}">${escapeHtml(kindLabel)}</span></td>
+                <td class="actions-cell">
+                    <button class="btn btn-secondary btn-sm" type="button" data-snapshot-restore="${escapeHtml(name)}"${restoreDisabled}>Restore</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tbody.querySelectorAll('[data-snapshot-restore]').forEach((button) => {
+        button.addEventListener('click', () => {
+            void restoreSnapshot(button.getAttribute('data-snapshot-restore'));
+        });
+    });
+}
+
+async function restoreSnapshot(name) {
+    const snapshotName = String(name || '').trim();
+    if (!snapshotName) return;
+
+    const confirmed = await showConfirm(
+        'This will replace your current device data with this snapshot. A snapshot of the current data is saved first, so you can undo it. Continue?',
+        { title: 'Restore snapshot', confirmText: 'Replace data', cancelText: 'Cancel' }
+    );
+    if (!confirmed) return;
+
+    try {
+        const url = typeof window.buildAppUrl === 'function'
+            ? window.buildAppUrl('api/storage/snapshots/restore')
+            : '/api/storage/snapshots/restore';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: snapshotName })
+        });
+        if (!response.ok) {
+            let message = `Restore request failed: ${response.status}`;
+            try {
+                const payload = await response.json();
+                if (payload?.error) message = payload.error;
+            } catch (_error) {
+                // Keep fallback message.
+            }
+            throw new Error(message);
+        }
+        const payload = await response.json();
+        const restoredDevices = Number(payload?.result?.devices || 0);
+        showMessage(`Snapshot restored (${restoredDevices} devices). Reloading...`, 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
+    } catch (error) {
+        console.error('Restore error:', error);
+        showMessage('Error restoring snapshot: ' + error.message, 'error');
+    }
+}
 
 // Deep link from the diagram: settings.html?panel=isps&isp=<id> opens the
 // provider straight in its edit modal. The query is dropped afterwards so a
@@ -212,6 +330,12 @@ function initializeEventListeners() {
     });
     document.getElementById('import-file').addEventListener('change', handleFileSelect);
     document.getElementById('import-confirm-btn').addEventListener('click', importData);
+    const snapshotsRefreshBtn = document.getElementById('snapshots-refresh-btn');
+    if (snapshotsRefreshBtn) {
+        snapshotsRefreshBtn.addEventListener('click', () => {
+            void renderSnapshotsManagement();
+        });
+    }
     const exportReportBtn = document.getElementById('export-report-btn');
     if (exportReportBtn) {
         exportReportBtn.addEventListener('click', () => {

@@ -1,3 +1,17 @@
+## 1.9.0 - 2026-08-24
+
+### Added
+- Automatic snapshots of your data, taken as you work and before anything that can remove data
+- New "Restore a Snapshot" section in Settings > Backup to roll back without a full Home Assistant backup
+- The app version is now shown in the footer, next to the app name
+
+### Fixed
+- Fix the app wiping the details you filled in yourself when it could not load its data, such as while the add-on restarts during an update
+- Saves that would remove every device are now blocked unless you deleted them yourself
+- A data file that cannot be read is now kept and reported instead of being overwritten
+- Fix your latest edits being overwritten by a Home Assistant sync running at the same time
+- Fix the app not responding while a long task, such as an export, is running
+
 ## 1.8.0 - 2026-07-26
 
 ### Added

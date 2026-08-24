@@ -491,7 +491,28 @@ let storageLoadPromise = null;
 let storageSavePromise = Promise.resolve();
 let storageConflictAlertPromise = null;
 const STORAGE_CONFLICT_ERROR_CODE = 'storage_conflict';
+const STORAGE_EMPTY_REJECTED_ERROR_CODE = 'storage_empty_rejected';
+const STORAGE_UNAVAILABLE_ERROR_CODE = 'storage_unavailable';
 const STORAGE_CONFLICT_DEFAULT_MESSAGE = 'Your data changed in another browser tab or session. Reload and apply your change again.';
+const STORAGE_UNAVAILABLE_DEFAULT_MESSAGE = 'Your data could not be loaded, so nothing was saved and your data was left untouched. Check that the add-on is running and reload the page.';
+
+// Set when a load fails. Everything the app knows is then unreliable, so every
+// write is refused: saving a half-empty in-memory copy would overwrite the
+// stored data with it.
+let storageUnavailableError = null;
+
+function buildStorageUnavailableError(message) {
+    const error = new Error(String(message || '').trim() || STORAGE_UNAVAILABLE_DEFAULT_MESSAGE);
+    error.name = 'StorageUnavailableError';
+    error.code = STORAGE_UNAVAILABLE_ERROR_CODE;
+    error.isStorageUnavailable = true;
+    return error;
+}
+
+function isStorageUnavailableError(error) {
+    if (!error || typeof error !== 'object') return false;
+    return error.isStorageUnavailable === true || error.code === STORAGE_UNAVAILABLE_ERROR_CODE;
+}
 
 function enqueueStorageWrite(task) {
     storageSavePromise = storageSavePromise.then(task, task);
@@ -503,10 +524,10 @@ function parseStorageEtag(response) {
     return etag ? String(etag).trim() : '';
 }
 
-function buildStorageConflictError(message, conflictPayload) {
+function buildStorageConflictError(message, conflictPayload, code) {
     const error = new Error(message || STORAGE_CONFLICT_DEFAULT_MESSAGE);
     error.name = 'StorageConflictError';
-    error.code = STORAGE_CONFLICT_ERROR_CODE;
+    error.code = code === STORAGE_EMPTY_REJECTED_ERROR_CODE ? STORAGE_EMPTY_REJECTED_ERROR_CODE : STORAGE_CONFLICT_ERROR_CODE;
     error.isStorageConflict = true;
     if (conflictPayload && typeof conflictPayload === 'object') {
         error.storage = conflictPayload.storage;
@@ -516,7 +537,9 @@ function buildStorageConflictError(message, conflictPayload) {
 
 function isStorageConflictError(error) {
     if (!error || typeof error !== 'object') return false;
-    return error.isStorageConflict === true || error.code === STORAGE_CONFLICT_ERROR_CODE;
+    return error.isStorageConflict === true ||
+        error.code === STORAGE_CONFLICT_ERROR_CODE ||
+        error.code === STORAGE_EMPTY_REJECTED_ERROR_CODE;
 }
 
 async function parseJsonSafely(response) {
@@ -527,7 +550,7 @@ async function parseJsonSafely(response) {
     }
 }
 
-async function showStorageConflictAlert(message) {
+async function showStorageConflictAlert(message, title = 'Save Conflict') {
     const detail = String(message || '').trim() || STORAGE_CONFLICT_DEFAULT_MESSAGE;
     if (storageConflictAlertPromise) {
         await storageConflictAlertPromise;
@@ -536,7 +559,7 @@ async function showStorageConflictAlert(message) {
     storageConflictAlertPromise = (async () => {
         try {
             if (typeof showAlert === 'function') {
-                await showAlert(detail, { title: 'Save Conflict' });
+                await showAlert(detail, { title });
             }
         } catch (_error) {
             // Ignore UI errors while notifying conflict.
@@ -552,10 +575,33 @@ function applyConflictStorageSnapshot(conflictPayload) {
     storageCache = storage ? mergeStorage(storage) : null;
 }
 
-async function putStoragePayload(payload) {
+// A write that drops every device is refused unless the caller opts in, so a
+// failed load or a half-built payload can never wipe the stored devices.
+function wouldWipeKnownDevices(payload) {
+    const nextDevices = Array.isArray(payload?.devices) ? payload.devices : [];
+    if (nextDevices.length > 0) return false;
+    const knownDevices = Array.isArray(storageCache?.devices) ? storageCache.devices : [];
+    return knownDevices.length > 0;
+}
+
+async function putStoragePayload(payload, { allowEmpty = false } = {}) {
+    if (storageUnavailableError) {
+        throw buildStorageUnavailableError(storageUnavailableError.message);
+    }
+    if (!allowEmpty && wouldWipeKnownDevices(payload)) {
+        const knownCount = storageCache.devices.length;
+        const message = `This save would have removed all ${knownCount} devices, so it was blocked and ` +
+            'your data was left untouched. Reload the page and try again.';
+        await showStorageConflictAlert(message, 'Save Blocked');
+        throw buildStorageConflictError(message, null, STORAGE_EMPTY_REJECTED_ERROR_CODE);
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     if (storageEtag) {
         headers['If-Match'] = storageEtag;
+    }
+    if (allowEmpty) {
+        headers['X-SHP-Allow-Empty'] = '1';
     }
     const response = await fetch(STORAGE_API_URL, {
         method: 'PUT',
@@ -567,9 +613,20 @@ async function putStoragePayload(payload) {
         const nextEtag = parseStorageEtag(response);
         storageEtag = nextEtag || null;
         applyConflictStorageSnapshot(conflictPayload);
+        const code = String(conflictPayload?.code || '').trim();
         const message = String(conflictPayload?.error || '').trim() || STORAGE_CONFLICT_DEFAULT_MESSAGE;
-        await showStorageConflictAlert(message);
-        throw buildStorageConflictError(message, conflictPayload);
+        await showStorageConflictAlert(
+            message,
+            code === STORAGE_EMPTY_REJECTED_ERROR_CODE ? 'Save Blocked' : 'Save Conflict'
+        );
+        throw buildStorageConflictError(message, conflictPayload, code);
+    }
+    if (response.status === 503) {
+        const errorPayload = await parseJsonSafely(response);
+        const message = String(errorPayload?.error || '').trim() || STORAGE_UNAVAILABLE_DEFAULT_MESSAGE;
+        storageUnavailableError = buildStorageUnavailableError(message);
+        await showStorageConflictAlert(message, 'Data Unavailable');
+        throw buildStorageUnavailableError(message);
     }
     if (!response.ok) {
         throw new Error(`Storage write failed: ${response.status}`);
@@ -582,45 +639,64 @@ async function putStoragePayload(payload) {
 
 async function loadStorage() {
     if (storageCache) return storageCache;
+    if (storageUnavailableError) {
+        throw buildStorageUnavailableError(storageUnavailableError.message);
+    }
     if (!storageLoadPromise) {
         storageLoadPromise = fetch(STORAGE_API_URL, { cache: 'no-store' })
             .then(async (response) => {
                 if (!response.ok) {
-                    throw new Error(`Storage request failed: ${response.status}`);
+                    const errorPayload = await parseJsonSafely(response);
+                    const detail = String(errorPayload?.error || '').trim();
+                    throw buildStorageUnavailableError(
+                        detail || `${STORAGE_UNAVAILABLE_DEFAULT_MESSAGE} (HTTP ${response.status})`
+                    );
                 }
                 const payload = await response.json();
                 const etag = parseStorageEtag(response);
                 storageEtag = etag || null;
-                return mergeStorage(payload);
+                storageCache = mergeStorage(payload);
+                storageLoadPromise = null;
+                return storageCache;
             })
             .catch((error) => {
+                // Falling back to an empty payload here used to let the very next
+                // save overwrite the stored data with it. Fail loudly instead.
                 console.error('Failed to load storage:', error);
                 storageEtag = null;
-                return mergeStorage({});
-            })
-            .then((storage) => {
-                storageCache = storage;
                 storageLoadPromise = null;
-                return storage;
+                storageUnavailableError = isStorageUnavailableError(error)
+                    ? error
+                    : buildStorageUnavailableError(error?.message);
+                void showStorageLoadFailureAlert(storageUnavailableError.message);
+                throw storageUnavailableError;
             });
     }
     return storageLoadPromise;
 }
 
-async function saveStorage(nextStorage) {
+let storageLoadAlertShown = false;
+
+async function showStorageLoadFailureAlert(message) {
+    if (storageLoadAlertShown) return;
+    storageLoadAlertShown = true;
+    await showStorageConflictAlert(message, 'Data Unavailable');
+}
+
+async function saveStorage(nextStorage, options = {}) {
     return enqueueStorageWrite(async () => {
         const payload = mergeStorage(nextStorage);
-        await putStoragePayload(payload);
+        await putStoragePayload(payload, options);
         storageCache = payload;
         return payload;
     });
 }
 
-async function patchStorage(patch) {
+async function patchStorage(patch, options = {}) {
     return enqueueStorageWrite(async () => {
         const storage = await loadStorage();
         const payload = mergeStorage({ ...storage, ...(patch || {}) });
-        await putStoragePayload(payload);
+        await putStoragePayload(payload, options);
         storageCache = payload;
         return payload;
     });
@@ -829,14 +905,16 @@ async function loadData() {
     };
 }
 
-async function saveData(data) {
+// `options.allowEmpty` marks a deliberate deletion, the only case where saving
+// an empty device list is legitimate.
+async function saveData(data, options = {}) {
     const storage = await loadStorage();
     const payload = mergeStorage({
         ...storage,
         ...data,
         settings: data.settings ? data.settings : storage.settings
     });
-    return await saveStorage(payload);
+    return await saveStorage(payload, options);
 }
 
 // Settings Management Functions
@@ -1269,7 +1347,7 @@ function openDialog({ title, message, confirmText, cancelText, showCancel }) {
     messageEl.textContent = message || '';
     confirmBtn.textContent = confirmText || 'OK';
     // Destructive confirmations get the danger treatment without touching every caller
-    const isDestructive = /\b(delete|remove|discard|reset)\b/i.test(confirmText || '');
+    const isDestructive = /\b(delete|remove|discard|reset|replace|overwrite)\b/i.test(confirmText || '');
     confirmBtn.classList.toggle('btn-danger', isDestructive);
     confirmBtn.classList.toggle('btn-primary', !isDestructive);
     cancelBtn.textContent = cancelText || 'Cancel';
@@ -1474,7 +1552,10 @@ function ensureAppFooter() {
                 <div class="app-footer-brand">
                     <img class="app-footer-logo" src="img/logo.png" alt="Smart Home Planner logo">
                     <div class="app-footer-brand-text">
-                        <span class="app-footer-brand-name">Smart Home Planner</span>
+                        <span class="app-footer-brand-title">
+                            <span class="app-footer-brand-name">Smart Home Planner</span>
+                            <span class="app-footer-version" id="app-footer-version" hidden></span>
+                        </span>
                         <span class="app-footer-brand-tag">Plan, track &amp; document your smart home.</span>
                     </div>
                 </div>
@@ -1777,7 +1858,14 @@ async function loadGlobalSearchIndex() {
     if (globalSearchReady && globalSearchIndex) return globalSearchIndex;
     if (globalSearchLoading) return globalSearchLoading;
     globalSearchLoading = (async () => {
-        const data = await loadData();
+        const data = await loadData().catch((error) => {
+            console.error('Global search index unavailable:', error);
+            return null;
+        });
+        if (!data) {
+            globalSearchLoading = null;
+            return [];
+        }
         const deviceEntries = buildDeviceSearchIndex(
             data.devices || [],
             data.areas || [],
@@ -2548,14 +2636,31 @@ async function clearMapImagePositions() {
 }
 
 window.addEventListener('unhandledrejection', (event) => {
-    if (!isStorageConflictError(event.reason)) {
+    // Both are already reported to the user by the storage layer.
+    if (!isStorageConflictError(event.reason) && !isStorageUnavailableError(event.reason)) {
         return;
     }
     event.preventDefault();
 });
 
+async function renderAppVersion() {
+    const target = document.getElementById('app-footer-version');
+    if (!target) return;
+    let version = '';
+    try {
+        const runtime = await getRuntimeInfo();
+        version = String(runtime?.version || '').trim();
+    } catch (_error) {
+        version = '';
+    }
+    if (!version) return;
+    target.textContent = `v${version}`;
+    target.hidden = false;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     ensureAppFooter();
+    void renderAppVersion();
     await initDebugSettingsNav();
     initPrimaryNavIcons();
     initMobileNav();

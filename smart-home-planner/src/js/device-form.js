@@ -6026,7 +6026,7 @@ async function handleDeleteDevice() {
         ...data,
         devices: allDevices,
         isps: clearDeviceFromIspGateways(data.isps, editingDeviceId)
-    });
+    }, { allowEmpty: true });
 
     window.location.href = 'devices.html';
 }

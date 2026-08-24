@@ -229,6 +229,18 @@ The app stores its data inside Home Assistant, so your regular Home Assistant ba
 2. Import Data restores a previous backup.
 3. Export to PDF generates a shareable PDF report of your smart home inventory.
 
+### Restore a Snapshot
+
+The app saves a copy of your data before changing it, so you can go back without restoring a full Home Assistant backup. Copies are taken at most once every 5 minutes while you work, and always before anything that can remove data, such as a restore, an import, or a change that deletes devices. Snapshots are listed in Settings > Backup with the date they were saved and how many devices they contain:
+
+1. Recent — the latest changes, kept as the last 10 copies (at most one every 5 minutes).
+2. Daily — the first copy of each day, kept for the last 7 days.
+3. Unreadable file — a copy kept when the app found a data file it could not read. It cannot be restored, but it is preserved so nothing is lost.
+
+Restoring replaces your current device data with the snapshot. A snapshot of the current data is saved first, so a restore can be undone. Uploaded files and images are not affected.
+
+If the app reports that your data is unavailable, it means it could not read the data file. Nothing is written in that state, so your data is left as it is: open Settings > Backup and restore a snapshot, or restore the add-on from a Home Assistant backup.
+
 ### Export to PDF
 
 The PDF report gives you a professional, printable snapshot of your entire setup. It is organized into sections so you can share it with others or keep it as a reference outside the app.

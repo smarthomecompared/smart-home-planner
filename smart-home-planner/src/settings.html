@@ -235,6 +235,29 @@
                                 </div>
                             </div>
 
+                            <div class="settings-section">
+                                <h3 class="settings-section-title">Restore a Snapshot</h3>
+                                <p class="settings-description">The app saves a copy of your data as you work, and always before anything that can remove data, so you can go back without restoring a full Home Assistant backup. Restoring replaces your current device data; uploaded files are left untouched.</p>
+                                <div class="table-container snapshots-table-container" id="snapshots-table-container" style="display: none;">
+                                    <table class="snapshots-table" id="snapshots-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Saved</th>
+                                                <th>Devices</th>
+                                                <th>Kept as</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="snapshots-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="snapshots-empty is-hidden" id="snapshots-empty">No snapshots yet.</div>
+                                <div class="snapshots-actions">
+                                    <button class="btn btn-secondary btn-sm" type="button" id="snapshots-refresh-btn">Refresh</button>
+                                </div>
+                            </div>
+
                         </div>
 
                         <div class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-device-options" data-settings-panel="device-options" id="settings-panel-device-options" hidden>
