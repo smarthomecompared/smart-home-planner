@@ -3289,10 +3289,10 @@
       "date": "2026-09-19",
       "installations": 38,
       "auto_update": 16,
-      "install_rank": 929,
-      "total_rank": 10465,
+      "install_rank": 928,
+      "total_rank": 10498,
       "stars": 53,
-      "forks": 2,
+      "forks": 3,
       "versions": {
         "1.9.0": 36,
         "1.2.0": 1,
