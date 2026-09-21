@@ -3315,14 +3315,14 @@
     },
     {
       "date": "2026-09-21",
-      "installations": 38,
-      "auto_update": 16,
-      "install_rank": 929,
-      "total_rank": 10521,
+      "installations": 40,
+      "auto_update": 17,
+      "install_rank": 911,
+      "total_rank": 10538,
       "stars": 53,
       "forks": 3,
       "versions": {
-        "1.9.0": 36,
+        "1.9.0": 38,
         "1.2.0": 1,
         "1.6.0": 1
       }
