@@ -3371,14 +3371,14 @@
     },
     {
       "date": "2026-09-25",
-      "installations": 40,
-      "auto_update": 17,
-      "install_rank": 912,
-      "total_rank": 10603,
+      "installations": 41,
+      "auto_update": 18,
+      "install_rank": 899,
+      "total_rank": 10600,
       "stars": 53,
       "forks": 3,
       "versions": {
-        "1.9.0": 38,
+        "1.9.0": 39,
         "1.2.0": 1,
         "1.6.0": 1
       }
