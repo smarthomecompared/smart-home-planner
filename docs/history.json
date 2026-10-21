@@ -3739,8 +3739,8 @@
       "auto_update": 20,
       "install_rank": 879,
       "total_rank": 11429,
-      "stars": 54,
-      "forks": 3,
+      "stars": null,
+      "forks": null,
       "versions": {
         "1.9.0": 43,
         "1.2.0": 1,
