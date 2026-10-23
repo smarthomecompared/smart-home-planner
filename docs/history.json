@@ -3763,14 +3763,14 @@
     },
     {
       "date": "2026-10-23",
-      "installations": 45,
-      "auto_update": 20,
-      "install_rank": 879,
-      "total_rank": 11492,
+      "installations": 44,
+      "auto_update": 19,
+      "install_rank": 888,
+      "total_rank": 11524,
       "stars": 54,
       "forks": 3,
       "versions": {
-        "1.9.0": 43,
+        "1.9.0": 42,
         "1.2.0": 1,
         "1.6.0": 1
       }
