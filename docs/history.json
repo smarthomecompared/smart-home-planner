@@ -4015,14 +4015,14 @@
     },
     {
       "date": "2026-11-10",
-      "installations": 44,
+      "installations": 46,
       "auto_update": 19,
-      "install_rank": 900,
-      "total_rank": 12248,
+      "install_rank": 882,
+      "total_rank": 12276,
       "stars": 54,
       "forks": 4,
       "versions": {
-        "1.9.0": 42,
+        "1.9.0": 44,
         "1.2.0": 1,
         "1.6.0": 1
       }
