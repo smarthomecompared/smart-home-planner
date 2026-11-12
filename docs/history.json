@@ -4043,14 +4043,14 @@
     },
     {
       "date": "2026-11-12",
-      "installations": 45,
+      "installations": 44,
       "auto_update": 18,
-      "install_rank": 898,
-      "total_rank": 12307,
-      "stars": 54,
+      "install_rank": 909,
+      "total_rank": 12342,
+      "stars": 55,
       "forks": 4,
       "versions": {
-        "1.9.0": 43,
+        "1.9.0": 42,
         "1.2.0": 1,
         "1.6.0": 1
       }
