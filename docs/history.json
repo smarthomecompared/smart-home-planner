@@ -4198,11 +4198,11 @@
     {
       "date": "2026-11-23",
       "installations": 45,
-      "auto_update": 18,
-      "install_rank": 912,
-      "total_rank": 12817,
-      "stars": 56,
-      "forks": 4,
+      "auto_update": 19,
+      "install_rank": 910,
+      "total_rank": 12865,
+      "stars": null,
+      "forks": null,
       "versions": {
         "1.9.0": 43,
         "1.2.0": 1,
