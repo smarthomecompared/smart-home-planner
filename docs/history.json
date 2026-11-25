@@ -4225,14 +4225,14 @@
     },
     {
       "date": "2026-11-25",
-      "installations": 46,
+      "installations": 47,
       "auto_update": 19,
-      "install_rank": 898,
-      "total_rank": 12918,
+      "install_rank": 890,
+      "total_rank": 12955,
       "stars": 56,
       "forks": 3,
       "versions": {
-        "1.9.0": 44,
+        "1.9.0": 45,
         "1.2.0": 1,
         "1.6.0": 1
       }
